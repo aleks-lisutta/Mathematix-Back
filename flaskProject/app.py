@@ -142,14 +142,31 @@ def logout():
     activeControllers.pop(username)
     return username + " " + str(len(activeControllers))
 
+@app.route('/openUnit')
+def openUnit(): #need to ask for all unit parameters
+    username = request.args.get('username')
+    if username not in activeControllers:
+        return "inactive user", 403
+    AC = activeControllers[username]
+    if AC.typ == 1:
+        return AC.openUnit("Uname", "cls", "template", "Qnum", "maxTime", "subDate")
+    return "invalid permissions"
+
+
+
 
 class userCont:
 
     def __init__(self, username):
         self.username = username
+        self.typ = 0
 
 
 class studentCont(userCont):
+
+    def __init__(self, username):
+        self.username = username
+        self.typ = 2
 
     def registerClass(self, Cname):
         return "registerClass", Cname
@@ -175,8 +192,13 @@ class studentCont(userCont):
 
 class teacherCont(userCont):
 
+    def __init__(self, username):
+        self.username = username
+        self.typ = 1
+
     def openUnit(self, Uname, cls, template, Qnum, maxTime, subDate):
-        return "openUnit", Uname, cls, template, Qnum, maxTime, subDate
+        #add open unit logic
+        return "openUnit"+Uname+cls+template+Qnum+maxTime+subDate
 
     def editUnit(self, Uname, cls, newUname, template, Qnum, maxTime, subDate):
         return "editUnit", Uname, cls, newUname, template, Qnum, maxTime, subDate
