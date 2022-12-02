@@ -36,7 +36,7 @@ class Template(DB.Entity):
 
 class Unit(DB.Entity):
     name = Required(str)
-    cls = Required(Cls,  reverse='hasUnits')
+    cls = Required(Cls, reverse='hasUnits')
     template = Required(Template, reverse='inUnits')
     Qnum = Required(int)
     maxTime = Required(int)
@@ -53,7 +53,6 @@ class ActiveUnit(DB.Entity):
 
 DB.generate_mapping(create_tables=True)
 
-
 activeControllers = {}
 
 
@@ -63,11 +62,15 @@ def hello_world():  # put application's code here
 
 
 def checkValidUsername(username):
-    return True
+    try:
+        with db_session:
+            return User[username] is None
+    except Exception as e:
+        return str(e)
 
 
 def checkValidPassword(password):
-    return True
+    return len(password) > 2
 
 
 def makeUser(username, password, type):
@@ -75,8 +78,7 @@ def makeUser(username, password, type):
         with db_session:
             User(name=username, password=password, type=type)
             commit()
-            result = DB.select("select * from User")
-            return str(result)
+            return
     except Exception as e:
         return str(e)
 
@@ -85,19 +87,34 @@ def makeUser(username, password, type):
 def register():
     username = request.args.get('username')
     password = request.args.get('password')
-    type = request.args.get('type')
+    typ = request.args.get('typ')
     if not checkValidUsername(username) or not checkValidPassword(password):
         return "invalid username or password", 403
-    makeUser(username, password, type)
-    return username + " " + password + " " + type
+    makeUser(username, password, typ)
+    return username + " " + password + " " + typ
 
 
 def checkUserPass(username, password):
-    return True
+    try:
+        with db_session:
+            result = User[username]
+            print(result)
+            if result:
+                return result.password == password
+            return False
+    except Exception:
+        return False
 
 
 def checkType(username):
-    return 1
+    try:
+        with db_session:
+            result = User[username]
+            if result.type:
+                return result.type
+            return 0
+    except Exception:
+        return 0
 
 
 def loadController(username):
@@ -124,6 +141,7 @@ def logout():
     username = request.args.get('username')
     activeControllers.pop(username)
     return username + " " + str(len(activeControllers))
+
 
 class userCont:
 
