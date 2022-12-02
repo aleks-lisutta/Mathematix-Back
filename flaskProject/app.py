@@ -1,25 +1,84 @@
+import email.message
+
 from flask import Flask, request
+from flask_pony import Pony
+from pony.orm import *
+from pony_database_facade import DatabaseFacade
 
 app = Flask(__name__)
+pony = Pony(app)
+
+DB = pony.db
+DB.bind(provider='sqlite', filename='dbtest', create_db=True)
+
+
+class User(DB.Entity):
+    name = PrimaryKey(str)
+    password = Required(str)
+    type = Required(int)
+    teaching = Set('Cls', reverse='teacher')
+    inClass = Set('Cls', reverse='students')
+    activeUnits = Set("ActiveUnit", reverse='student')
+
+
+class Cls(DB.Entity):
+    name = PrimaryKey(str)
+    teacher = Required(User, reverse='teaching')
+    students = Set('User', reverse='inClass')
+    hasUnits = Set('Unit', reverse='cls')
+
+
+class Template(DB.Entity):
+    name = PrimaryKey(str)
+    temp = Required(str)
+    inUnits = Set('Unit', reverse='template')
+
+
+class Unit(DB.Entity):
+    name = Required(str)
+    cls = Required(Cls,  reverse='hasUnits')
+    template = Required(Template, reverse='inUnits')
+    Qnum = Required(int)
+    maxTime = Required(int)
+    subDate = Required(int)
+    instances = Set('ActiveUnit', reverse='unit')
+    PrimaryKey(name, cls)
+
+
+class ActiveUnit(DB.Entity):
+    unit = Required(Unit, reverse='instances')
+    student = Required(User, reverse='activeUnits')
+    PrimaryKey(unit, student)
+
+
+DB.generate_mapping(create_tables=True)
+
 
 activeControllers = {}
+
 
 @app.route('/')
 def hello_world():  # put application's code here
     return 'Hello World!'
 
 
-if __name__ == '__main__':
-    app.run()
-
 def checkValidUsername(username):
     return True
+
 
 def checkValidPassword(password):
     return True
 
+
 def makeUser(username, password, type):
-    return ""
+    try:
+        with db_session:
+            User(name=username, password=password, type=type)
+            commit()
+            result = DB.select("select * from User")
+            return str(result)
+    except Exception as e:
+        return str(e)
 
 
 @app.route('/register')
@@ -30,13 +89,17 @@ def register():
     if not checkValidUsername(username) or not checkValidPassword(password):
         return "invalid username or password", 403
     makeUser(username, password, type)
-    return username+" "+password+" "+type
+    return username + " " + password + " " + type
+
 
 def checkUserPass(username, password):
     return True
 
+
 def checkType(username):
     return 1
+
+
 def loadController(username):
     type = checkType(username)
     if type == 1:
@@ -45,6 +108,7 @@ def loadController(username):
         activeControllers[username] = userCont(username)
     return
 
+
 @app.route('/login')
 def login():
     username = request.args.get('username')
@@ -52,26 +116,19 @@ def login():
     if not checkUserPass(username, password):
         return "invalid username or password", 403
     loadController(username)
-    return username+" "+password+" "+str(len(activeControllers))
+    return username + " " + password + " " + str(len(activeControllers))
 
 
 @app.route('/logout')
 def logout():
     username = request.args.get('username')
     activeControllers.pop(username)
-    return username+" "+str(len(activeControllers))
-
-@app.route('/dbtest')
-def dbtest():
-    pass
-
+    return username + " " + str(len(activeControllers))
 
 class userCont:
 
     def __init__(self, username):
         self.username = username
-
-
 
 
 class studentCont(userCont):
@@ -107,7 +164,7 @@ class teacherCont(userCont):
         return "editUnit", Uname, cls, newUname, template, Qnum, maxTime, subDate
 
     def getUnit(self, Uname):
-        return "getUnit"+" "+Uname
+        return "getUnit" + " " + Uname
 
     def deleteUnit(self, Uname):
         return "deleteUnit", Uname
@@ -116,50 +173,5 @@ class teacherCont(userCont):
         return "openClass", Cname
 
 
-class DAL:
-
-    def __init__(self, provider, location):
-        self.provider = provider
-        self.location = location
-        self.DB = Database()
-        DB.bind(provider=provider, filename=location)
-
-    class User(DB.Entity):
-        name = PrimaryKey(str)
-        password = Required(str)
-        type = Required(int)
-
-    class Cls(DB.Entity):
-        name = PrimaryKey(str)
-        teacher = Set(User)
-
-    class ClsStudents(DB.Entity):
-        student = Set(User)
-        cls = Set(Cls)
-        PrimaryKey(student, cls)
-
-    class Template(DB.Entity):
-        name = PrimaryKey(str)
-        temp = Required(str)
-
-    class Unit(DB.Entity):
-        name = Required(str)
-        cls = Set(Cls)
-        template = Set(Template)
-        Qnum = Required(int)
-        maxTime = Required(int)
-        subDate = Required(int)
-        PrimaryKey(name, cls)
-
-    class ActiveUnit(DB.Entity):
-        unit = Set(Unit)
-        cls = Set(Cls)
-        student = Set(User)
-        PrimaryKey(unit, cls, student)
-
-
-
-
-
-
-
+if __name__ == '__main__':
+    app.run()
