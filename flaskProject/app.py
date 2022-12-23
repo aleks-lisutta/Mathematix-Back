@@ -1,10 +1,12 @@
 
 from flask import Flask, request
 from flask_pony import Pony
+from flask_cors import CORS
 from pony.orm import *
 from pony_database_facade import DatabaseFacade
 
 app = Flask(__name__)
+CORS(app)
 pony = Pony(app)
 
 DB = pony.db
