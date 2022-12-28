@@ -1,2 +1,5 @@
 flaskProject/.idea
-:
+flaskProject/DBEntitys.py
+flaskProject/__pycache__/
+flaskProject/dbtest
+flaskProject/venv/
