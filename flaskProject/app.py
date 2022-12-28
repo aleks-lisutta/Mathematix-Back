@@ -19,6 +19,7 @@ class User(DB.Entity):
     teaching = Set('Cls', reverse='teacher')
     inClass = Set('Cls_User')
     activeUnits = Set("ActiveUnit", reverse='student')
+
 class Cls(DB.Entity):
     name = PrimaryKey(str)
     teacher = Required(User, reverse='teaching')
