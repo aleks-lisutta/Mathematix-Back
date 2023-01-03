@@ -1,5 +1,7 @@
+import random
+from fractions import Fraction
 
-from flask import Flask, request
+from flask import Flask, request, jsonify
 from flask_pony import Pony
 from flask_cors import CORS
 from pony.orm import *
@@ -11,6 +13,9 @@ pony = Pony(app)
 
 DB = pony.db
 DB.bind(provider='sqlite', filename='dbtest', create_db=True)
+
+DATATYPE_SIZE = 3
+QUESTIONTYPE_SIZE =4
 
 class User(DB.Entity):
     name = PrimaryKey(str)
@@ -30,25 +35,38 @@ class Cls_User(DB.Entity):
     user = Required(User)
     approved = Required(bool)
     PrimaryKey(cls, user)
-class Template(DB.Entity):
-    name = PrimaryKey(str)
-    temp = Required(str)
-    inUnits = Set('Unit', reverse='template')
+
 class Unit(DB.Entity):
     name = Required(str)
     cls = Required(Cls, reverse='hasUnits')
-    template = Required(Template, reverse='inUnits')
+    template = Required(str)
     Qnum = Required(int)
     maxTime = Required(int)
     subDate = Required(int)
     instances = Set('ActiveUnit', reverse='unit')
     PrimaryKey(name, cls)
+
+class Question(DB.Entity):
+    id = Required(int)
+    question_preamble = Required(str)
+    question = Required(str)
+    answer = Required(str)
+    active_unit = Required('ActiveUnit',reverse='questions')
+    solved_correctly = Optional(bool)
+    PrimaryKey(active_unit,id)
+
+
 class ActiveUnit(DB.Entity):
     inProgress = Required(bool)
     attempt = Required(int)
+    questions = Set('Question',reverse= 'active_unit' )
     unit = Required(Unit, reverse='instances')
     student = Required(User, reverse='activeUnits')
+    grade = Optional(int)
     PrimaryKey(unit, student, attempt)
+
+
+
 
 DB.generate_mapping(create_tables=True)
 
@@ -69,7 +87,7 @@ def checkValidUsername(username):
         with db_session:
             return User[username] is None
     except Exception as e:
-        return str(e)
+        return str(e), 400
 
 
 def checkValidPassword(password):
@@ -83,22 +101,24 @@ def makeUser(username, password, type):
             commit()
             return None
     except Exception as e:
-        return str(e)
+        return str(e), 400
 
 
 
 
 
+def is_legal_template(template:str):
+    parts = template.split(',')
+    data_type = int (parts[0])
+    question_type = int (parts[1])
+
+    if (not(( data_type>= 0 and data_type<DATATYPE_SIZE ) and ( question_type>= 0 and question_type<QUESTIONTYPE_SIZE ))):
+        return False
+    #todo check the tuples are correct
+    return True
 
 
-def teacherOpenUnit(unitName, teacherName, className, template, Qnum, maxTime, subDate):
-    try:
-        with db_session:
-            Unit(cls=Cls[className], name = unitName,template=template,Qnum=Qnum,maxTime=maxTime,subDate=subDate)
-            commit()
-            return
-    except Exception as e:
-        return str(e)
+
 
 @app.route('/register')
 def register():
@@ -106,7 +126,7 @@ def register():
     password = request.args.get('password')
     typ = request.args.get('typ')
     if not checkValidUsername(username) or not checkValidPassword(password):
-        return "invalid username or password", 403
+        return "invalid username or password", 400
 
     ans = makeUser(username, password, typ)
     if ans is None:
@@ -151,7 +171,7 @@ def login():
     username = request.args.get('username')
     password = request.args.get('password')
     if not checkUserPass(username, password):
-        return "invalid username or password", 403
+        return "invalid username or password", 400
     loadController(username)
     return username + " " + password + " " + str(len(activeControllers))
 
@@ -168,9 +188,9 @@ def change_password():
                 u.password = new_password
                 return "successful password change",200
             else:
-                return "wrong username or password",403
+                return "wrong username or password",400
     except Exception:
-        return "wrong username or password", 403
+        return "wrong username or password", 400
 
 
 @app.route('/logout')
@@ -189,9 +209,9 @@ def openClass():
             if t.type ==1:
                 Cls(name=className, teacher=User[teacherName])
                 return "successful",200
-            return "failed wrong type",403
+            return "failed wrong type",400
     except Exception as e:
-        return str(e),403
+        return str(e), 400,400
 
 @app.route('/removeClass')
 def removeClass():
@@ -204,9 +224,9 @@ def removeClass():
             if c.teacher == t:
                 c.delete()
                 return "successful",200
-            return "failed",403
+            return "failed",400
     except Exception as e:
-        return str(e),403
+        return str(e), 400,400
 
 @app.route('/editClass')
 def editClass():
@@ -220,9 +240,9 @@ def editClass():
             if c.teacher == t:
                 c.name = newClassName
                 return "successful",200
-            return "failed",403
+            return "failed",400
     except Exception as e:
-        return str(e),403
+        return str(e), 400,400
 
 @app.route('/editUnit')
 def editUnit():
@@ -244,7 +264,7 @@ def editUnit():
             Unit(cls=c, name = unitName,template=template,Qnum=Qnum,maxTime=maxTime,subDate=subDate)
             return "successful",200
     except Exception as e:
-        return str(e),403
+        return str(e), 400,400
 
 
 @app.route('/removeUnit')
@@ -257,7 +277,7 @@ def removeUnit():
             u.delete()
             return "successful",200
     except Exception as e:
-        return str(e),403
+        return str(e), 400,400
 
 @app.route('/registerClass')
 def registerClass():
@@ -274,7 +294,7 @@ def registerClass():
             commit()
             return "successful",200
     except Exception as e:
-        return str(e),403
+        return str(e), 400,400
 
 @app.route('/approveStudentToClass')
 def approveStudentToClass():
@@ -292,7 +312,7 @@ def approveStudentToClass():
                 Cls_User[c, u].delete()
             return "successful",200
     except Exception as e:
-        return str(e),403
+        return str(e), 400,400
 
 @app.route('/removeFromClass')
 def removeFromClass():
@@ -307,9 +327,19 @@ def removeFromClass():
             commit()
             return "successful",200
     except Exception as e:
-        return str(e),403
+        return str(e), 400,400
 
 
+def teacherOpenUnit(unitName, teacherName, className, template, Qnum, maxTime, subDate):
+    if not is_legal_template(template):
+        return "illegal template",400
+    try:
+        with db_session:
+            Unit(cls=Cls[className], name = unitName,template=template,Qnum=Qnum,maxTime=maxTime,subDate=subDate)
+            commit()
+            return "success"
+    except Exception as e:
+        return str(e), 400 ,400
 
 @app.route('/openUnit')
 def openUnit():
@@ -322,11 +352,11 @@ def openUnit():
     subDate = request.args.get('subDate')
 
     if teacherName not in activeControllers:
-        return "inactive user", 403
+        return "inactive user", 400
     AC = activeControllers[teacherName]
     if AC.typ == 1:
         return teacherOpenUnit(unitName, teacherName, className, template, Qnum, maxTime, subDate)
-    return "invalid permissions"
+    return "invalid permissions" ,400
 
 @app.route('/getUnit')
 def getUnit():
@@ -335,9 +365,9 @@ def getUnit():
     try:
         with db_session:
             retUnit = Unit[unitName, Cls[className]]
-            return retUnit.name +"dan "
+            return retUnit.name
     except Exception as e:
-        return str(e)
+        return str(e), 400
 
 @app.route('/deleteUnit')
 def deleteUnit():
@@ -349,7 +379,7 @@ def deleteUnit():
             commit()
             return "deleted successfully"
     except Exception as e:
-        return str(e)
+        return str(e), 400
 
 @app.route('/getClassUnits')
 def getClassUnits():
@@ -361,7 +391,25 @@ def getClassUnits():
                 ret += aUnit.name
             return ret
     except Exception as e:
-        return str(e)
+        return str(e), 400
+
+@app.route('/getClasses')
+def getClasses():
+    teacher = request.args.get('teacher')
+    try:
+        with db_session:
+            ret =[]
+            id =0
+            for aUnit in Cls.select(teacher = teacher):
+                single_obj = dict()
+                id +=1
+                single_obj["id"] = id
+                single_obj ["primary"] = aUnit.name
+                single_obj["secondary"] = "lalala"
+                ret.append(single_obj)
+            return jsonify(ret)
+    except Exception as e:
+        return str(e), 400
 
 @app.route('/getUnitDetails')
 def getUnitDetails():
@@ -371,7 +419,81 @@ def getUnitDetails():
         with db_session:
             return Unit[unitName,Cls[className]]
     except Exception as e:
-        return str(e)
+        return str(e), 400
+
+def generate_cut_axis(parsed_template):
+    preamble =\
+    """Please enter the point in which the function cuts the x,y axis.
+    The answer should be in the format (cuts with x axis, cuts with y axis).
+    Round the answers to 2 digis"""
+
+
+    minimum_range = -10
+    maximum_range = 10
+
+
+    #linear
+    if(parsed_template[0]==0):
+        if len(parsed_template) > 2:
+            m_minimum = parsed_template[2][0][0]
+            m_maximum = parsed_template[2][0][1]
+            b_minimum = parsed_template[2][1][0]
+            b_maximum = parsed_template[2][1][1]
+            m= random.randint(m_minimum,m_maximum)
+            b= random.randint(b_minimum,b_maximum)
+        else:
+            m= random.randint(minimum_range,maximum_range)
+            while m==0:
+                m = random.randint(minimum_range, maximum_range)
+            b = random.randint(minimum_range, maximum_range)
+        ans_x = (round( -b/m,2),0)
+        ans_y = (0,b)
+        if (b==0):
+            questions_string ="y=" + str(m)+"x"
+        else:
+            questions_string= ("y="+str(m)+"x"+ ('+' if b>0 else "") + str(b))
+
+    return (preamble,questions_string,(ans_x,ans_y))
+
+
+
+
+
+
+
+#template - [0] = type of function
+#           [1] = type of question
+#           [2] = list of variable restrictions
+
+#question format - [0] = preamble
+#                - [1] = question string
+#                - [2] = ans (list?)
+
+
+def parse_template(template):
+    parts = template.split(',')
+    return (int(parts[0]),int(parts[1]),parts[2:]) if len(parts)==3 else (int(parts[0]),int(parts[1]))
+
+
+def get_questions(unit):
+    questions = list()
+    for i in range(unit.Qnum):
+        parsed_template = parse_template(unit.template)
+        if(parsed_template[1]==0):
+            q = generate_cut_axis(parsed_template)
+        # elif(parsed_template[1]==0):
+        #     q =generate_maxima_and_minima(parsed_template)
+        # elif(parsed_template[1]==0):
+        #     q =generate_cut_axis(parsed_template)
+        questions.append(q)
+    return questions
+
+def get_max_unit(unit,user):
+    maxAttempt = 0
+    for activeU in ActiveUnit.select(unit=unit, student=user):
+        if activeU.attempt > maxAttempt:
+            maxAttempt = activeU.attempt
+    return maxAttempt
 
 @app.route('/startUnit')
 def startUnit():
@@ -383,20 +505,63 @@ def startUnit():
         with db_session:
             unit = Unit[unitName, Cls[className]]
             user = User[username]
-            maxAttempt=0
+            maxAttempt=get_max_unit(unit,user)
             for activeU in ActiveUnit.select(unit =unit, student=user):
                 if(activeU.inProgress == True):
-                    return "Already in progress, end attempt before starting another",403
-                if activeU.attempt>maxAttempt :
-                    maxAttempt = activeU.attempt
-            ActiveUnit(inProgress=True, unit = unit, student = user, attempt = maxAttempt+1)
-            commit ()
+                    return "Already in progress, end attempt before starting another",400
+
+            id=1
+            ActiveUnit(inProgress=True, unit=unit, student=user, attempt=maxAttempt + 1)
+            for single_question in get_questions(unit):
+                Question(id=id, question_preamble=single_question[0],question=single_question[1], answer= str(single_question[2])[1:-1],active_unit= ActiveUnit[unit,user,(maxAttempt+1)])
+                id+=1
+            commit()
             return "added unit"
     except Exception as e:
-        return str(e)
+        return str(e), 400
     return "added unit"
 
-    #PrimaryKey(unit, student)
+@app.route('/getQuestion')
+def getQuestion():
+
+    user = request.args.get('username')
+    unit_name = request.args.get('unitName')
+    class_name = request.args.get('className')
+    qnum = request.args.get('qnum')
+
+    try:
+        with db_session:
+            unit = Unit[unit_name, Cls[class_name]]
+            attempt = get_max_unit(unit, user)
+            question = Question[ActiveUnit[unit,user,attempt],qnum]
+            ret = dict()
+            ret["id"]=question.id
+            ret["question_preamble"] = question.question_preamble
+            ret["question"] = question.question
+            return jsonify(ret)
+    except Exception as e:
+        return str(e), 400
+
+
+@app.route('/submitQuestion')
+def submitQuestion():
+    user = request.args.get('username')
+    unit_name = request.args.get('unitName')
+    class_name = request.args.get('className')
+    qnum = request.args.get('qnum')
+    answer = request.args.get('answer')
+
+    try:
+        with db_session:
+            unit = Unit[unit_name, Cls[class_name]]
+            attempt = get_max_unit(unit, user)
+            question = Question[ActiveUnit[unit,user,attempt],qnum]
+            solved_correctly = (answer.strip() == question.answer.strip())
+            question.solved_correctly = solved_correctly
+            return "Solved correctly" if solved_correctly else "The answer is wrong"
+    except Exception as e:
+        return str(e), 400
+
 
 @app.route('/submitUnit')
 def submitUnit():
@@ -408,12 +573,22 @@ def submitUnit():
         with db_session:
             unit = Unit[unitName, Cls[className]]
             user = User[username]
-            ActiveUnit[unit,user].inProgress=False
+            attempt = get_max_unit(unit, user)
+            active_unit = ActiveUnit[unit,user,attempt]
+            active_unit.inProgress=False
+            correct = 0
+            for i in range(1,unit.Qnum+1):
+                question = Question[ActiveUnit[unit,user,attempt], i]
+                if question.solved_correctly :correct +=1
+            active_unit.grade = round ((correct/unit.Qnum)*100)
+
             commit ()
-            return "ended Unit"
+            return "ended Unit with grade " + str(active_unit.grade)
     except Exception as e:
-        return str(e)
+        return str(e), 400
     return "added unit"
+
+
 class userCont:
 
     def __init__(self, username):
