@@ -211,7 +211,7 @@ def openClass():
                 return "successful",200
             return "failed wrong type",400
     except Exception as e:
-        return str(e), 400,400
+        return str(e), 400
 
 @app.route('/removeClass')
 def removeClass():
@@ -226,7 +226,7 @@ def removeClass():
                 return "successful",200
             return "failed",400
     except Exception as e:
-        return str(e), 400,400
+        return str(e), 400
 
 @app.route('/editClass')
 def editClass():
@@ -242,7 +242,7 @@ def editClass():
                 return "successful",200
             return "failed",400
     except Exception as e:
-        return str(e), 400,400
+        return str(e), 400
 
 @app.route('/editUnit')
 def editUnit():
@@ -264,7 +264,7 @@ def editUnit():
             Unit(cls=c, name = unitName,template=template,Qnum=Qnum,maxTime=maxTime,subDate=subDate)
             return "successful",200
     except Exception as e:
-        return str(e), 400,400
+        return str(e), 400
 
 
 @app.route('/removeUnit')
@@ -277,7 +277,7 @@ def removeUnit():
             u.delete()
             return "successful",200
     except Exception as e:
-        return str(e), 400,400
+        return str(e), 400
 
 @app.route('/registerClass')
 def registerClass():
@@ -294,7 +294,7 @@ def registerClass():
             commit()
             return "successful",200
     except Exception as e:
-        return str(e), 400,400
+        return str(e), 400
 
 @app.route('/approveStudentToClass')
 def approveStudentToClass():
@@ -312,7 +312,7 @@ def approveStudentToClass():
                 Cls_User[c, u].delete()
             return "successful",200
     except Exception as e:
-        return str(e), 400,400
+        return str(e), 400
 
 @app.route('/removeFromClass')
 def removeFromClass():
@@ -327,7 +327,7 @@ def removeFromClass():
             commit()
             return "successful",200
     except Exception as e:
-        return str(e), 400,400
+        return str(e), 400
 
 
 def teacherOpenUnit(unitName, teacherName, className, template, Qnum, maxTime, subDate):
@@ -407,6 +407,7 @@ def getClasses():
                 single_obj ["primary"] = aUnit.name
                 single_obj["secondary"] = "lalala"
                 ret.append(single_obj)
+
             return jsonify(ret)
     except Exception as e:
         return str(e), 400
