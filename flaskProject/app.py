@@ -173,7 +173,9 @@ def login():
     if not checkUserPass(username, password):
         return "invalid username or password", 400
     loadController(username)
-    return username + " " + password + " " + str(len(activeControllers))
+    if isinstance(activeControllers[username],teacherCont):
+        return '1 '+ username
+    return '2 ' + username
 
 
 @app.route('/changePassword')
@@ -414,8 +416,27 @@ def getClassUnits():
     except Exception as e:
         return str(e), 400
 
-@app.route('/getClasses')
-def getClasses():
+@app.route('/getClassesStudent')
+def getClassesStudent():
+    student = request.args.get('student')
+    try:
+        with db_session:
+            ret =[]
+            id =0
+            for aUnit in Cls_User.select( user= student):
+                single_obj = dict()
+                id +=1
+                single_obj["id"] = id
+                single_obj ["primary"] = aUnit.cls.name
+                single_obj["secondary"] = "lalala"
+                ret.append(single_obj)
+
+            return jsonify(ret)
+    except Exception as e:
+        return str(e), 400
+
+@app.route('/getClassesTeacher')
+def getClassesTeacher():
     teacher = request.args.get('teacher')
     try:
         with db_session:
