@@ -296,6 +296,27 @@ def registerClass():
     except Exception as e:
         return str(e), 400
 
+
+@app.route('/getUnapprovedStudents')
+def getUnapprovedStudents():
+    teacher = request.args.get('teacher')
+    ret = []
+    id = 0
+    try:
+        with db_session:
+            for singleClass in Cls.select(teacher=teacher):
+                for unapproveRequest in Cls_User.select(cls = singleClass):
+                    if (unapproveRequest.approved == False):
+                        single_obj = dict()
+                        id += 1
+                        single_obj["id"] = id
+                        single_obj["secondary"] = singleClass.name
+                        single_obj["primary"] = unapproveRequest.user.name
+                        ret.append(single_obj)
+        return jsonify(ret)
+    except Exception as e:
+        return str(e), 400
+
 @app.route('/approveStudentToClass')
 def approveStudentToClass():
     studentName = request.args.get('student')
@@ -448,6 +469,8 @@ def generate_cut_axis(parsed_template):
                 m = random.randint(minimum_range, maximum_range)
             b = random.randint(minimum_range, maximum_range)
         ans_x = (round( -b/m,2),0)
+        if (ans_x == round(ans_x)):
+            ans_x=round(ans_x)
         ans_y = (0,b)
         if (b==0):
             questions_string ="y=" + str(m)+"x"
@@ -528,66 +551,56 @@ def getQuestion():
     user = request.args.get('username')
     unit_name = request.args.get('unitName')
     class_name = request.args.get('className')
-    qnum = request.args.get('qnum')
 
+    ret = []
     try:
         with db_session:
             unit = Unit[unit_name, Cls[class_name]]
             attempt = get_max_unit(unit, user)
-            question = Question[ActiveUnit[unit,user,attempt],qnum]
-            ret = dict()
-            ret["id"]=question.id
-            ret["question_preamble"] = question.question_preamble
-            ret["question"] = question.question
-            return jsonify(ret)
+            for i in range (1,unit.Qnum):
+                question = Question[ActiveUnit[unit,user,attempt],i]
+                single_question = dict()
+                single_question["id"]=question.id
+                #single_question["question_preamble"] = question.question_preamble
+                single_question["primary"] = question.question
+                ret.append(single_question)
+        return jsonify(ret)
     except Exception as e:
         return str(e), 400
 
 
-@app.route('/submitQuestion')
-def submitQuestion():
+@app.route('/submitQuestions',methods = ['GET', 'POST'])
+def submitQuestions():
     user = request.args.get('username')
     unit_name = request.args.get('unitName')
     class_name = request.args.get('className')
-    qnum = request.args.get('qnum')
-    answer = request.args.get('answer')
+    answers = request.get_json()
 
     try:
         with db_session:
             unit = Unit[unit_name, Cls[class_name]]
             attempt = get_max_unit(unit, user)
-            question = Question[ActiveUnit[unit,user,attempt],qnum]
-            solved_correctly = (answer.strip() == question.answer.strip())
-            question.solved_correctly = solved_correctly
-            return "Solved correctly" if solved_correctly else "The answer is wrong"
-    except Exception as e:
-        return str(e), 400
+            correct = 0
+
+            for key in answers:
+                if(key == '0'):
+                    continue
+                question = Question[ActiveUnit[unit,user,attempt],key]
+                solved_correctly = (answers[key].replace(" ", "") == question.answer.replace(" ", ""))
+                question.solved_correctly = solved_correctly
+                if question.solved_correctly :correct +=1
 
 
-@app.route('/submitUnit')
-def submitUnit():
-    className = request.args.get('className')
-    unitName = request.args.get('unitName')
-    username = request.args.get('username')
-
-    try:
-        with db_session:
-            unit = Unit[unitName, Cls[className]]
-            user = User[username]
-            attempt = get_max_unit(unit, user)
+            #finish the unit
+            user = User[user]
             active_unit = ActiveUnit[unit,user,attempt]
             active_unit.inProgress=False
-            correct = 0
-            for i in range(1,unit.Qnum+1):
-                question = Question[ActiveUnit[unit,user,attempt], i]
-                if question.solved_correctly :correct +=1
             active_unit.grade = round ((correct/unit.Qnum)*100)
-
-            commit ()
-            return "ended Unit with grade " + str(active_unit.grade)
+            print(active_unit.grade)
+        return "ended Unit with grade " + str(active_unit.grade)
     except Exception as e:
         return str(e), 400
-    return "added unit"
+
 
 
 class userCont:
