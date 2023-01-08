@@ -208,7 +208,7 @@ def openClass():
     try :
         with db_session:
             t = User[teacherName]
-            if t.type ==1:
+            if t.type == 1:
                 Cls(name=className, teacher=User[teacherName])
                 return "successful",200
             return "failed wrong type",400
@@ -237,13 +237,20 @@ def editClass():
     newClassName = request.args.get('newClassName')
     try :
         with db_session:
+            print("a")
             t = User[teacherName]
+            print(t)
             c = Cls[className]
+            print(c)
             if c.teacher == t:
-                c.name = newClassName
+                print("b")
+                Cls(name=newClassName, teacher=User[teacherName], students=c.students, hasUnits=c.hasUnits)
+                c.delete()
+                print("c")
                 return "successful",200
             return "failed",400
     except Exception as e:
+        print(e)
         return str(e), 400
 
 @app.route('/editUnit')
