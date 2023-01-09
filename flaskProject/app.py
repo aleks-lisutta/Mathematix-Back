@@ -237,20 +237,14 @@ def editClass():
     newClassName = request.args.get('newClassName')
     try :
         with db_session:
-            print("a")
             t = User[teacherName]
-            print(t)
             c = Cls[className]
-            print(c)
             if c.teacher == t:
-                print("b")
                 Cls(name=newClassName, teacher=User[teacherName], students=c.students, hasUnits=c.hasUnits)
                 c.delete()
-                print("c")
                 return "successful",200
             return "failed",400
     except Exception as e:
-        print(e)
         return str(e), 400
 
 @app.route('/editUnit')
@@ -416,9 +410,15 @@ def getClassUnits():
     className = request.args.get('className')
     try:
         with db_session:
-            ret =""
+            ret =[]
+            id =0
             for aUnit in Cls[className].hasUnits:
-                ret += aUnit.name
+                single_obj = dict()
+                id += 1
+                single_obj["id"] = id
+                single_obj["primary"] = aUnit.name
+                single_obj["secondary"] = "lalala"
+                ret.append(single_obj)
             return ret
     except Exception as e:
         return str(e), 400
