@@ -401,7 +401,7 @@ def openUnit():
     prev = request.args.get('prev')
 
 
-    return teacherOpenUnit(unitName, teacherName, className, template, Qnum, maxTime, subDate)
+    return teacherOpenUnit(unitName, teacherName, className, template, Qnum, maxTime, subDate ,first, prev)
     #return "invalid permissions" ,400
 
 
@@ -428,7 +428,6 @@ def deleteUnit():
             return "deleted successfully"
     except Exception as e:
         return str(e), 400
-
 
 @app.route('/getClassUnits')
 def getClassUnits():
@@ -718,14 +717,22 @@ def submitQuestion():
             unit = Unit[unit_name, Cls[class_name]]
             attempt = get_max_unit(unit, user)
             question = Question[ActiveUnit[unit, user, attempt], question_number]
-            if question.id == unit.Qnum:
-                retValue = 204
             if question.correct_ans == ans_number:
                 question.solved_correctly=True
-                return "correct",retValue
             else:
                 question.solved_correctly=False
-                return "incorrect",retValue
+
+            if question.id == unit.Qnum:
+                correct = 0
+                for i in (range (1,unit.Qnum)):
+                    q = Question[ActiveUnit[unit, user, attempt], i]
+                    if q.solved_correctly:
+                        correct+=1
+                grade = correct/unit.Qnum*100
+                ActiveUnit[unit, user, attempt].grade = int(grade)
+                retValue = 204
+
+            return "question answered",retValue
 
 
             #to be continued
