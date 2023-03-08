@@ -381,12 +381,12 @@ def openUnit():
     maxTime = request.args.get('maxTime')
     subDate = request.args.get('subDate')
 
-    if teacherName not in activeControllers:
-        return "inactive user", 400
-    AC = activeControllers[teacherName]
-    if AC.typ == 1:
-        return teacherOpenUnit(unitName, teacherName, className, template, Qnum, maxTime, subDate)
-    return "invalid permissions" ,400
+    # if teacherName not in activeControllers:
+    #     return "inactive user", 400
+    # AC = activeControllers[teacherName]
+    # if AC.typ == 1:
+    return teacherOpenUnit(unitName, teacherName, className, template, Qnum, maxTime, subDate)
+    #return "invalid permissions" ,400
 
 @app.route('/getUnit')
 def getUnit():
@@ -427,6 +427,7 @@ def getClassUnits():
                 ret.append(single_obj)
             return ret
     except Exception as e:
+        print(e)
         return str(e), 400
 
 @app.route('/getClassesStudent')
@@ -497,7 +498,7 @@ def generate_cut_axis(parsed_template):
 
 
     #linear
-    if(parsed_template[0]==0):
+    if(parsed_template[0]==0 or parsed_template[0]==1):
         if len(parsed_template) > 2:
             m_minimum = parsed_template[2][0][0]
             m_maximum = parsed_template[2][0][1]
@@ -512,7 +513,8 @@ def generate_cut_axis(parsed_template):
             b = random.randint(minimum_range, maximum_range)
         ans_x = round( -b/m,2)
         if (ans_x == round(ans_x)):
-            ans_x=round(ans_x)
+            ans_x= round(ans_x)
+        ans_xf = (ans_x,0)
         ans_y = (0,b)
 
         ans2 = get_random_result()
@@ -521,11 +523,11 @@ def generate_cut_axis(parsed_template):
 
 
         if (b==0):
-            questions_string ="y=" + str(m)+"x"
+            questions_string = "y=" + str(m)+"x"
         else:
             questions_string= ("y="+str(m)+"x"+ ('+' if b>0 else "") + str(b))
 
-    return (preamble,questions_string,(ans_x,ans_y),ans2,ans3,ans4)
+    return (preamble,questions_string,(ans_xf,ans_y),ans2,ans3,ans4)
 
 
 
@@ -594,29 +596,29 @@ def startUnit():
     except Exception as e:
         return str(e), 400
     return "added unit"
-
-@app.route('/getQuestions')
-def getQuestions():
-
-    user = request.args.get('username')
-    unit_name = request.args.get('unitName')
-    class_name = request.args.get('className')
-
-    ret = []
-    try:
-        with db_session:
-            unit = Unit[unit_name, Cls[class_name]]
-            attempt = get_max_unit(unit, user)
-            for i in range (1,unit.Qnum):
-                question = Question[ActiveUnit[unit,user,attempt],i]
-                single_question = dict()
-                single_question["id"]=question.id
-                #single_question["question_preamble"] = question.question_preamble
-                single_question["primary"] = question.question
-                ret.append(single_question)
-        return jsonify(ret)
-    except Exception as e:
-        return str(e), 400
+#
+# @app.route('/getQuestions')
+# def getQuestions():
+#
+#     user = request.args.get('username')
+#     unit_name = request.args.get('unitName')
+#     class_name = request.args.get('className')
+#
+#     ret = []
+#     try:
+#         with db_session:
+#             unit = Unit[unit_name, Cls[class_name]]
+#             attempt = get_max_unit(unit, user)
+#             for i in range (1,unit.Qnum):
+#                 question = Question[ActiveUnit[unit,user,attempt],i]
+#                 single_question = dict()
+#                 single_question["id"]=question.id
+#                 #single_question["question_preamble"] = question.question_preamble
+#                 single_question["primary"] = question.question
+#                 ret.append(single_question)
+#         return jsonify(ret)
+#     except Exception as e:
+#         return str(e), 400
 
 @app.route('/getQuestion')
 def getQuestion():
@@ -690,13 +692,18 @@ def submitQuestion():
 
     try:
         with db_session:
+            retValue = 200
             unit = Unit[unit_name, Cls[class_name]]
             attempt = get_max_unit(unit, user)
             question = Question[ActiveUnit[unit, user, attempt], question_number]
+            if question.id == unit.Qnum:
+                retValue = 204
             if question.correct_ans == ans_number:
-                return "correct"
+                question.solved_correctly=True
+                return "correct",retValue
             else:
-                return "incorrect",400
+                question.solved_correctly=False
+                return "incorrect",retValue
 
 
             #to be continued
