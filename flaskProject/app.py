@@ -1,3 +1,4 @@
+import logging
 import random
 from fractions import Fraction
 
@@ -8,6 +9,7 @@ from pony.orm import *
 from pony_database_facade import DatabaseFacade
 
 app = Flask(__name__)
+app.logger.setLevel(logging.DEBUG)
 CORS(app)
 pony = Pony(app)
 
@@ -60,8 +62,12 @@ class Question(DB.Entity):
     id = Required(int)
     question_preamble = Required(str)
     question = Required(str)
-    answer = Required(str)
-    active_unit = Required('ActiveUnit', reverse='questions')
+    answer1 = Required(str)
+    answer2 = Required(str)
+    answer3 = Required(str)
+    answer4 = Required(str)
+    correct_ans = Required(int)
+    active_unit = Required('ActiveUnit',reverse='questions')
     solved_correctly = Optional(bool)
     PrimaryKey(active_unit, id)
 
@@ -462,6 +468,7 @@ def getClassesStudent():
                 single_obj["secondary"] = "lalala"
                 ret.append(single_obj)
 
+            print(ret)
             return jsonify(ret)
     except Exception as e:
         return str(e), 400
@@ -497,6 +504,10 @@ def getUnitDetails():
     except Exception as e:
         return str(e), 400
 
+def get_random_result():
+    a = random.randint(-10, 10)
+    b = random.randint(-10,10)
+    return ((a,0),(0,b))
 
 def generate_cut_axis(parsed_template):
     preamble = \
@@ -521,14 +532,27 @@ def generate_cut_axis(parsed_template):
             while m == 0:
                 m = random.randint(minimum_range, maximum_range)
             b = random.randint(minimum_range, maximum_range)
-        ans_x = (round(-b / m, 2), 0)
+
+        ans_x = round( -b/m,2)
         if (ans_x == round(ans_x)):
-            ans_x = round(ans_x)
-        ans_y = (0, b)
-        if (b == 0):
-            questions_string = "y=" + str(m) + "x"
+            ans_x=round(ans_x)
+        ans_y = (0,b)
+
+        ans2 = get_random_result()
+        ans3 = get_random_result()
+        ans4 = get_random_result()
+
+
+        if (b==0):
+            questions_string ="y=" + str(m)+"x"
         else:
-            questions_string = ("y=" + str(m) + "x" + ('+' if b > 0 else "") + str(b))
+            questions_string= ("y="+str(m)+"x"+ ('+' if b>0 else "") + str(b))
+
+    return (preamble,questions_string,(ans_x,ans_y),ans2,ans3,ans4)
+
+
+
+
 
     return (preamble, questions_string, (ans_x, ans_y))
 
@@ -541,7 +565,6 @@ def generate_cut_axis(parsed_template):
 #                - [1] = question string
 #                - [2] = ans (list?)
 
-
 def parse_template(template):
     parts = template.split(',')
     return (int(parts[0]), int(parts[1]), parts[2:]) if len(parts) == 3 else (int(parts[0]), int(parts[1]))
@@ -551,7 +574,8 @@ def get_questions(unit):
     questions = list()
     for i in range(unit.Qnum):
         parsed_template = parse_template(unit.template)
-        if (parsed_template[1] == 0):
+        if(parsed_template[1]==0 or parsed_template[1]==1):
+
             q = generate_cut_axis(parsed_template)
         # elif(parsed_template[1]==0):
         #     q =generate_maxima_and_minima(parsed_template)
@@ -579,6 +603,7 @@ def startUnit():
         with db_session:
             unit = Unit[unitName, Cls[className]]
             user = User[username]
+
             maxAttempt = get_max_unit(unit, user)
             for activeU in ActiveUnit.select(unit=unit, student=user):
                 if (activeU.inProgress == True):
@@ -587,18 +612,21 @@ def startUnit():
             id = 1
             ActiveUnit(inProgress=True, unit=unit, student=user, attempt=maxAttempt + 1)
             for single_question in get_questions(unit):
-                Question(id=id, question_preamble=single_question[0], question=single_question[1],
-                         answer=str(single_question[2])[1:-1], active_unit=ActiveUnit[unit, user, (maxAttempt + 1)])
-                id += 1
+                Question(id=id, question_preamble=single_question[0],question=single_question[1],
+                         correct_ans=1, answer1= str(single_question[2])[1:-1],
+                         answer2= str(single_question[3])[1:-1],answer3= str(single_question[4])[1:-1],answer4= str(single_question[5])[1:-1],
+                         active_unit= ActiveUnit[unit,user,(maxAttempt+1)])
+                id+=1
+
             commit()
             return "added unit"
     except Exception as e:
         return str(e), 400
     return "added unit"
 
+@app.route('/getQuestions')
+def getQuestions():
 
-@app.route('/getQuestion')
-def getQuestion():
     user = request.args.get('username')
     unit_name = request.args.get('unitName')
     class_name = request.args.get('className')
@@ -619,12 +647,41 @@ def getQuestion():
     except Exception as e:
         return str(e), 400
 
+@app.route('/getQuestion')
+def getQuestion():
+
+    user = request.args.get('username')
+    unit_name = request.args.get('unitName')
+    class_name = request.args.get('className')
+    question_number = request.args.get('qnum')
+    ret = []
+    try:
+        with db_session:
+            unit = Unit[unit_name, Cls[class_name]]
+            attempt = get_max_unit(unit, user)
+            question = Question[ActiveUnit[unit,user,attempt],question_number]
+            single_question = dict()
+            single_question["id"]=question.id
+            #single_question["question_preamble"] = question.question_preamble
+            single_question["primary"] = question.question
+            single_question["answer1"] = question.answer1
+            single_question["answer2"] = question.answer2
+            single_question["answer3"] = question.answer3
+            single_question["answer4"] = question.answer4
+            ret.append(single_question)
+        return jsonify(ret)
+    except Exception as e:
+        return str(e), 400
+
+
 
 @app.route('/submitQuestions', methods=['GET', 'POST'])
 def submitQuestions():
     user = request.args.get('username')
     unit_name = request.args.get('unitName')
     class_name = request.args.get('className')
+    question_number = request.args.get('qnum')
+
     answers = request.get_json()
 
     try:
@@ -647,6 +704,37 @@ def submitQuestions():
             active_unit.inProgress = False
             active_unit.grade = round((correct / unit.Qnum) * 100)
             print(active_unit.grade)
+        return "ended Unit with grade " + str(active_unit.grade)
+    except Exception as e:
+        return str(e), 400
+
+@app.route('/submitQuestion', methods=['GET', 'POST'])
+def submitQuestion():
+    user = request.args.get('username')
+    unit_name = request.args.get('unitName')
+    class_name = request.args.get('className')
+    question_number = request.args.get('qnum')
+    ans_number = int(request.args.get('ans'))
+
+    try:
+        with db_session:
+            unit = Unit[unit_name, Cls[class_name]]
+            attempt = get_max_unit(unit, user)
+            question = Question[ActiveUnit[unit, user, attempt], question_number]
+            if question.correct_ans == ans_number:
+                return "correct"
+            else:
+                return "incorrect",400
+
+
+            #to be continued
+            # finish the unit
+            user = User[user]
+            active_unit = ActiveUnit[unit, user, attempt]
+            active_unit.inProgress = False
+            active_unit.grade = round((correct / unit.Qnum) * 100)
+            print(active_unit.grade)
+
         return "ended Unit with grade " + str(active_unit.grade)
     except Exception as e:
         return str(e), 400
