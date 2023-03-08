@@ -400,13 +400,9 @@ def openUnit():
     first = request.args.get('first')
     prev = request.args.get('prev')
 
-    if teacherName not in activeControllers:
-        return "inactive user", 400
-    AC = activeControllers[teacherName]
-    if AC.typ == 1:
-        return teacherOpenUnit(unitName, teacherName, className, template, Qnum,
-                               maxTime, subDate, first, prev)
-    return "invalid permissions", 400
+
+    return teacherOpenUnit(unitName, teacherName, className, template, Qnum, maxTime, subDate)
+    #return "invalid permissions" ,400
 
 
 @app.route('/getUnit')
@@ -450,6 +446,7 @@ def getClassUnits():
                 ret.append(single_obj)
             return ret
     except Exception as e:
+        print(e)
         return str(e), 400
 
 
@@ -549,6 +546,7 @@ def generate_cut_axis(qdata, params):
         else:
             questions_string = ("y=" + str(m) + "x" + ('+' if b > 0 else "") + str(b))
 
+
     return (preamble, questions_string, (ans_xf, ans_y), ans2, ans3, ans4)
 
 
@@ -620,28 +618,30 @@ def startUnit():
         return str(e), 400
     return "added unit"
 
-@app.route('/getQuestions')
-def getQuestions():
+#
+# @app.route('/getQuestions')
+# def getQuestions():
+#
+#     user = request.args.get('username')
+#     unit_name = request.args.get('unitName')
+#     class_name = request.args.get('className')
+#
+#     ret = []
+#     try:
+#         with db_session:
+#             unit = Unit[unit_name, Cls[class_name]]
+#             attempt = get_max_unit(unit, user)
+#             for i in range (1,unit.Qnum):
+#                 question = Question[ActiveUnit[unit,user,attempt],i]
+#                 single_question = dict()
+#                 single_question["id"]=question.id
+#                 #single_question["question_preamble"] = question.question_preamble
+#                 single_question["primary"] = question.question
+#                 ret.append(single_question)
+#         return jsonify(ret)
+#     except Exception as e:
+#         return str(e), 400
 
-    user = request.args.get('username')
-    unit_name = request.args.get('unitName')
-    class_name = request.args.get('className')
-
-    ret = []
-    try:
-        with db_session:
-            unit = Unit[unit_name, Cls[class_name]]
-            attempt = get_max_unit(unit, user)
-            for i in range(1, unit.Qnum):
-                question = Question[ActiveUnit[unit, user, attempt], i]
-                single_question = dict()
-                single_question["id"] = question.id
-                # single_question["question_preamble"] = question.question_preamble
-                single_question["primary"] = question.question
-                ret.append(single_question)
-        return jsonify(ret)
-    except Exception as e:
-        return str(e), 400
 
 @app.route('/getQuestion')
 def getQuestion():
@@ -714,13 +714,18 @@ def submitQuestion():
 
     try:
         with db_session:
+            retValue = 200
             unit = Unit[unit_name, Cls[class_name]]
             attempt = get_max_unit(unit, user)
             question = Question[ActiveUnit[unit, user, attempt], question_number]
+            if question.id == unit.Qnum:
+                retValue = 204
             if question.correct_ans == ans_number:
-                return "correct"
+                question.solved_correctly=True
+                return "correct",retValue
             else:
-                return "incorrect",400
+                question.solved_correctly=False
+                return "incorrect",retValue
 
 
             #to be continued
