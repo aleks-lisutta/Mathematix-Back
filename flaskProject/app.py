@@ -509,7 +509,7 @@ def get_random_result():
     b = random.randint(-10,10)
     return ((a,0),(0,b))
 
-def generate_cut_axis(parsed_template):
+def generate_cut_axis(qdata, params):
     preamble = \
         """Please enter the point in which the function cuts the x,y axis.
     The answer should be in the format (cuts with x axis, cuts with y axis).
@@ -519,42 +519,37 @@ def generate_cut_axis(parsed_template):
     maximum_range = 10
 
     # linear
-    if (parsed_template[0] == 0):
-        if len(parsed_template) > 2:
-            m_minimum = parsed_template[2][0][0]
-            m_maximum = parsed_template[2][0][1]
-            b_minimum = parsed_template[2][1][0]
-            b_maximum = parsed_template[2][1][1]
-            m = random.randint(m_minimum, m_maximum)
-            b = random.randint(b_minimum, b_maximum)
+    if (qdata == 'linear'):
+        m_minimum = int(params[0])
+        m_maximum = int(params[1])
+        b_minimum = int(params[2])
+        b_maximum = int(params[3])
+        m = random.randint(m_minimum, m_maximum)
+        b = random.randint(b_minimum, b_maximum)
+        """
         else:
             m = random.randint(minimum_range, maximum_range)
             while m == 0:
                 m = random.randint(minimum_range, maximum_range)
             b = random.randint(minimum_range, maximum_range)
+            """
 
         ans_x = round( -b/m,2)
         if (ans_x == round(ans_x)):
             ans_x=round(ans_x)
-        ans_y = (0,b)
+        ans_xf = (ans_x, 0)
+        ans_y = (0, b)
 
         ans2 = get_random_result()
         ans3 = get_random_result()
         ans4 = get_random_result()
 
-
-        if (b==0):
-            questions_string ="y=" + str(m)+"x"
+        if (b == 0):
+            questions_string = "y=" + str(m) + "x"
         else:
-            questions_string= ("y="+str(m)+"x"+ ('+' if b>0 else "") + str(b))
+            questions_string = ("y=" + str(m) + "x" + ('+' if b > 0 else "") + str(b))
 
-    return (preamble,questions_string,(ans_x,ans_y),ans2,ans3,ans4)
-
-
-
-
-
-    return (preamble, questions_string, (ans_x, ans_y))
+    return (preamble, questions_string, (ans_xf, ans_y), ans2, ans3, ans4)
 
 
 # template - [0] = type of function
@@ -566,17 +561,18 @@ def generate_cut_axis(parsed_template):
 #                - [2] = ans (list?)
 
 def parse_template(template):
-    parts = template.split(',')
-    return (int(parts[0]), int(parts[1]), parts[2:]) if len(parts) == 3 else (int(parts[0]), int(parts[1]))
+    parts = template.split('_')
+    questions = parts[1].split(',')
+    params = parts[2].split(',')
+    return parts[0], questions, params
 
 
 def get_questions(unit):
     questions = list()
     for i in range(unit.Qnum):
-        parsed_template = parse_template(unit.template)
-        if(parsed_template[1]==0 or parsed_template[1]==1):
-
-            q = generate_cut_axis(parsed_template)
+        data, questionData, params = parse_template(unit.template)
+        if('intersection' in questionData):
+            q = generate_cut_axis(data, params)
         # elif(parsed_template[1]==0):
         #     q =generate_maxima_and_minima(parsed_template)
         # elif(parsed_template[1]==0):
