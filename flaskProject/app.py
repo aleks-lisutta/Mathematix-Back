@@ -18,6 +18,7 @@ DB.bind(provider='sqlite', filename='dbtest', create_db=True)
 
 DATATYPE_SIZE = 3
 QUESTIONTYPE_SIZE = 4
+QUESTIONS_TO_GENERATE = 10
 
 
 class User(DB.Entity):
@@ -45,8 +46,6 @@ class Cls_User(DB.Entity):
 
 class Unit(DB.Entity):
     name = Required(str)
-
-
     cls = Required(Cls, reverse='hasUnits')
     template = Required(str)
     Qnum = Required(int)
@@ -79,6 +78,9 @@ class ActiveUnit(DB.Entity):
     unit = Required(Unit, reverse='instances')
     student = Required(User, reverse='activeUnits')
     grade = Optional(int)
+    consecQues = Required(int)
+    quesAmount = Required(int)
+    currentQuestion = Required(int)
     PrimaryKey(unit, student, attempt)
 
 
@@ -143,7 +145,6 @@ def checkUserPass(username, password):
     try:
         with db_session:
             result = User[username]
-            print(result)
             if result:
                 return result.password == password
             return False
@@ -381,7 +382,6 @@ def teacherOpenUnit(unitName, teacherName, className, template, Qnum, maxTime, s
             u = Unit(cls=Cls[className], name=unitName, template=template, Qnum=Qnum, maxTime=maxTime, subDate=subDate,
                      order=ord)
             print(u)
-
             commit()
             return "success"
     except Exception as e:
@@ -464,7 +464,6 @@ def getClassesStudent():
                 single_obj["secondary"] = "lalala"
                 ret.append(single_obj)
 
-            print(ret)
             return jsonify(ret)
     except Exception as e:
         return str(e), 400
@@ -566,7 +565,7 @@ def parse_template(template):
 
 def get_questions(unit):
     questions = list()
-    for i in range(unit.Qnum):
+    for i in range(QUESTIONS_TO_GENERATE):
         data, questionData, params = parse_template(unit.template)
         if('intersection' in questionData):
             q = generate_cut_axis(data, params)
@@ -585,61 +584,47 @@ def get_max_unit(unit, user):
             maxAttempt = activeU.attempt
     return maxAttempt
 
-
-@app.route('/startUnit')
-def startUnit():
-    className = request.args.get('className')
-    unitName = request.args.get('unitName')
-    username = request.args.get('username')
-
+def addQuestions(className,unitName,username):
     try:
         with db_session:
             unit = Unit[unitName, Cls[className]]
             user = User[username]
 
             maxAttempt = get_max_unit(unit, user)
-            for activeU in ActiveUnit.select(unit=unit, student=user):
-                if (activeU.inProgress == True):
-                    return "Already in progress, end attempt before starting another", 400
+            if (maxAttempt == 0):
+                ActiveUnit(inProgress=True, unit=unit, student=user, attempt=maxAttempt + 1,currentQuestion=0, consecQues=0, quesAmount=0)
+                maxAttempt += 1
 
-            id = 1
-            ActiveUnit(inProgress=True, unit=unit, student=user, attempt=maxAttempt + 1)
+            active = ActiveUnit[unit, user, (maxAttempt)]
+
+            if(active.currentQuestion < active.quesAmount ):
+                return "enough questions"
+            id = active.quesAmount + 1
+            active.quesAmount += 10
             for single_question in get_questions(unit):
-                Question(id=id, question_preamble=single_question[0],question=single_question[1],
-                         correct_ans=1, answer1= str(single_question[2])[1:-1],
-                         answer2= str(single_question[3])[1:-1],answer3= str(single_question[4])[1:-1],answer4= str(single_question[5])[1:-1],
-                         active_unit= ActiveUnit[unit,user,(maxAttempt+1)])
-                id+=1
+                Question(id=id, question_preamble=single_question[0], question=single_question[1],
+                         correct_ans=1, answer1=str(single_question[2])[1:-1],
+                         answer2=str(single_question[3])[1:-1], answer3=str(single_question[4])[1:-1],
+                         answer4=str(single_question[5])[1:-1],
+                         active_unit=ActiveUnit[unit, user, maxAttempt])
+                id += 1
 
             commit()
             return "added unit"
     except Exception as e:
         return str(e), 400
-    return "added unit"
 
-#
-# @app.route('/getQuestions')
-# def getQuestions():
-#
-#     user = request.args.get('username')
-#     unit_name = request.args.get('unitName')
-#     class_name = request.args.get('className')
-#
-#     ret = []
-#     try:
-#         with db_session:
-#             unit = Unit[unit_name, Cls[class_name]]
-#             attempt = get_max_unit(unit, user)
-#             for i in range (1,unit.Qnum):
-#                 question = Question[ActiveUnit[unit,user,attempt],i]
-#                 single_question = dict()
-#                 single_question["id"]=question.id
-#                 #single_question["question_preamble"] = question.question_preamble
-#                 single_question["primary"] = question.question
-#                 ret.append(single_question)
-#         return jsonify(ret)
-#     except Exception as e:
-#         return str(e), 400
+
+
+#now all this does is add 10 questions to the active unit
+@app.route('/startUnit')
+def startUnit():
+    className = request.args.get('className')
+    unitName = request.args.get('unitName')
+    username = request.args.get('username')
+
+    return addQuestions(className,unitName,username)
+
 
 
 @app.route('/getGrade')
@@ -673,7 +658,8 @@ def getQuestion():
         with db_session:
             unit = Unit[unit_name, Cls[class_name]]
             attempt = get_max_unit(unit, user)
-            question = Question[ActiveUnit[unit,user,attempt],question_number]
+            active = ActiveUnit[unit,user,attempt]
+            question = Question[active,active.currentQuestion+1]
             single_question = dict()
             single_question["id"]=question.id
             #single_question["question_preamble"] = question.question_preamble
@@ -689,39 +675,9 @@ def getQuestion():
 
 
 
-@app.route('/submitQuestions', methods=['GET', 'POST'])
-def submitQuestions():
-    user = request.args.get('username')
-    unit_name = request.args.get('unitName')
-    class_name = request.args.get('className')
-    question_number = request.args.get('qnum')
-
-    answers = request.get_json()
-
-    try:
-        with db_session:
-            unit = Unit[unit_name, Cls[class_name]]
-            attempt = get_max_unit(unit, user)
-            correct = 0
-
-            for key in answers:
-                if (key == '0'):
-                    continue
-                question = Question[ActiveUnit[unit, user, attempt], key]
-                solved_correctly = (answers[key].replace(" ", "") == question.answer.replace(" ", ""))
-                question.solved_correctly = solved_correctly
-                if question.solved_correctly: correct += 1
-
-            # finish the unit
-            user = User[user]
-            active_unit = ActiveUnit[unit, user, attempt]
-            active_unit.inProgress = False
-            active_unit.grade = round((correct / unit.Qnum) * 100)
-            print(active_unit.grade)
-        return "ended Unit with grade " + str(active_unit.grade)
-    except Exception as e:
-        return str(e), 400
-
+#201 and the correct answer if answered incorrectly,
+#200 if answered correctly but not enough consecutive
+#204 if answered correctly and enough consecutive
 @app.route('/submitQuestion', methods=['GET', 'POST'])
 def submitQuestion():
     user = request.args.get('username')
@@ -737,34 +693,29 @@ def submitQuestion():
             attempt = get_max_unit(unit, user)
             activeUnit = ActiveUnit[unit, user, attempt]
             question = Question[activeUnit, question_number]
+            activeUnit.currentQuestion+=1
+
+            if (not activeUnit.currentQuestion < activeUnit.quesAmount):
+                addQuestions(class_name,unit_name,user)
+
             if question.correct_ans == ans_number:
                 question.solved_correctly=True
+                activeUnit.consecQues +=1
+
             else:
                 question.solved_correctly=False
+                activeUnit.consecQues =0
+                return "incorrect",(200+question.correct_ans)
 
-            if question.id == unit.Qnum:
-                correct = 0
-                for i in (range (1,unit.Qnum +1)):
-                    q = Question[ActiveUnit[unit, user, attempt], i]
-                    if q.solved_correctly:
-                        correct+=1
-                grade = correct/unit.Qnum*100
-                activeUnit.grade = int(grade)
+            if(activeUnit.consecQues == unit.Qnum or activeUnit.consecQues > unit.Qnum  ):
                 activeUnit.inProgress=False
-                retValue = 204
+                activeUnit.grade=100
+                return "answered enough consecutive questions",205
+
+            return "correct"
+
 
             return "question answered",retValue
-
-
-            #to be continued
-            # finish the unit
-            user = User[user]
-            active_unit = ActiveUnit[unit, user, attempt]
-            active_unit.inProgress = False
-            active_unit.grade = round((correct / unit.Qnum) * 100)
-            print(active_unit.grade)
-
-        return "ended Unit with grade " + str(active_unit.grade)
     except Exception as e:
         return str(e), 400
 
