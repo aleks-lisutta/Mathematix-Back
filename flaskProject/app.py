@@ -51,10 +51,10 @@ class Unit(DB.Entity):
     template = Required(str)
     Qnum = Required(int)
     maxTime = Required(int)
-    subDate = Required(int)
+    subDate = Required(str)
     instances = Set('ActiveUnit', reverse='unit')
     order = Required(int)
-    next = Optional(str)
+    nex = Optional(str)
     PrimaryKey(name, cls)
 
 
@@ -67,7 +67,7 @@ class Question(DB.Entity):
     answer3 = Required(str)
     answer4 = Required(str)
     correct_ans = Required(int)
-    active_unit = Required('ActiveUnit',reverse='questions')
+    active_unit = Required('ActiveUnit', reverse='questions')
     solved_correctly = Optional(bool)
     PrimaryKey(active_unit, id)
 
@@ -257,8 +257,9 @@ def editClass():
     except Exception as e:
         return str(e), 400
 
+
 @app.route('/quickEditUnit')
-def editUnit():
+def quickEditUnit():
     unitName = request.args.get('unitName')
     className = request.args.get('className')
     newDesc = request.args.get('newDesc')
@@ -266,9 +267,9 @@ def editUnit():
     try:
         with db_session:
             u = Unit[unitName]
-            ins = u.instances #
+            ins = u.instances  #
             order = u.order
-            nex = u.next
+            nex = u.nex
             temp = u.template
             c = Cls[className]
             Qnum = u.Qnum
@@ -277,10 +278,11 @@ def editUnit():
             Unit[unitName, c].delete()
             commit()
             Unit(cls=c, name=newUnitName, desc=newDesc, template=temp, Qnum=Qnum, maxTime=maxTime, subDate=subDate,
-                 instances=ins, order=order, next=nex)
+                 instances=ins, order=order, nex=nex)
             return "successful", 200
     except Exception as e:
         return str(e), 400
+
 
 @app.route('/editUnit')
 def editUnit():
@@ -294,14 +296,15 @@ def editUnit():
     try:
         with db_session:
             u = Unit[unitName]
-            ins = u.instances #
+            ins = u.instances  #
             order = u.order
-            nex = u.next
+            nex = u.nex
             temp = u.template
             c = Cls[className]
             Unit[unitName, c].delete()
             commit()
-            Unit(cls=c, name=newUnitName, desc=newDesc, template=temp, Qnum=Qnum, maxTime=maxTime, subDate=subDate, instances=ins, order=order, next=nex)
+            Unit(cls=c, name=newUnitName, desc=newDesc, template=temp, Qnum=Qnum, maxTime=maxTime, subDate=subDate,
+                 instances=ins, order=order, nex=nex)
             return "successful", 200
     except Exception as e:
         return str(e), 400
@@ -400,14 +403,16 @@ def teacherOpenUnit(unitName, teacherName, className, template, Qnum, maxTime, s
     try:
         with db_session:
             print("DB")
-            ord = 1
+            o = 1
             if first != 'true':
                 p = Unit[prev, Cls[className]]
                 print(p)
-                p.next = unitName
-                ord = p.order
-            u = Unit(cls=Cls[className], name=unitName, template=template, Qnum=Qnum, maxTime=maxTime, subDate=subDate,
-                     order=ord)
+                p.nex = unitName
+                o = p.order + 1
+            print(Cls[className],unitName, className, template, Qnum, maxTime, subDate, first, prev)
+            u = Unit(cls=Cls[className], name=unitName, template=template, desc='', Qnum=Qnum, maxTime=maxTime,
+                     subDate=subDate,
+                     order=o)
             print(u)
             commit()
             return "success"
@@ -427,9 +432,8 @@ def openUnit():
     first = request.args.get('first')
     prev = request.args.get('prev')
 
-
-    return teacherOpenUnit(unitName, teacherName, className, template, Qnum, maxTime, subDate ,first, prev)
-    #return "invalid permissions" ,400
+    return teacherOpenUnit(unitName, teacherName, className, template, Qnum, maxTime, subDate, first, prev)
+    # return "invalid permissions" ,400
 
 
 @app.route('/getUnit')
@@ -455,6 +459,7 @@ def deleteUnit():
             return "deleted successfully"
     except Exception as e:
         return str(e), 400
+
 
 @app.route('/getClassUnits')
 def getClassUnits():
@@ -526,10 +531,12 @@ def getUnitDetails():
     except Exception as e:
         return str(e), 400
 
+
 def get_random_result():
     a = random.randint(-10, 10)
-    b = random.randint(-10,10)
-    return ((a,0),(0,b))
+    b = random.randint(-10, 10)
+    return ((a, 0), (0, b))
+
 
 def generate_cut_axis(qdata, params):
     preamble = \
@@ -556,9 +563,9 @@ def generate_cut_axis(qdata, params):
             b = random.randint(minimum_range, maximum_range)
             """
 
-        ans_x = round( -b/m,2)
+        ans_x = round(-b / m, 2)
         if (ans_x == round(ans_x)):
-            ans_x=round(ans_x)
+            ans_x = round(ans_x)
         ans_xf = (ans_x, 0)
         ans_y = (0, b)
 
@@ -570,7 +577,6 @@ def generate_cut_axis(qdata, params):
             questions_string = "y=" + str(m) + "x"
         else:
             questions_string = ("y=" + str(m) + "x" + ('+' if b > 0 else "") + str(b))
-
 
     return (preamble, questions_string, (ans_xf, ans_y), ans2, ans3, ans4)
 
@@ -594,7 +600,7 @@ def get_questions(unit):
     questions = list()
     for i in range(QUESTIONS_TO_GENERATE):
         data, questionData, params = parse_template(unit.template)
-        if('intersection' in questionData):
+        if ('intersection' in questionData):
             q = generate_cut_axis(data, params)
         # elif(parsed_template[1]==0):
         #     q =generate_maxima_and_minima(parsed_template)
@@ -611,7 +617,8 @@ def get_max_unit(unit, user):
             maxAttempt = activeU.attempt
     return maxAttempt
 
-def addQuestions(className,unitName,username):
+
+def addQuestions(className, unitName, username):
     try:
         with db_session:
             unit = Unit[unitName, Cls[className]]
@@ -619,12 +626,13 @@ def addQuestions(className,unitName,username):
 
             maxAttempt = get_max_unit(unit, user)
             if (maxAttempt == 0):
-                ActiveUnit(inProgress=True, unit=unit, student=user, attempt=maxAttempt + 1,currentQuestion=0, consecQues=0, quesAmount=0)
+                ActiveUnit(inProgress=True, unit=unit, student=user, attempt=maxAttempt + 1, currentQuestion=0,
+                           consecQues=0, quesAmount=0)
                 maxAttempt += 1
 
             active = ActiveUnit[unit, user, (maxAttempt)]
 
-            if(active.currentQuestion < active.quesAmount ):
+            if (active.currentQuestion < active.quesAmount):
                 return "enough questions"
             id = active.quesAmount + 1
             active.quesAmount += 10
@@ -642,21 +650,18 @@ def addQuestions(className,unitName,username):
         return str(e), 400
 
 
-
-#now all this does is add 10 questions to the active unit
+# now all this does is add 10 questions to the active unit
 @app.route('/startUnit')
 def startUnit():
     className = request.args.get('className')
     unitName = request.args.get('unitName')
     username = request.args.get('username')
 
-    return addQuestions(className,unitName,username)
-
+    return addQuestions(className, unitName, username)
 
 
 @app.route('/getGrade')
 def getGrade():
-
     user = request.args.get('username')
     unit_name = request.args.get('unitName')
     class_name = request.args.get('className')
@@ -665,17 +670,14 @@ def getGrade():
         with db_session:
             unit = Unit[unit_name, Cls[class_name]]
             attempt = get_max_unit(unit, user)
-            grade = ActiveUnit[unit,user,attempt].grade
+            grade = ActiveUnit[unit, user, attempt].grade
         return str(grade)
     except Exception as e:
         return str(e), 400
 
 
-
-
 @app.route('/getQuestion')
 def getQuestion():
-
     user = request.args.get('username')
     unit_name = request.args.get('unitName')
     class_name = request.args.get('className')
@@ -685,11 +687,11 @@ def getQuestion():
         with db_session:
             unit = Unit[unit_name, Cls[class_name]]
             attempt = get_max_unit(unit, user)
-            active = ActiveUnit[unit,user,attempt]
-            question = Question[active,active.currentQuestion+1]
+            active = ActiveUnit[unit, user, attempt]
+            question = Question[active, active.currentQuestion + 1]
             single_question = dict()
-            single_question["id"]=question.id
-            #single_question["question_preamble"] = question.question_preamble
+            single_question["id"] = question.id
+            # single_question["question_preamble"] = question.question_preamble
             single_question["primary"] = question.question
             single_question["answer1"] = question.answer1
             single_question["answer2"] = question.answer2
@@ -701,10 +703,9 @@ def getQuestion():
         return str(e), 400
 
 
-
-#201 and the correct answer if answered incorrectly,
-#200 if answered correctly but not enough consecutive
-#204 if answered correctly and enough consecutive
+# 201 and the correct answer if answered incorrectly,
+# 200 if answered correctly but not enough consecutive
+# 204 if answered correctly and enough consecutive
 @app.route('/submitQuestion', methods=['GET', 'POST'])
 def submitQuestion():
     user = request.args.get('username')
@@ -720,29 +721,28 @@ def submitQuestion():
             attempt = get_max_unit(unit, user)
             activeUnit = ActiveUnit[unit, user, attempt]
             question = Question[activeUnit, question_number]
-            activeUnit.currentQuestion+=1
+            activeUnit.currentQuestion += 1
 
             if (not activeUnit.currentQuestion < activeUnit.quesAmount):
-                addQuestions(class_name,unit_name,user)
+                addQuestions(class_name, unit_name, user)
 
             if question.correct_ans == ans_number:
-                question.solved_correctly=True
-                activeUnit.consecQues +=1
+                question.solved_correctly = True
+                activeUnit.consecQues += 1
 
             else:
-                question.solved_correctly=False
-                activeUnit.consecQues =0
-                return "incorrect",(200+question.correct_ans)
+                question.solved_correctly = False
+                activeUnit.consecQues = 0
+                return "incorrect", (200 + question.correct_ans)
 
-            if(activeUnit.consecQues == unit.Qnum or activeUnit.consecQues > unit.Qnum  ):
-                activeUnit.inProgress=False
-                activeUnit.grade=100
-                return "answered enough consecutive questions",205
+            if (activeUnit.consecQues == unit.Qnum or activeUnit.consecQues > unit.Qnum):
+                activeUnit.inProgress = False
+                activeUnit.grade = 100
+                return "answered enough consecutive questions", 205
 
             return "correct"
 
-
-            return "question answered",retValue
+            return "question answered", retValue
     except Exception as e:
         return str(e), 400
 
