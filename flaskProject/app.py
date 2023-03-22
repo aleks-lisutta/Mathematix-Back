@@ -47,6 +47,7 @@ class Cls_User(DB.Entity):
 class Unit(DB.Entity):
     name = Required(str)
     cls = Required(Cls, reverse='hasUnits')
+    desc = Optional(str)
     template = Required(str)
     Qnum = Required(int)
     maxTime = Required(int)
@@ -256,25 +257,51 @@ def editClass():
     except Exception as e:
         return str(e), 400
 
+@app.route('/quickEditUnit')
+def editUnit():
+    unitName = request.args.get('unitName')
+    className = request.args.get('className')
+    newDesc = request.args.get('newDesc')
+    newUnitName = request.args.get('newUnitName')
+    try:
+        with db_session:
+            u = Unit[unitName]
+            ins = u.instances #
+            order = u.order
+            nex = u.next
+            temp = u.template
+            c = Cls[className]
+            Qnum = u.Qnum
+            maxTime = u.maxTime
+            subDate = u.subDate
+            Unit[unitName, c].delete()
+            commit()
+            Unit(cls=c, name=newUnitName, desc=newDesc, template=temp, Qnum=Qnum, maxTime=maxTime, subDate=subDate,
+                 instances=ins, order=order, next=nex)
+            return "successful", 200
+    except Exception as e:
+        return str(e), 400
 
 @app.route('/editUnit')
 def editUnit():
     unitName = request.args.get('unitName')
     className = request.args.get('className')
-
-    teacherName = request.args.get('newTeacher')
-    unitName = request.args.get('newUnitName')
-    className = request.args.get('newClassName')
-    template = request.args.get('newTemplate')
+    newUnitName = request.args.get('newUnitName')
     Qnum = request.args.get('newQnum')
     maxTime = request.args.get('newMaxTime')
     subDate = request.args.get('newSubDate')
+    newDesc = request.args.get('newDesc')
     try:
         with db_session:
+            u = Unit[unitName]
+            ins = u.instances #
+            order = u.order
+            nex = u.next
+            temp = u.template
             c = Cls[className]
             Unit[unitName, c].delete()
             commit()
-            Unit(cls=c, name=unitName, template=template, Qnum=Qnum, maxTime=maxTime, subDate=subDate)
+            Unit(cls=c, name=newUnitName, desc=newDesc, template=temp, Qnum=Qnum, maxTime=maxTime, subDate=subDate, instances=ins, order=order, next=nex)
             return "successful", 200
     except Exception as e:
         return str(e), 400
