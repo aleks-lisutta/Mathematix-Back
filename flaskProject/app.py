@@ -49,9 +49,9 @@ class Unit(DB.Entity):
     cls = Required(Cls, reverse='hasUnits')
     desc = Optional(str)
     template = Required(str)
-    Qnum = Required(int)
-    maxTime = Required(int)
-    subDate = Required(int)
+    Qnum = Required(str)
+    maxTime = Required(str)
+    subDate = Required(str)
     instances = Set('ActiveUnit', reverse='unit')
     order = Required(int)
     next = Optional(str)
@@ -258,28 +258,32 @@ def editClass():
         return str(e), 400
 
 @app.route('/quickEditUnit')
-def editUnit():
+def quickEditUnit():
     unitName = request.args.get('unitName')
     className = request.args.get('className')
     newDesc = request.args.get('newDesc')
     newUnitName = request.args.get('newUnitName')
     try:
         with db_session:
-            u = Unit[unitName]
+            c = Cls[className]
+            u = Unit[unitName,c]
             ins = u.instances #
             order = u.order
             nex = u.next
             temp = u.template
-            c = Cls[className]
             Qnum = u.Qnum
             maxTime = u.maxTime
             subDate = u.subDate
-            Unit[unitName, c].delete()
+            if newUnitName!=unitName:
+                Unit(cls=c, name=newUnitName, desc=newDesc, template=temp, Qnum=Qnum, maxTime=maxTime, subDate=subDate,
+                     instances=ins, order=order, next=nex)
+                Unit[unitName, c].delete()
+            else:
+                u.set(desc=newDesc)
             commit()
-            Unit(cls=c, name=newUnitName, desc=newDesc, template=temp, Qnum=Qnum, maxTime=maxTime, subDate=subDate,
-                 instances=ins, order=order, next=nex)
-            return "successful", 200
+        return "successful", 200
     except Exception as e:
+        print(e)
         return str(e), 400
 
 @app.route('/editUnit')
@@ -293,16 +297,19 @@ def editUnit():
     newDesc = request.args.get('newDesc')
     try:
         with db_session:
-            u = Unit[unitName]
+            c = Cls[className]
+            u = Unit[unitName,c]
             ins = u.instances #
             order = u.order
             nex = u.next
             temp = u.template
-            c = Cls[className]
-            Unit[unitName, c].delete()
-            commit()
-            Unit(cls=c, name=newUnitName, desc=newDesc, template=temp, Qnum=Qnum, maxTime=maxTime, subDate=subDate, instances=ins, order=order, next=nex)
-            return "successful", 200
+            if newUnitName != unitName:
+                Unit(cls=c, name=newUnitName, desc=newDesc, template=temp, Qnum=Qnum, maxTime=maxTime, subDate=subDate,
+                     instances=ins, order=order, next=nex)
+                Unit[unitName, c].delete()
+            else:
+                u.set(desc=newDesc, Qnum=Qnum, maxTime=maxTime, subDate=subDate)
+            return {"message": "successful"}
     except Exception as e:
         return str(e), 400
 
@@ -394,7 +401,7 @@ def removeFromClass():
         return str(e), 400
 
 
-def teacherOpenUnit(unitName, teacherName, className, template, Qnum, maxTime, subDate, first, prev):
+def teacherOpenUnit(unitName, teacherName, className, template, Qnum, maxTime, subDate, first, prev, desc):
     # if not is_legal_template(template):
     #    return "illegal template", 400
     try:
@@ -405,19 +412,23 @@ def teacherOpenUnit(unitName, teacherName, className, template, Qnum, maxTime, s
                 p = Unit[prev, Cls[className]]
                 print(p)
                 p.next = unitName
-                ord = p.order
-            u = Unit(cls=Cls[className], name=unitName, template=template, Qnum=Qnum, maxTime=maxTime, subDate=subDate,
+                ord = p.order+1
+            print(className, unitName,template,Qnum,maxTime,subDate,ord)
+            print(Cls[className])
+            u = Unit(cls=Cls[className], name=unitName,desc=desc, template=template, Qnum=Qnum, maxTime=maxTime, subDate=subDate,
                      order=ord)
             print(u)
             commit()
             return "success"
     except Exception as e:
+        print(e)
         return str(e), 400, 400
 
 
 @app.route('/openUnit')
 def openUnit():
     teacherName = request.args.get('teacher')
+    desc = request.args.get('desc')
     unitName = request.args.get('unitName')
     className = request.args.get('className')
     template = request.args.get('template')
@@ -427,9 +438,9 @@ def openUnit():
     first = request.args.get('first')
     prev = request.args.get('prev')
 
-
-    return teacherOpenUnit(unitName, teacherName, className, template, Qnum, maxTime, subDate ,first, prev)
-    #return "invalid permissions" ,400
+    result = teacherOpenUnit(unitName, teacherName, className, template, Qnum, maxTime, subDate, first, prev,desc)
+    print(result)
+    return result
 
 
 @app.route('/getUnit')
@@ -464,11 +475,13 @@ def getClassUnits():
             ret = []
             id = 0
             for aUnit in Cls[className].hasUnits:
+                if not aUnit.order == 1:
+                    continue
                 single_obj = dict()
                 id += 1
                 single_obj["id"] = id
                 single_obj["primary"] = aUnit.name
-                single_obj["secondary"] = "lalala"
+                single_obj["secondary"] = aUnit.desc
                 ret.append(single_obj)
             return ret
     except Exception as e:
@@ -522,8 +535,22 @@ def getUnitDetails():
     unitName = request.args.get('unitName')
     try:
         with db_session:
-            return Unit[unitName, Cls[className]]
+            unit = Unit.get(name=unitName, cls=className)
+            if unit:
+                return {
+                    "name": unit.name,
+                    "desc": unit.desc,
+                    "template": unit.template,
+                    "Qnum": unit.Qnum,
+                    "maxTime": unit.maxTime,
+                    "subDate": unit.subDate,
+                    "order": unit.order,
+                    "next": unit.next
+                }
+            else:
+                return ""
     except Exception as e:
+        print(e)
         return str(e), 400
 
 def get_random_result():
