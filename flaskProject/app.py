@@ -34,7 +34,7 @@ class User(DB.Entity):
 class Cls(DB.Entity):
     name = PrimaryKey(str)
     teacher = Required(User, reverse='teaching')
-    students = Set('Cls_User',cascade_delete=False)
+    students = Set('Cls_User')
     hasUnits = Set('Unit', reverse='cls',cascade_delete=False)
 
 
@@ -631,7 +631,7 @@ def get_random_result():
     b = random.randint(-10,10)
     return ((a,0),(0,b))
 
-def generate_cut_axis(qdata, params):
+def generate_cut_axis(function_types, params):
     preamble = \
         """Please enter the point in which the function cuts the x,y axis.
     The answer should be in the format (cuts with x axis, cuts with y axis).
@@ -641,7 +641,7 @@ def generate_cut_axis(qdata, params):
     maximum_range = 10
 
     # linear
-    if (qdata == 'linear'):
+    if ("linear" in function_types):
         m_minimum = int(params[0])
         m_maximum = int(params[1])
         b_minimum = int(params[2])
@@ -693,9 +693,9 @@ def parse_template(template):
 def get_questions(unit):
     questions = list()
     for i in range(QUESTIONS_TO_GENERATE):
-        data, questionData, params = parse_template(unit.template)
-        if('intersection' in questionData):
-            q = generate_cut_axis(data, params)
+        question_type,function_types, params = parse_template(unit.template)
+        if('intersection' in question_type):
+            q = generate_cut_axis(function_types, params)
         # elif(parsed_template[1]==0):
         #     q =generate_maxima_and_minima(parsed_template)
         # elif(parsed_template[1]==0):
@@ -819,7 +819,7 @@ def submitQuestion():
                 activeUnit.consecQues =0
                 return "incorrect",(200+question.correct_ans)
 
-            if(activeUnit.consecQues == unit.Qnum or activeUnit.consecQues > unit.Qnum  ):
+            if(activeUnit.consecQues == unit.Qnum or activeUnit.consecQues > int(unit.Qnum)  ):
                 activeUnit.inProgress=False
                 activeUnit.grade=100
                 return "answered enough consecutive questions",205
