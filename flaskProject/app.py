@@ -26,16 +26,16 @@ class User(DB.Entity):
     name = PrimaryKey(str)
     password = Required(bytes)
     type = Required(int)
-    teaching = Set('Cls', reverse='teacher')
-    inClass = Set('Cls_User')
+    teaching = Set('Cls', reverse='teacher',cascade_delete=False)
+    inClass = Set('Cls_User',cascade_delete=False)
     activeUnits = Set("ActiveUnit", reverse='student')
 
 
 class Cls(DB.Entity):
     name = PrimaryKey(str)
     teacher = Required(User, reverse='teaching')
-    students = Set('Cls_User')
-    hasUnits = Set('Unit', reverse='cls')
+    students = Set('Cls_User',cascade_delete=False)
+    hasUnits = Set('Unit', reverse='cls',cascade_delete=False)
 
 
 class Cls_User(DB.Entity):
@@ -340,6 +340,51 @@ def removeUnit():
         return str(e), 400
 
 
+@app.route('/getAllClassesNotIn')
+def getAllClassesNotIn():
+    ret = []
+    student = request.args.get('username')
+    id = 0
+
+    try:
+        with db_session:
+            already_in = list()
+            for aUnit in Cls_User.select(user=student):
+                already_in.append( aUnit.cls.name)
+            for singleClass in Cls.select(lambda p: True):
+                if singleClass.name in already_in:
+                    continue
+                single_obj = dict()
+                id += 1
+                single_obj["id"] = id
+                single_obj["className"] = singleClass.name
+                single_obj["teacher"]=  singleClass.teacher.name
+                ret.append(single_obj)
+
+        return jsonify(ret)
+    except Exception as e:
+        return str(e), 400
+
+@app.route('/getAllClassesWaiting')
+def getAllClassesWaiting():
+    ret = []
+    student = request.args.get('username')
+    id = 0
+
+    try:
+        with db_session:
+            for aUnit in Cls_User.select(user=student,approved=False):
+                single_obj = dict()
+                id += 1
+                single_obj["id"] = id
+                single_obj["className"] = aUnit.cls.name
+                single_obj["teacher"] = aUnit.cls.teacher.name
+                ret.append(single_obj)
+
+        return jsonify(ret)
+    except Exception as e:
+        return str(e), 400
+
 @app.route('/registerClass')
 def registerClass():
     studentName = request.args.get('student')
@@ -349,9 +394,22 @@ def registerClass():
             c = Cls[className]
             u = User[studentName]
             c_u = Cls_User(cls=c, user=u, approved=False)
-            u.inClass.add(c_u)
-            c.students.add(c_u)
 
+
+            commit()
+            return "successful", 200
+    except Exception as e:
+        return str(e), 400
+
+@app.route('/removeRegistrationClass')
+def removeRegistrationClass():
+    studentName = request.args.get('student')
+    className = request.args.get('className')
+    try:
+        with db_session:
+            c = Cls[className]
+            u = User[studentName]
+            Cls_User.select(cls=c,user=u).delete(bulk=True)
             commit()
             return "successful", 200
     except Exception as e:
@@ -391,6 +449,8 @@ def approveStudentToClass():
             if approve == "True":
                 b = Cls_User[c, u]
                 Cls_User[c, u].approved = True
+                u.inClass.add(b)
+                c.students.add(b)
             else:
                 Cls_User[c, u].delete()
             return "successful", 200
@@ -509,7 +569,7 @@ def getClassesStudent():
         with db_session:
             ret = []
             id = 0
-            for aUnit in Cls_User.select(user=student):
+            for aUnit in Cls_User.select(user=student,approved=True):
                 single_obj = dict()
                 id += 1
                 single_obj["id"] = id
@@ -694,21 +754,6 @@ def startUnit():
 
 
 
-@app.route('/getGrade')
-def getGrade():
-
-    user = request.args.get('username')
-    unit_name = request.args.get('unitName')
-    class_name = request.args.get('className')
-    ret = []
-    try:
-        with db_session:
-            unit = Unit[unit_name, Cls[class_name]]
-            attempt = get_max_unit(unit, user)
-            grade = ActiveUnit[unit,user,attempt].grade
-        return str(grade)
-    except Exception as e:
-        return str(e), 400
 
 
 
