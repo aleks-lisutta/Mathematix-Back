@@ -1,5 +1,6 @@
 import logging
 import random
+import bcrypt
 from fractions import Fraction
 
 from flask import Flask, request, jsonify
@@ -23,7 +24,7 @@ QUESTIONS_TO_GENERATE = 10
 
 class User(DB.Entity):
     name = PrimaryKey(str)
-    password = Required(str)
+    password = Required(bytes)
     type = Required(int)
     teaching = Set('Cls', reverse='teacher')
     inClass = Set('Cls_User')
@@ -47,10 +48,11 @@ class Cls_User(DB.Entity):
 class Unit(DB.Entity):
     name = Required(str)
     cls = Required(Cls, reverse='hasUnits')
+    desc = Optional(str)
     template = Required(str)
-    Qnum = Required(int)
-    maxTime = Required(int)
-    subDate = Required(int)
+    Qnum = Required(str)
+    maxTime = Required(str)
+    subDate = Required(str)
     instances = Set('ActiveUnit', reverse='unit')
     order = Required(int)
     next = Optional(str)
@@ -107,9 +109,16 @@ def checkValidPassword(password):
 
 
 def makeUser(username, password, type):
+    print(password.__class__)
+    password = password.encode('utf-8')
+    print(password.__class__)
+    salt = bcrypt.gensalt()
+    print(salt.__class__)
+    hashed_password = bcrypt.hashpw(password, salt)
+    print(hashed_password.__class__, )
     try:
         with db_session:
-            User(name=username, password=password, type=type)
+            User(name=username, password=hashed_password, type=type)
             commit()
             return None
     except Exception as e:
@@ -140,13 +149,18 @@ def register():
         return username + " " + password + " " + typ
     return ans
 
-
 def checkUserPass(username, password):
+    password = password.encode('utf-8')
+    print(password.__class__)
     try:
         with db_session:
             result = User[username]
+            print(result)
+
             if result:
-                return result.password == password
+                print(result.password)
+                print(bcrypt.checkpw(password, result.password))
+                return bcrypt.checkpw(password, result.password)
             return False
     except Exception:
         return False
@@ -256,26 +270,59 @@ def editClass():
     except Exception as e:
         return str(e), 400
 
+@app.route('/quickEditUnit')
+def quickEditUnit():
+    unitName = request.args.get('unitName')
+    className = request.args.get('className')
+    newDesc = request.args.get('newDesc')
+    newUnitName = request.args.get('newUnitName')
+    try:
+        with db_session:
+            c = Cls[className]
+            u = Unit[unitName,c]
+            ins = u.instances #
+            order = u.order
+            nex = u.next
+            temp = u.template
+            Qnum = u.Qnum
+            maxTime = u.maxTime
+            subDate = u.subDate
+            if newUnitName!=unitName:
+                Unit(cls=c, name=newUnitName, desc=newDesc, template=temp, Qnum=Qnum, maxTime=maxTime, subDate=subDate,
+                     instances=ins, order=order, next=nex)
+                Unit[unitName, c].delete()
+            else:
+                u.set(desc=newDesc)
+            commit()
+        return "successful", 200
+    except Exception as e:
+        print(e)
+        return str(e), 400
 
 @app.route('/editUnit')
 def editUnit():
     unitName = request.args.get('unitName')
     className = request.args.get('className')
-
-    teacherName = request.args.get('newTeacher')
-    unitName = request.args.get('newUnitName')
-    className = request.args.get('newClassName')
-    template = request.args.get('newTemplate')
+    newUnitName = request.args.get('newUnitName')
     Qnum = request.args.get('newQnum')
     maxTime = request.args.get('newMaxTime')
     subDate = request.args.get('newSubDate')
+    newDesc = request.args.get('newDesc')
     try:
         with db_session:
             c = Cls[className]
-            Unit[unitName, c].delete()
-            commit()
-            Unit(cls=c, name=unitName, template=template, Qnum=Qnum, maxTime=maxTime, subDate=subDate)
-            return "successful", 200
+            u = Unit[unitName,c]
+            ins = u.instances #
+            order = u.order
+            nex = u.next
+            temp = u.template
+            if newUnitName != unitName:
+                Unit(cls=c, name=newUnitName, desc=newDesc, template=temp, Qnum=Qnum, maxTime=maxTime, subDate=subDate,
+                     instances=ins, order=order, next=nex)
+                Unit[unitName, c].delete()
+            else:
+                u.set(desc=newDesc, Qnum=Qnum, maxTime=maxTime, subDate=subDate)
+            return {"message": "successful"}
     except Exception as e:
         return str(e), 400
 
@@ -403,7 +450,7 @@ def removeFromClass():
         return str(e), 400
 
 
-def teacherOpenUnit(unitName, teacherName, className, template, Qnum, maxTime, subDate, first, prev):
+def teacherOpenUnit(unitName, teacherName, className, template, Qnum, maxTime, subDate, first, prev, desc):
     # if not is_legal_template(template):
     #    return "illegal template", 400
     try:
@@ -414,19 +461,23 @@ def teacherOpenUnit(unitName, teacherName, className, template, Qnum, maxTime, s
                 p = Unit[prev, Cls[className]]
                 print(p)
                 p.next = unitName
-                ord = p.order
-            u = Unit(cls=Cls[className], name=unitName, template=template, Qnum=Qnum, maxTime=maxTime, subDate=subDate,
+                ord = p.order+1
+            print(className, unitName,template,Qnum,maxTime,subDate,ord)
+            print(Cls[className])
+            u = Unit(cls=Cls[className], name=unitName,desc=desc, template=template, Qnum=Qnum, maxTime=maxTime, subDate=subDate,
                      order=ord)
             print(u)
             commit()
             return "success"
     except Exception as e:
+        print(e)
         return str(e), 400, 400
 
 
 @app.route('/openUnit')
 def openUnit():
     teacherName = request.args.get('teacher')
+    desc = request.args.get('desc')
     unitName = request.args.get('unitName')
     className = request.args.get('className')
     template = request.args.get('template')
@@ -436,9 +487,9 @@ def openUnit():
     first = request.args.get('first')
     prev = request.args.get('prev')
 
-
-    return teacherOpenUnit(unitName, teacherName, className, template, Qnum, maxTime, subDate ,first, prev)
-    #return "invalid permissions" ,400
+    result = teacherOpenUnit(unitName, teacherName, className, template, Qnum, maxTime, subDate, first, prev,desc)
+    print(result)
+    return result
 
 
 @app.route('/getUnit')
@@ -473,11 +524,13 @@ def getClassUnits():
             ret = []
             id = 0
             for aUnit in Cls[className].hasUnits:
+                if not aUnit.order == 1:
+                    continue
                 single_obj = dict()
                 id += 1
                 single_obj["id"] = id
                 single_obj["primary"] = aUnit.name
-                single_obj["secondary"] = "lalala"
+                single_obj["secondary"] = aUnit.desc
                 ret.append(single_obj)
             return ret
     except Exception as e:
@@ -531,8 +584,22 @@ def getUnitDetails():
     unitName = request.args.get('unitName')
     try:
         with db_session:
-            return Unit[unitName, Cls[className]]
+            unit = Unit.get(name=unitName, cls=className)
+            if unit:
+                return {
+                    "name": unit.name,
+                    "desc": unit.desc,
+                    "template": unit.template,
+                    "Qnum": unit.Qnum,
+                    "maxTime": unit.maxTime,
+                    "subDate": unit.subDate,
+                    "order": unit.order,
+                    "next": unit.next
+                }
+            else:
+                return ""
     except Exception as e:
+        print(e)
         return str(e), 400
 
 def get_random_result():
