@@ -1,6 +1,5 @@
 import logging
 import random
-import bcrypt
 from fractions import Fraction
 
 from flask import Flask, request, jsonify
@@ -24,7 +23,7 @@ QUESTIONS_TO_GENERATE = 10
 
 class User(DB.Entity):
     name = PrimaryKey(str)
-    password = Required(bytes)
+    password = Required(str)
     type = Required(int)
     teaching = Set('Cls', reverse='teacher',cascade_delete=False)
     inClass = Set('Cls_User',cascade_delete=False)
@@ -108,22 +107,15 @@ def checkValidPassword(password):
     return len(password) > 2
 
 
+
 def makeUser(username, password, type):
-    print(password.__class__)
-    password = password.encode('utf-8')
-    print(password.__class__)
-    salt = bcrypt.gensalt()
-    print(salt.__class__)
-    hashed_password = bcrypt.hashpw(password, salt)
-    print(hashed_password.__class__, )
     try:
         with db_session:
-            User(name=username, password=hashed_password, type=type)
+            User(name=username, password=password, type=type)
             commit()
             return None
     except Exception as e:
         return str(e), 400
-
 
 def is_legal_template(template: str):
     parts = template.split(',')
@@ -134,6 +126,7 @@ def is_legal_template(template: str):
         return False
     # todo check the tuples are correct
     return True
+
 
 
 @app.route('/register')
@@ -149,18 +142,13 @@ def register():
         return username + " " + password + " " + typ
     return ans
 
+
 def checkUserPass(username, password):
-    password = password.encode('utf-8')
-    print(password.__class__)
     try:
         with db_session:
             result = User[username]
-            print(result)
-
             if result:
-                print(result.password)
-                print(bcrypt.checkpw(password, result.password))
-                return bcrypt.checkpw(password, result.password)
+                return result.password == password
             return False
     except Exception:
         return False
