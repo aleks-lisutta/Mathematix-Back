@@ -6,6 +6,8 @@ from flask import Flask, request, jsonify
 from flask_pony import Pony
 from flask_cors import CORS
 from pony.orm import *
+from scipy.optimize import minimize_scalar
+import numpy as np
 from pony_database_facade import DatabaseFacade
 
 app = Flask(__name__)
@@ -19,6 +21,8 @@ DB.bind(provider='sqlite', filename='dbtest', create_db=True)
 DATATYPE_SIZE = 3
 QUESTIONTYPE_SIZE = 4
 QUESTIONS_TO_GENERATE = 10
+MAX_RANGE = 10
+MIN_RANGE = -10
 
 
 class User(DB.Entity):
@@ -614,10 +618,61 @@ def getUnitDetails():
         print(e)
         return str(e), 400
 
-def get_random_result():
-    a = random.randint(-10, 10)
-    b = random.randint(-10,10)
-    return ((a,0),(0,b))
+def get_random_result(zero):
+    if zero:
+        a = random.randint(-10, 10)
+        b = random.randint(-10,10)
+        return ((a,0),(0,b))
+    else:
+        a = random.randint(-10, 10)
+        b = random.randint(-10, 10)
+        c = random.randint(-10, 10)
+        d = random.randint(-10, 10)
+        return ((a,b),(c,d))
+
+def func_to_string(a, b, c):
+    if b == 0 and c == 0:
+        return "f(x) = {}*x^2".format(a)
+    elif b == 0:
+        return "f(x) = {}*x^2+{}".format(a, c)
+    elif c == 0:
+        return "f(x) = {}*x^2+{}*x".format(a, b)
+    else:
+        return "f(x) = {}*x^2+{}*x+{}".format(a, b, c)
+
+def min_max_points(function_types, params):
+    preamble = "find the minimum and maximum points of the function"
+    minimum_range = MIN_RANGE
+    maximum_range = MAX_RANGE
+    if ("linear" in function_types):
+        raise Exception("Cannot create a linear min,max question")
+    if ("quadratic" in function_types):
+        a_minimum = int(params[0])
+        a_maximum = int(params[1])
+        b_minimum = int(params[2])
+        b_maximum = int(params[3])
+        c_minimum = int(params[4])
+        c_maximum = int(params[5])
+        a=0
+        while a!=0:
+            a = random.randint(a_minimum, a_maximum)
+        b = random.randint(b_minimum, b_maximum)
+        c = random.randint(c_minimum, c_maximum)
+
+        result  = find_min_max(a,b,c)
+
+        result2 = get_random_result(False)
+        result3 = get_random_result(False)
+        result4 = get_random_result(False)
+        if a>0:
+            result1 = result["minimum"]
+        else:
+            result1 = result["maximum"]
+
+        question_string = func_to_string(a,b,c)
+
+    return (preamble, question_string, result1,result2,result3,result4)
+
 
 def generate_cut_axis(function_types, params):
     preamble = \
@@ -625,8 +680,8 @@ def generate_cut_axis(function_types, params):
     The answer should be in the format (cuts with x axis, cuts with y axis).
     Round the answers to 2 digis"""
 
-    minimum_range = -10
-    maximum_range = 10
+    minimum_range = MIN_RANGE
+    maximum_range = MAX_RANGE
 
     # linear
     if ("linear" in function_types):
@@ -650,9 +705,9 @@ def generate_cut_axis(function_types, params):
         ans_xf = (ans_x, 0)
         ans_y = (0, b)
 
-        ans2 = get_random_result()
-        ans3 = get_random_result()
-        ans4 = get_random_result()
+        ans2 = get_random_result(True)
+        ans3 = get_random_result(True)
+        ans4 = get_random_result(True)
 
         if (b == 0):
             questions_string = "y=" + str(m) + "x"
@@ -661,6 +716,26 @@ def generate_cut_axis(function_types, params):
 
 
     return (preamble, questions_string, (ans_xf, ans_y), ans2, ans3, ans4)
+
+def find_min_max(a, b, c):
+    # Define the function to find the minima and maxima of
+    def f(x):
+        return a*x**2 + b*x + c
+
+    # Find the minimum of the function
+    minimum = minimize_scalar(f)
+
+    # Find the maximum of the function by minimizing the negative of the function
+    maximum = minimize_scalar(lambda x: -f(x))
+
+    # Round the results to 2 decimal places
+    minimum_x, minimum_y = round(minimum.x, 2), round(minimum.fun, 2)
+    maximum_x, maximum_y = round(maximum.x, 2), round(-maximum.fun, 2)
+
+    # Return the x and y values of the local minimum and maximum
+    return {"minimum": {"x": minimum_x, "y": minimum_y}, "maximum": {"x": maximum_x, "y": maximum_y}}
+
+
 
 
 # template - [0] = type of function
@@ -684,8 +759,8 @@ def get_questions(unit):
         question_type,function_types, params = parse_template(unit.template)
         if('intersection' in question_type):
             q = generate_cut_axis(function_types, params)
-        # elif(parsed_template[1]==0):
-        #     q =generate_maxima_and_minima(parsed_template)
+        if ('min_max_points' in question_type):
+            q = min_max_points(function_types, params)
         # elif(parsed_template[1]==0):
         #     q =generate_cut_axis(parsed_template)
         questions.append(q)
