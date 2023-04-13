@@ -619,16 +619,14 @@ def getUnitDetails():
         return str(e), 400
 
 def get_random_result(zero):
+    x_a = random.randint(0,3)
+    x_b = random.randint(0,3)
+    a = random.randint(-10, 10) + x_a / 4
+    b = random.randint(-10, 10) + x_b / 4
     if zero:
-        a = random.randint(-10, 10)
-        b = random.randint(-10,10)
         return ((a,0),(0,b))
     else:
-        a = random.randint(-10, 10)
-        b = random.randint(-10, 10)
-        c = random.randint(-10, 10)
-        d = random.randint(-10, 10)
-        return ((a,b),(c,d))
+        return (a,b)
 
 def func_to_string(a, b, c):
     if b == 0 and c == 0:
@@ -654,7 +652,7 @@ def min_max_points(function_types, params):
         c_minimum = int(params[4])
         c_maximum = int(params[5])
         a=0
-        while a!=0:
+        while a==0:
             a = random.randint(a_minimum, a_maximum)
         b = random.randint(b_minimum, b_maximum)
         c = random.randint(c_minimum, c_maximum)
@@ -671,7 +669,7 @@ def min_max_points(function_types, params):
 
         question_string = func_to_string(a,b,c)
 
-    return (preamble, question_string, result1,result2,result3,result4)
+    return (preamble, question_string, (result1["x"],result1["y"]),result2,result3,result4)
 
 
 def generate_cut_axis(function_types, params):
@@ -722,21 +720,30 @@ def find_min_max(a, b, c):
     def f(x):
         return a*x**2 + b*x + c
 
-    # Find the minimum of the function
-    minimum = minimize_scalar(f)
+    if a>0:
+        minimum = minimize_scalar(f)
+        minimum_x, minimum_y = round(minimum.x, 2), round(minimum.fun, 2)
+        return {"minimum": {"x": minimum_x, "y": minimum_y}}
 
-    # Find the maximum of the function by minimizing the negative of the function
-    maximum = minimize_scalar(lambda x: -f(x))
+    else:
+        maximum = minimize_scalar(lambda x: -f(x))
+        maximum_x, maximum_y = round(maximum.x, 2), round(-maximum.fun, 2)
+        return {"maximum": {"x": maximum_x, "y": maximum_y}}
 
-    # Round the results to 2 decimal places
-    minimum_x, minimum_y = round(minimum.x, 2), round(minimum.fun, 2)
-    maximum_x, maximum_y = round(maximum.x, 2), round(-maximum.fun, 2)
-
-    # Return the x and y values of the local minimum and maximum
-    return {"minimum": {"x": minimum_x, "y": minimum_y}, "maximum": {"x": maximum_x, "y": maximum_y}}
-
-
-
+def change_order(questions):
+    questions_scrambled = list()
+    for single_question in questions:
+        ans_place = random.randint(2, 5)
+        if (ans_place ==2):
+            new_single_question = (single_question[0],single_question[1],single_question[3],single_question[2],single_question[4],single_question[5],1 )
+        if (ans_place ==3):
+            new_single_question = (single_question[0],single_question[1],single_question[3],single_question[2],single_question[4],single_question[5], 2)
+        if (ans_place ==4):
+            new_single_question = (single_question[0], single_question[1], single_question[4], single_question[3], single_question[2],single_question[5],3)
+        if (ans_place == 5):
+            new_single_question = (single_question[0], single_question[1], single_question[5], single_question[3], single_question[4],single_question[2],4)
+        questions_scrambled.append(new_single_question)
+    return questions_scrambled
 
 # template - [0] = type of function
 #           [1] = type of question
@@ -753,18 +760,19 @@ def parse_template(template):
     return parts[0], questions, params
 
 
+
 def get_questions(unit):
     questions = list()
     for i in range(QUESTIONS_TO_GENERATE):
         question_type,function_types, params = parse_template(unit.template)
         if('intersection' in question_type):
             q = generate_cut_axis(function_types, params)
-        if ('min_max_points' in question_type):
+        if ('minMaxPoints' in question_type):
             q = min_max_points(function_types, params)
         # elif(parsed_template[1]==0):
         #     q =generate_cut_axis(parsed_template)
         questions.append(q)
-    return questions
+    return change_order(questions)
 
 
 def get_max_unit(unit, user):
@@ -793,7 +801,7 @@ def addQuestions(className,unitName,username):
             active.quesAmount += 10
             for single_question in get_questions(unit):
                 Question(id=id, question_preamble=single_question[0], question=single_question[1],
-                         correct_ans=1, answer1=str(single_question[2])[1:-1],
+                         correct_ans=single_question[6], answer1=str(single_question[2])[1:-1],
                          answer2=str(single_question[3])[1:-1], answer3=str(single_question[4])[1:-1],
                          answer4=str(single_question[5])[1:-1],
                          active_unit=ActiveUnit[unit, user, maxAttempt])
@@ -843,6 +851,7 @@ def getQuestion():
             single_question["answer2"] = question.answer2
             single_question["answer3"] = question.answer3
             single_question["answer4"] = question.answer4
+            single_question["correct_ans"] = question.correct_ans
             ret.append(single_question)
         return jsonify(ret)
     except Exception as e:
@@ -882,7 +891,7 @@ def submitQuestion():
                 activeUnit.consecQues =0
                 return "incorrect",(200+question.correct_ans)
 
-            if(activeUnit.consecQues == unit.Qnum or activeUnit.consecQues > int(unit.Qnum)  ):
+            if(activeUnit.consecQues == unit.Qnum-1 or activeUnit.consecQues > int(unit.Qnum)  ):
                 activeUnit.inProgress=False
                 activeUnit.grade=100
                 return "answered enough consecutive questions",205
