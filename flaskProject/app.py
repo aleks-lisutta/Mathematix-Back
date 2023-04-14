@@ -639,12 +639,12 @@ def func_to_string(a, b, c):
         return "f(x) = {}*x^2+{}*x+{}".format(a, b, c)
 
 def min_max_points(function_types, params):
-    preamble = "find the minimum and maximum points of the function"
     minimum_range = MIN_RANGE
     maximum_range = MAX_RANGE
     if ("linear" in function_types):
         raise Exception("Cannot create a linear min,max question")
     if ("quadratic" in function_types):
+        preamble = "מצא את נקודת הקיצון:"
         a_minimum = int(params[0])
         a_maximum = int(params[1])
         b_minimum = int(params[2])
@@ -673,10 +673,7 @@ def min_max_points(function_types, params):
 
 
 def generate_cut_axis(function_types, params):
-    preamble = \
-        """Please enter the point in which the function cuts the x,y axis.
-    The answer should be in the format (cuts with x axis, cuts with y axis).
-    Round the answers to 2 digis"""
+    preamble ="מצא את נקודות החיתוך עם הצירים:"
 
     minimum_range = MIN_RANGE
     maximum_range = MAX_RANGE
@@ -852,6 +849,8 @@ def getQuestion():
             single_question["answer3"] = question.answer3
             single_question["answer4"] = question.answer4
             single_question["correct_ans"] = question.correct_ans
+            single_question["preamble"] = question.question_preamble
+
             ret.append(single_question)
         return jsonify(ret)
     except Exception as e:
