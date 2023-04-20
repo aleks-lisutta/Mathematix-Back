@@ -6,6 +6,8 @@ from flask import Flask, request, jsonify
 from flask_pony import Pony
 from flask_cors import CORS
 from pony.orm import *
+from scipy.optimize import minimize_scalar
+import numpy as np
 from pony_database_facade import DatabaseFacade
 
 app = Flask(__name__)
@@ -19,6 +21,8 @@ DB.bind(provider='sqlite', filename='dbtest', create_db=True)
 DATATYPE_SIZE = 3
 QUESTIONTYPE_SIZE = 4
 QUESTIONS_TO_GENERATE = 10
+MAX_RANGE = 10
+MIN_RANGE = -10
 
 
 class User(DB.Entity):
@@ -614,19 +618,106 @@ def getUnitDetails():
         print(e)
         return str(e), 400
 
-def get_random_result():
-    a = random.randint(-10, 10)
-    b = random.randint(-10,10)
-    return ((a,0),(0,b))
+def get_random_result(zero,up_down):
+    if not up_down:
+        x_a = random.randint(0,3)
+        x_b = random.randint(0,3)
+        a = random.randint(-10, 10) + x_a / 4
+        b = random.randint(-10, 10) + x_b / 4
+        if zero:
+            return ((a,0),(0,b))
+        else:
+            return (a,b)
+    else:
+        x_a = random.randint(0,3)
+        a = random.randint(-10, 10) + x_a / 4
+        ans=dict()
+        ans["up"] = "x > " + str(a)
+        ans["down"] = "x < " + str(a)
+        up_down = random.randint(0, 1)
+        if (up_down):
+            return ( ans["down"] + " ירידה:")
+        else:
+            return (ans["up"] + " עלייה:")
+
+
+def func_to_string(a, b, c):
+    if b == 0 and c == 0:
+        return "f(x) = {}*x^2".format(a)
+    elif b == 0:
+        return "f(x) = {}*x^2+{}".format(a, c)
+    elif c == 0:
+        return "f(x) = {}*x^2+{}*x".format(a, b)
+    else:
+        return "f(x) = {}*x^2+{}*x+{}".format(a, b, c)
+
+def getQuadratic(a_min,a_max,b_min,b_max,c_min,c_max):
+    a = 0
+    while a == 0:
+        a = random.randint(int(a_min), int(a_max))
+    b = random.randint(int(b_min), int(b_max))
+    c = random.randint(int(c_min), int(c_max))
+    return a,b,c
+
+def inc_dec(function_types, params):
+
+    if ("linear" in function_types):
+        raise Exception("Cannot create a linear min,max question")
+    if ("quadratic" in function_types):
+        preamble = "מצא תחומי עלייה וירידה:"
+        a,b,c = getQuadratic(params[0],params[1],params[2],params[3],params[4],params[5])
+
+        ans = dict()
+        result  = find_min_max(a,b,c)
+        if a<0:
+            ans["down"] = "x > " + str (result["maximum"]["x"])
+            ans["up"] = "x < " + str (result["maximum"]["x"])
+        else:
+            ans["up"] = "x > " + str (result["minimum"]["x"])
+            ans["down"] = "x < " + str (result["minimum"]["x"])
+
+        question_string = func_to_string(a,b,c)
+
+        result2 = get_random_result(False,True)
+        result3 = get_random_result(False,True)
+        result4 = get_random_result(False,True)
+
+        up_down  = random.randint(0,1)
+        if (up_down):
+            return (preamble, question_string, (ans["down"] + " ירידה:" ), result2, result3, result4,1)
+        else:
+            return (preamble, question_string, (ans["up"] + " עלייה:" ), result2, result3, result4,1)
+
+
+
+def min_max_points(function_types, params):
+    minimum_range = MIN_RANGE
+    maximum_range = MAX_RANGE
+    if ("linear" in function_types):
+        raise Exception("Cannot create a linear min,max question")
+    if ("quadratic" in function_types):
+        preamble = "מצא את נקודת הקיצון:"
+        a, b, c = getQuadratic(params[0], params[1], params[2], params[3], params[4], params[5])
+        result  = find_min_max(a,b,c)
+
+        result2 = get_random_result(False,False)
+        result3 = get_random_result(False,False)
+        result4 = get_random_result(False,False)
+        if a>0:
+            result1 = result["minimum"]
+        else:
+            result1 = result["maximum"]
+
+        question_string = func_to_string(a,b,c)
+
+    return (preamble, question_string, (result1["x"],result1["y"]),result2,result3,result4,0)
+
 
 def generate_cut_axis(function_types, params):
-    preamble = \
-        """Please enter the point in which the function cuts the x,y axis.
-    The answer should be in the format (cuts with x axis, cuts with y axis).
-    Round the answers to 2 digis"""
+    preamble ="מצא את נקודות החיתוך עם הצירים:"
 
-    minimum_range = -10
-    maximum_range = 10
+    minimum_range = MIN_RANGE
+    maximum_range = MAX_RANGE
 
     # linear
     if ("linear" in function_types):
@@ -650,9 +741,9 @@ def generate_cut_axis(function_types, params):
         ans_xf = (ans_x, 0)
         ans_y = (0, b)
 
-        ans2 = get_random_result()
-        ans3 = get_random_result()
-        ans4 = get_random_result()
+        ans2 = get_random_result(True,False)
+        ans3 = get_random_result(True,False)
+        ans4 = get_random_result(True,False)
 
         if (b == 0):
             questions_string = "y=" + str(m) + "x"
@@ -660,8 +751,37 @@ def generate_cut_axis(function_types, params):
             questions_string = ("y=" + str(m) + "x" + ('+' if b > 0 else "") + str(b))
 
 
-    return (preamble, questions_string, (ans_xf, ans_y), ans2, ans3, ans4)
+    return (preamble, questions_string, (ans_xf, ans_y), ans2, ans3, ans4,0)
 
+def find_min_max(a, b, c):
+    # Define the function to find the minima and maxima of
+    def f(x):
+        return a*x**2 + b*x + c
+
+    if a>0:
+        minimum = minimize_scalar(f)
+        minimum_x, minimum_y = round(minimum.x, 2), round(minimum.fun, 2)
+        return {"minimum": {"x": minimum_x, "y": minimum_y}}
+
+    else:
+        maximum = minimize_scalar(lambda x: -f(x))
+        maximum_x, maximum_y = round(maximum.x, 2), round(-maximum.fun, 2)
+        return {"maximum": {"x": maximum_x, "y": maximum_y}}
+
+def change_order(questions):
+    questions_scrambled = list()
+    for single_question in questions:
+        ans_place = random.randint(2, 5)
+        if (ans_place ==2):
+            new_single_question = (single_question[0],single_question[1],single_question[3],single_question[2],single_question[4],single_question[5],1,single_question[6] )
+        elif (ans_place ==3):
+            new_single_question = (single_question[0],single_question[1],single_question[3],single_question[2],single_question[4],single_question[5], 2,single_question[6])
+        elif (ans_place ==4):
+            new_single_question = (single_question[0], single_question[1], single_question[4], single_question[3], single_question[2],single_question[5],3,single_question[6])
+        elif (ans_place == 5):
+            new_single_question = (single_question[0], single_question[1], single_question[5], single_question[3], single_question[4],single_question[2],4,single_question[6])
+        questions_scrambled.append(new_single_question)
+    return questions_scrambled
 
 # template - [0] = type of function
 #           [1] = type of question
@@ -678,18 +798,19 @@ def parse_template(template):
     return parts[0], questions, params
 
 
+
 def get_questions(unit):
     questions = list()
     for i in range(QUESTIONS_TO_GENERATE):
         question_type,function_types, params = parse_template(unit.template)
         if('intersection' in question_type):
             q = generate_cut_axis(function_types, params)
-        # elif(parsed_template[1]==0):
-        #     q =generate_maxima_and_minima(parsed_template)
-        # elif(parsed_template[1]==0):
-        #     q =generate_cut_axis(parsed_template)
+        elif ('minMaxPoints' in question_type):
+            q = min_max_points(function_types, params)
+        elif('incDec' in question_type):
+            q =inc_dec(function_types, params)
         questions.append(q)
-    return questions
+    return change_order(questions)
 
 
 def get_max_unit(unit, user):
@@ -717,11 +838,18 @@ def addQuestions(className,unitName,username):
             id = active.quesAmount + 1
             active.quesAmount += 10
             for single_question in get_questions(unit):
-                Question(id=id, question_preamble=single_question[0], question=single_question[1],
-                         correct_ans=1, answer1=str(single_question[2])[1:-1],
-                         answer2=str(single_question[3])[1:-1], answer3=str(single_question[4])[1:-1],
-                         answer4=str(single_question[5])[1:-1],
-                         active_unit=ActiveUnit[unit, user, maxAttempt])
+                if (single_question[7]==0):
+                    Question(id=id, question_preamble=single_question[0], question=single_question[1],
+                             correct_ans=single_question[6], answer1=str(single_question[2])[1:-1],
+                             answer2=str(single_question[3])[1:-1], answer3=str(single_question[4])[1:-1],
+                             answer4=str(single_question[5])[1:-1],
+                             active_unit=ActiveUnit[unit, user, maxAttempt])
+                else:
+                    Question(id=id, question_preamble=single_question[0], question=single_question[1],
+                             correct_ans=single_question[6], answer1=str(single_question[2]),
+                             answer2=str(single_question[3]), answer3=str(single_question[4]),
+                             answer4=str(single_question[5]),
+                             active_unit=ActiveUnit[unit, user, maxAttempt])
                 id += 1
 
             commit()
@@ -768,6 +896,9 @@ def getQuestion():
             single_question["answer2"] = question.answer2
             single_question["answer3"] = question.answer3
             single_question["answer4"] = question.answer4
+            single_question["correct_ans"] = question.correct_ans
+            single_question["preamble"] = question.question_preamble
+
             ret.append(single_question)
         return jsonify(ret)
     except Exception as e:
@@ -807,7 +938,7 @@ def submitQuestion():
                 activeUnit.consecQues =0
                 return "incorrect",(200+question.correct_ans)
 
-            if(activeUnit.consecQues == unit.Qnum or activeUnit.consecQues > int(unit.Qnum)  ):
+            if(activeUnit.consecQues == int (unit.Qnum) or activeUnit.consecQues > int(unit.Qnum)  ):
                 activeUnit.inProgress=False
                 activeUnit.grade=100
                 return "answered enough consecutive questions",205
