@@ -618,15 +618,28 @@ def getUnitDetails():
         print(e)
         return str(e), 400
 
-def get_random_result(zero):
-    x_a = random.randint(0,3)
-    x_b = random.randint(0,3)
-    a = random.randint(-10, 10) + x_a / 4
-    b = random.randint(-10, 10) + x_b / 4
-    if zero:
-        return ((a,0),(0,b))
+def get_random_result(zero,up_down):
+    if not up_down:
+        x_a = random.randint(0,3)
+        x_b = random.randint(0,3)
+        a = random.randint(-10, 10) + x_a / 4
+        b = random.randint(-10, 10) + x_b / 4
+        if zero:
+            return ((a,0),(0,b))
+        else:
+            return (a,b)
     else:
-        return (a,b)
+        x_a = random.randint(0,3)
+        a = random.randint(-10, 10) + x_a / 4
+        ans=dict()
+        ans["up"] = "x > " + str(a)
+        ans["down"] = "x < " + str(a)
+        up_down = random.randint(0, 1)
+        if (up_down):
+            return ( ans["down"] + " ירידה:")
+        else:
+            return (ans["up"] + " עלייה:")
+
 
 def func_to_string(a, b, c):
     if b == 0 and c == 0:
@@ -638,6 +651,45 @@ def func_to_string(a, b, c):
     else:
         return "f(x) = {}*x^2+{}*x+{}".format(a, b, c)
 
+def getQuadratic(a_min,a_max,b_min,b_max,c_min,c_max):
+    a = 0
+    while a == 0:
+        a = random.randint(int(a_min), int(a_max))
+    b = random.randint(int(b_min), int(b_max))
+    c = random.randint(int(c_min), int(c_max))
+    return a,b,c
+
+def inc_dec(function_types, params):
+
+    if ("linear" in function_types):
+        raise Exception("Cannot create a linear min,max question")
+    if ("quadratic" in function_types):
+        preamble = "מצא תחומי עלייה וירידה:"
+        a,b,c = getQuadratic(params[0],params[1],params[2],params[3],params[4],params[5])
+
+        ans = dict()
+        result  = find_min_max(a,b,c)
+        if a<0:
+            ans["down"] = "x > " + str (result["maximum"]["x"])
+            ans["up"] = "x < " + str (result["maximum"]["x"])
+        else:
+            ans["up"] = "x > " + str (result["minimum"]["x"])
+            ans["down"] = "x < " + str (result["minimum"]["x"])
+
+        question_string = func_to_string(a,b,c)
+
+        result2 = get_random_result(False,True)
+        result3 = get_random_result(False,True)
+        result4 = get_random_result(False,True)
+
+        up_down  = random.randint(0,1)
+        if (up_down):
+            return (preamble, question_string, (ans["down"] + " ירידה:" ), result2, result3, result4,1)
+        else:
+            return (preamble, question_string, (ans["up"] + " עלייה:" ), result2, result3, result4,1)
+
+
+
 def min_max_points(function_types, params):
     minimum_range = MIN_RANGE
     maximum_range = MAX_RANGE
@@ -645,23 +697,12 @@ def min_max_points(function_types, params):
         raise Exception("Cannot create a linear min,max question")
     if ("quadratic" in function_types):
         preamble = "מצא את נקודת הקיצון:"
-        a_minimum = int(params[0])
-        a_maximum = int(params[1])
-        b_minimum = int(params[2])
-        b_maximum = int(params[3])
-        c_minimum = int(params[4])
-        c_maximum = int(params[5])
-        a=0
-        while a==0:
-            a = random.randint(a_minimum, a_maximum)
-        b = random.randint(b_minimum, b_maximum)
-        c = random.randint(c_minimum, c_maximum)
-
+        a, b, c = getQuadratic(params[0], params[1], params[2], params[3], params[4], params[5])
         result  = find_min_max(a,b,c)
 
-        result2 = get_random_result(False)
-        result3 = get_random_result(False)
-        result4 = get_random_result(False)
+        result2 = get_random_result(False,False)
+        result3 = get_random_result(False,False)
+        result4 = get_random_result(False,False)
         if a>0:
             result1 = result["minimum"]
         else:
@@ -669,7 +710,7 @@ def min_max_points(function_types, params):
 
         question_string = func_to_string(a,b,c)
 
-    return (preamble, question_string, (result1["x"],result1["y"]),result2,result3,result4)
+    return (preamble, question_string, (result1["x"],result1["y"]),result2,result3,result4,0)
 
 
 def generate_cut_axis(function_types, params):
@@ -700,9 +741,9 @@ def generate_cut_axis(function_types, params):
         ans_xf = (ans_x, 0)
         ans_y = (0, b)
 
-        ans2 = get_random_result(True)
-        ans3 = get_random_result(True)
-        ans4 = get_random_result(True)
+        ans2 = get_random_result(True,False)
+        ans3 = get_random_result(True,False)
+        ans4 = get_random_result(True,False)
 
         if (b == 0):
             questions_string = "y=" + str(m) + "x"
@@ -710,7 +751,7 @@ def generate_cut_axis(function_types, params):
             questions_string = ("y=" + str(m) + "x" + ('+' if b > 0 else "") + str(b))
 
 
-    return (preamble, questions_string, (ans_xf, ans_y), ans2, ans3, ans4)
+    return (preamble, questions_string, (ans_xf, ans_y), ans2, ans3, ans4,0)
 
 def find_min_max(a, b, c):
     # Define the function to find the minima and maxima of
@@ -732,13 +773,13 @@ def change_order(questions):
     for single_question in questions:
         ans_place = random.randint(2, 5)
         if (ans_place ==2):
-            new_single_question = (single_question[0],single_question[1],single_question[3],single_question[2],single_question[4],single_question[5],1 )
-        if (ans_place ==3):
-            new_single_question = (single_question[0],single_question[1],single_question[3],single_question[2],single_question[4],single_question[5], 2)
-        if (ans_place ==4):
-            new_single_question = (single_question[0], single_question[1], single_question[4], single_question[3], single_question[2],single_question[5],3)
-        if (ans_place == 5):
-            new_single_question = (single_question[0], single_question[1], single_question[5], single_question[3], single_question[4],single_question[2],4)
+            new_single_question = (single_question[0],single_question[1],single_question[3],single_question[2],single_question[4],single_question[5],1,single_question[6] )
+        elif (ans_place ==3):
+            new_single_question = (single_question[0],single_question[1],single_question[3],single_question[2],single_question[4],single_question[5], 2,single_question[6])
+        elif (ans_place ==4):
+            new_single_question = (single_question[0], single_question[1], single_question[4], single_question[3], single_question[2],single_question[5],3,single_question[6])
+        elif (ans_place == 5):
+            new_single_question = (single_question[0], single_question[1], single_question[5], single_question[3], single_question[4],single_question[2],4,single_question[6])
         questions_scrambled.append(new_single_question)
     return questions_scrambled
 
@@ -764,10 +805,10 @@ def get_questions(unit):
         question_type,function_types, params = parse_template(unit.template)
         if('intersection' in question_type):
             q = generate_cut_axis(function_types, params)
-        if ('minMaxPoints' in question_type):
+        elif ('minMaxPoints' in question_type):
             q = min_max_points(function_types, params)
-        # elif(parsed_template[1]==0):
-        #     q =generate_cut_axis(parsed_template)
+        elif('incDec' in question_type):
+            q =inc_dec(function_types, params)
         questions.append(q)
     return change_order(questions)
 
@@ -797,11 +838,18 @@ def addQuestions(className,unitName,username):
             id = active.quesAmount + 1
             active.quesAmount += 10
             for single_question in get_questions(unit):
-                Question(id=id, question_preamble=single_question[0], question=single_question[1],
-                         correct_ans=single_question[6], answer1=str(single_question[2])[1:-1],
-                         answer2=str(single_question[3])[1:-1], answer3=str(single_question[4])[1:-1],
-                         answer4=str(single_question[5])[1:-1],
-                         active_unit=ActiveUnit[unit, user, maxAttempt])
+                if (single_question[7]==0):
+                    Question(id=id, question_preamble=single_question[0], question=single_question[1],
+                             correct_ans=single_question[6], answer1=str(single_question[2])[1:-1],
+                             answer2=str(single_question[3])[1:-1], answer3=str(single_question[4])[1:-1],
+                             answer4=str(single_question[5])[1:-1],
+                             active_unit=ActiveUnit[unit, user, maxAttempt])
+                else:
+                    Question(id=id, question_preamble=single_question[0], question=single_question[1],
+                             correct_ans=single_question[6], answer1=str(single_question[2]),
+                             answer2=str(single_question[3]), answer3=str(single_question[4]),
+                             answer4=str(single_question[5]),
+                             active_unit=ActiveUnit[unit, user, maxAttempt])
                 id += 1
 
             commit()
@@ -890,7 +938,7 @@ def submitQuestion():
                 activeUnit.consecQues =0
                 return "incorrect",(200+question.correct_ans)
 
-            if(activeUnit.consecQues == unit.Qnum-1 or activeUnit.consecQues > int(unit.Qnum)  ):
+            if(activeUnit.consecQues == int (unit.Qnum) or activeUnit.consecQues > int(unit.Qnum)  ):
                 activeUnit.inProgress=False
                 activeUnit.grade=100
                 return "answered enough consecutive questions",205
