@@ -98,6 +98,11 @@ activeControllers = {}
 def hello_world():  # put application's code here
     return 'Hello World!'
 
+def isLogin(username):
+    if username not in activeControllers.keys():
+        print(username,activeControllers.keys())
+        return False
+    return True
 
 def checkValidUsername(username):
     try:
@@ -186,8 +191,8 @@ def login():
         return "invalid username or password", 400
     loadController(username)
     if isinstance(activeControllers[username], teacherCont):
-        return '1 ' + username
-    return '2 ' + username
+        return ['1 ' , username]
+    return ['2 ' , username]
 
 
 @app.route('/changePassword')
@@ -195,6 +200,8 @@ def change_password():
     username = request.args.get('username')
     password = request.args.get('password')
     new_password = request.args.get('newPassword')
+    if not isLogin(username):
+        return "user "+username+"not logged in.", 400
     try:
         with db_session:
             u = User[username]
@@ -210,13 +217,20 @@ def change_password():
 @app.route('/logout')
 def logout():
     username = request.args.get('username')
-    activeControllers.pop(username)
+    if username in activeControllers.keys():
+        print(activeControllers)
+        activeControllers.pop(username)
+        print(activeControllers)
+    else:
+        print("AAAAAAAAAAAAAA",activeControllers)
     return username + " " + str(len(activeControllers))
 
 
 @app.route('/openClass')
 def openClass():
     teacherName = request.args.get('teacher')
+    if not isLogin(teacherName):
+        return "user "+str(teacherName)+"not logged in.", 400
     className = request.args.get('className')
     try:
         with db_session:
@@ -231,8 +245,11 @@ def openClass():
 
 @app.route('/removeClass')
 def removeClass():
+
     teacherName = request.args.get('teacher')
     className = request.args.get('className')
+    if not isLogin(teacherName):
+        return "user "+str(teacherName)+"not logged in.", 400
     try:
         with db_session:
             t = User[teacherName]
@@ -250,6 +267,8 @@ def editClass():
     teacherName = request.args.get('teacher')
     className = request.args.get('className')
     newClassName = request.args.get('newClassName')
+    if not isLogin(teacherName):
+        return "user "+str(teacherName)+"not logged in.", 400
     try:
         with db_session:
             t = User[teacherName]
@@ -268,6 +287,9 @@ def quickEditUnit():
     className = request.args.get('className')
     newDesc = request.args.get('newDesc')
     newUnitName = request.args.get('newUnitName')
+    teacherName = request.args.get('teacher')
+    if not isLogin(teacherName):
+        return "user "+str(teacherName)+"not logged in.", 400
     try:
         with db_session:
             c = Cls[className]
@@ -300,6 +322,9 @@ def editUnit():
     maxTime = request.args.get('newMaxTime')
     subDate = request.args.get('newSubDate')
     newDesc = request.args.get('newDesc')
+    teacherName = request.args.get('teacher')
+    if not isLogin(teacherName):
+        return "user "+str(teacherName)+"not logged in.", 400
     try:
         with db_session:
             c = Cls[className]
@@ -323,6 +348,9 @@ def editUnit():
 def removeUnit():
     unitName = request.args.get('unitName')
     className = request.args.get('className')
+    teacherName = request.args.get('teacher')
+    if not isLogin(teacherName):
+        return "user "+str(teacherName)+"not logged in.", 400
     try:
         with db_session:
             u = Unit[unitName, Cls[className]]
@@ -336,6 +364,8 @@ def removeUnit():
 def getAllClassesNotIn():
     ret = []
     student = request.args.get('username')
+    if not isLogin(student):
+        return "user "+student+"not logged in.", 400
     id = 0
 
     try:
@@ -361,6 +391,8 @@ def getAllClassesNotIn():
 def getAllClassesWaiting():
     ret = []
     student = request.args.get('username')
+    if not isLogin(student):
+        return "user "+student+"not logged in.", 400
     id = 0
 
     try:
@@ -381,6 +413,8 @@ def getAllClassesWaiting():
 def registerClass():
     studentName = request.args.get('student')
     className = request.args.get('className')
+    if not isLogin(studentName):
+        return "user "+studentName+"not logged in.", 400
     try:
         with db_session:
             c = Cls[className]
@@ -397,6 +431,8 @@ def registerClass():
 def removeRegistrationClass():
     studentName = request.args.get('student')
     className = request.args.get('className')
+    if not isLogin(studentName):
+        return "user "+studentName+"not logged in.", 400
     try:
         with db_session:
             c = Cls[className]
@@ -411,6 +447,8 @@ def removeRegistrationClass():
 @app.route('/getUnapprovedStudents')
 def getUnapprovedStudents():
     teacher = request.args.get('teacher')
+    if not isLogin(teacher):
+        return "user "+teacher+"not logged in.", 400
     ret = []
     id = 0
     try:
@@ -434,6 +472,8 @@ def approveStudentToClass():
     studentName = request.args.get('student')
     className = request.args.get('className')
     approve = request.args.get('approve')
+    if not isLogin(studentName):
+        return "user "+studentName+"not logged in.", 400
     try:
         with db_session:
             c = Cls[className]
@@ -454,6 +494,8 @@ def approveStudentToClass():
 def removeFromClass():
     studentName = request.args.get('student')
     className = request.args.get('className')
+    if not isLogin(studentName):
+        return "user "+studentName+"not logged in.", 400
     try:
         with db_session:
             c = Cls[className]
@@ -503,6 +545,9 @@ def openUnit():
     first = request.args.get('first')
     prev = request.args.get('prev')
 
+    if not isLogin(teacherName):
+        return "user "+str(teacherName)+"not logged in.", 400
+
     result = teacherOpenUnit(unitName, teacherName, className, template, Qnum, maxTime, subDate, first, prev,desc)
     print(result)
     return result
@@ -512,6 +557,9 @@ def openUnit():
 def getUnit():
     unitName = request.args.get('unitName')
     className = request.args.get('className')
+    teacherName = request.args.get('teacher')
+    if not isLogin(teacherName):
+        return "user "+str(teacherName)+"not logged in.", 400
     try:
         with db_session:
             retUnit = Unit[unitName, Cls[className]]
@@ -524,6 +572,9 @@ def getUnit():
 def deleteUnit():
     unitName = request.args.get('unitName')
     className = request.args.get('className')
+    teacherName = request.args.get('teacher')
+    if not isLogin(teacherName):
+        return "user "+str(teacherName)+"not logged in.", 400
     try:
         with db_session:
             Unit[unitName, Cls[className]].delete()
@@ -535,6 +586,10 @@ def deleteUnit():
 @app.route('/getClassUnits')
 def getClassUnits():
     className = request.args.get('className')
+    teacherName = request.args.get('teacher')
+    if not isLogin(teacherName):
+        return "user "+str(teacherName)+"not logged in.", 400
+    print("logged in!")
     try:
         with db_session:
             ret = []
@@ -548,6 +603,7 @@ def getClassUnits():
                 single_obj["primary"] = aUnit.name
                 single_obj["secondary"] = aUnit.desc
                 ret.append(single_obj)
+            print(ret)
             return ret
     except Exception as e:
         print(e)
@@ -557,6 +613,8 @@ def getClassUnits():
 @app.route('/getClassesStudent')
 def getClassesStudent():
     student = request.args.get('student')
+    if not isLogin(student):
+        return "user "+student+"not logged in.", 400
     try:
         with db_session:
             ret = []
@@ -577,6 +635,8 @@ def getClassesStudent():
 @app.route('/getClassesTeacher')
 def getClassesTeacher():
     teacher = request.args.get('teacher')
+    if not isLogin(teacher):
+        return "user "+teacher+"not logged in.", 400
     try:
         with db_session:
             ret = []
@@ -598,6 +658,9 @@ def getClassesTeacher():
 def getUnitDetails():
     className = request.args.get('className')
     unitName = request.args.get('unitName')
+    teacherName = request.args.get('teacher')
+    if not isLogin(teacherName):
+        return "user "+str(teacherName)+"not logged in.", 400
     try:
         with db_session:
             unit = Unit.get(name=unitName, cls=className)
@@ -865,6 +928,8 @@ def startUnit():
     className = request.args.get('className')
     unitName = request.args.get('unitName')
     username = request.args.get('username')
+    if not isLogin(username):
+        return "user "+username+"not logged in.", 400
 
     return addQuestions(className,unitName,username)
 
@@ -881,6 +946,8 @@ def getQuestion():
     unit_name = request.args.get('unitName')
     class_name = request.args.get('className')
     question_number = request.args.get('qnum')
+    if not isLogin(user):
+        return "user "+user+"not logged in.", 400
     ret = []
     try:
         with db_session:
@@ -916,6 +983,8 @@ def submitQuestion():
     class_name = request.args.get('className')
     question_number = request.args.get('qnum')
     ans_number = int(request.args.get('ans'))
+    if not isLogin(user):
+        return "user "+user+"not logged in.", 400
 
     try:
         with db_session:
