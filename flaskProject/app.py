@@ -803,11 +803,12 @@ def get_questions(unit):
     questions = list()
     for i in range(QUESTIONS_TO_GENERATE):
         question_type,function_types, params = parse_template(unit.template)
-        if('intersection' in question_type):
+        question =random.choice(question_type)
+        if('intersection' in question):
             q = generate_cut_axis(function_types, params)
-        elif ('minMaxPoints' in question_type):
+        elif ('minMaxPoints' in question):
             q = min_max_points(function_types, params)
-        elif('incDec' in question_type):
+        elif('incDec' in question):
             q =inc_dec(function_types, params)
         questions.append(q)
     return change_order(questions)
