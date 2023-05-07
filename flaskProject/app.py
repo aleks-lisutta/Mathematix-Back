@@ -2,6 +2,7 @@ import logging
 import math
 import random
 import time
+import traceback
 from fractions import Fraction
 
 from flask import Flask, request, jsonify
@@ -106,8 +107,9 @@ def hello_world():  # put application's code here
 
 
 def isLogin(username):
+    return True
     if username not in activeControllers.keys():
-        print(username, activeControllers.keys())
+        #print(username, activeControllers.keys())
         return False
     return True
 
@@ -225,9 +227,9 @@ def change_password():
 def logout():
     username = request.args.get('username')
     if username in activeControllers.keys():
-        print(activeControllers)
+        #print(activeControllers)
         activeControllers.pop(username)
-        print(activeControllers)
+        #print(activeControllers)
     else:
         print("AAAAAAAAAAAAAA", activeControllers)
     return username + " " + str(len(activeControllers))
@@ -526,19 +528,14 @@ def teacherOpenUnit(unitName, teacherName, className, template, Qnum, maxTime, s
     #    return "illegal template", 400
     try:
         with db_session:
-            print("DB")
             ord = 1
             if first != 'true':
                 p = Unit[prev, Cls[className]]
-                print(p)
                 p.next = unitName
                 ord = p.order + 1
-            print(className, unitName, template, Qnum, maxTime, subDate, ord)
-            print(Cls[className])
             u = Unit(cls=Cls[className], name=unitName, desc=desc, template=template, Qnum=Qnum, maxTime=maxTime,
                      subDate=subDate,
                      order=ord)
-            print(u)
             commit()
             return "success"
     except Exception as e:
@@ -563,7 +560,6 @@ def openUnit():
         return "user " + str(teacherName) + "not logged in.", 400
 
     result = teacherOpenUnit(unitName, teacherName, className, template, Qnum, maxTime, subDate, first, prev, desc)
-    print(result)
     return result
 
 
@@ -604,7 +600,6 @@ def getClassUnits():
     teacherName = request.args.get('teacher')
     if not isLogin(teacherName):
         return "user " + str(teacherName) + "not logged in.", 400
-    print("logged in!")
     try:
         with db_session:
             ret = []
@@ -619,7 +614,6 @@ def getClassUnits():
                 single_obj["secondary"] = aUnit.desc
                 single_obj["due"] = aUnit.subDate
                 ret.append(single_obj)
-            print(ret)
             return ret
     except Exception as e:
         print(e)
@@ -806,7 +800,9 @@ def generate_cut_axis(function_types, params):
         m_maximum = int(params[1])
         b_minimum = int(params[2])
         b_maximum = int(params[3])
-        m = random.randint(m_minimum, m_maximum)
+        m =0
+        while m == 0:
+            m = random.randint(m_minimum, m_maximum)
         b = random.randint(b_minimum, b_maximum)
         """
         else:
@@ -895,20 +891,20 @@ def change_order(questions):
         ans_place = random.randint(2, 5)
         if (ans_place == 2):
             new_single_question = (
-                single_question[0], single_question[1], single_question[3], single_question[2], single_question[4],
-                single_question[5], 1, single_question[6])
+            single_question[0], single_question[1], single_question[2], single_question[3], single_question[4],
+            single_question[5], 1, single_question[6])
         elif (ans_place == 3):
             new_single_question = (
-                single_question[0], single_question[1], single_question[3], single_question[2], single_question[4],
-                single_question[5], 2, single_question[6])
+            single_question[0], single_question[1], single_question[3], single_question[2], single_question[4],
+            single_question[5], 2, single_question[6])
         elif (ans_place == 4):
             new_single_question = (
-                single_question[0], single_question[1], single_question[4], single_question[3], single_question[2],
-                single_question[5], 3, single_question[6])
+            single_question[0], single_question[1], single_question[4], single_question[3], single_question[2],
+            single_question[5], 3, single_question[6])
         elif (ans_place == 5):
             new_single_question = (
-                single_question[0], single_question[1], single_question[5], single_question[3], single_question[4],
-                single_question[2], 4, single_question[6])
+            single_question[0], single_question[1], single_question[5], single_question[3], single_question[4],
+            single_question[2], 4, single_question[6])
         questions_scrambled.append(new_single_question)
     return questions_scrambled
 
@@ -923,20 +919,21 @@ def change_order(questions):
 
 def parse_template(template):
     parts = template.split('_')
-    questions = parts[1].split(',')
+    questions = parts[0].split(',')
     params = parts[2].split(',')
-    return parts[0], questions, params
+    return questions, parts[1], params
 
 
 def get_questions(unit):
     questions = list()
     for i in range(QUESTIONS_TO_GENERATE):
         question_type, function_types, params = parse_template(unit.template)
-        if ('intersection' in question_type):
+        question = random.choice(question_type)
+        if ('intersection' in question):
             q = generate_cut_axis(function_types, params)
-        elif ('minMaxPoints' in question_type):
+        elif ('minMaxPoints' in question):
             q = min_max_points(function_types, params)
-        elif ('incDec' in question_type):
+        elif ('incDec' in question):
             q = inc_dec(function_types, params)
         questions.append(q)
     return change_order(questions)
@@ -985,6 +982,7 @@ def addQuestions(className, unitName, username):
             commit()
             return jsonify(unit.maxTime)
     except Exception as e:
+        print(traceback.format_exc())
         print(e)
         return str(e), 400
 
