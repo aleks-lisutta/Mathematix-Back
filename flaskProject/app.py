@@ -105,7 +105,7 @@ def hello_world():  # put application's code here
 def isLogin(username):
     return True
     if username not in activeControllers.keys():
-        print(username, activeControllers.keys())
+        #print(username, activeControllers.keys())
         return False
     return True
 
@@ -223,9 +223,9 @@ def change_password():
 def logout():
     username = request.args.get('username')
     if username in activeControllers.keys():
-        print(activeControllers)
+        #print(activeControllers)
         activeControllers.pop(username)
-        print(activeControllers)
+        #print(activeControllers)
     else:
         print("AAAAAAAAAAAAAA", activeControllers)
     return username + " " + str(len(activeControllers))
@@ -524,19 +524,14 @@ def teacherOpenUnit(unitName, teacherName, className, template, Qnum, maxTime, s
     #    return "illegal template", 400
     try:
         with db_session:
-            print("DB")
             ord = 1
             if first != 'true':
                 p = Unit[prev, Cls[className]]
-                print(p)
                 p.next = unitName
                 ord = p.order + 1
-            print(className, unitName, template, Qnum, maxTime, subDate, ord)
-            print(Cls[className])
             u = Unit(cls=Cls[className], name=unitName, desc=desc, template=template, Qnum=Qnum, maxTime=maxTime,
                      subDate=subDate,
                      order=ord)
-            print(u)
             commit()
             return "success"
     except Exception as e:
@@ -561,7 +556,6 @@ def openUnit():
         return "user " + str(teacherName) + "not logged in.", 400
 
     result = teacherOpenUnit(unitName, teacherName, className, template, Qnum, maxTime, subDate, first, prev, desc)
-    print(result)
     return result
 
 
@@ -602,7 +596,6 @@ def getClassUnits():
     teacherName = request.args.get('teacher')
     if not isLogin(teacherName):
         return "user " + str(teacherName) + "not logged in.", 400
-    print("logged in!")
     try:
         with db_session:
             ret = []
@@ -617,7 +610,6 @@ def getClassUnits():
                 single_obj["secondary"] = aUnit.desc
                 single_obj["due"] = aUnit.subDate
                 ret.append(single_obj)
-            print(ret)
             return ret
     except Exception as e:
         print(e)
@@ -921,9 +913,9 @@ def change_order(questions):
 
 def parse_template(template):
     parts = template.split('_')
-    questions = parts[1].split(',')
+    questions = parts[0].split(',')
     params = parts[2].split(',')
-    return parts[0], questions, params
+    return questions, parts[1], params
 
 
 def get_questions(unit):
