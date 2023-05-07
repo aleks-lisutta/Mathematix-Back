@@ -9,6 +9,9 @@ from flask_pony import Pony
 from flask_cors import CORS
 from pony.orm import *
 from scipy.optimize import minimize_scalar
+import json
+
+
 import numpy as np
 from pony_database_facade import DatabaseFacade
 
@@ -88,6 +91,7 @@ class ActiveUnit(DB.Entity):
     consecQues = Required(int)
     quesAmount = Required(int)
     currentQuestion = Required(int)
+    totalCorrect = Required(int)
     PrimaryKey(unit, student, attempt)
 
 
@@ -840,19 +844,20 @@ def generate_cut_axis(function_types, params):
         b = random.randint(b_minimum, b_maximum)
         c = random.randint(c_minimum, c_maximum)
 
-        questions_string = "y=" + (((str(a) if a!=1 else "") + "x^2"+("+" if b > 0 else "")) if a != 0 else "") + \
-                           (((str(b) if b!=1 else "") + "x"+("+" if c > 0 else "")) if b != 0 else "") + \
+        questions_string = "y=" + (((str(a) if a != 1 else "") + "x^2" + ("+" if b > 0 else "")) if a != 0 else "") + \
+                           (((str(b) if b != 1 else "") + "x" + ("+" if c > 0 else "")) if b != 0 else "") + \
                            (str(c) if c != 0 else "")
 
-        ans1 = quadQuestion(a,b,c)
-        ans2 = quadQuestion(a,b+random.randint(1, 5),c+random.randint(1, 5))
-        ans3 = quadQuestion(a+random.randint(1, 5) if a>0 else a+random.randint(-5, -1),b+random.randint(1, 5),c)
-        ans4 = quadQuestion(a+random.randint(1, 5) if a>0 else a+random.randint(-5, -1),b,c)
-
+        ans1 = quadQuestion(a, b, c)
+        ans2 = quadQuestion(a, b + random.randint(1, 5), c + random.randint(1, 5))
+        ans3 = quadQuestion(a + random.randint(1, 5) if a > 0 else a + random.randint(-5, -1), b + random.randint(1, 5),
+                            c)
+        ans4 = quadQuestion(a + random.randint(1, 5) if a > 0 else a + random.randint(-5, -1), b, c)
 
     return (preamble, questions_string, ans1, ans2, ans3, ans4, 0)
 
-def quadQuestion(a,b,c):
+
+def quadQuestion(a, b, c):
     ans_y = (0, c)
     d = b ** 2 - 4 * a * c
     if d > 0:
@@ -866,6 +871,7 @@ def quadQuestion(a,b,c):
     else:
         ans_xf = ()
     return ans_y, ans_xf
+
 
 def find_min_max(a, b, c):
     # Define the function to find the minima and maxima of
@@ -952,7 +958,7 @@ def addQuestions(className, unitName, username):
 
             maxAttempt = get_max_unit(unit, user)
             ActiveUnit(inProgress=True, unit=unit, student=user, attempt=maxAttempt + 1, currentQuestion=0,
-                       consecQues=0, quesAmount=0)
+                       consecQues=0, quesAmount=0, totalCorrect=0)
             maxAttempt += 1
 
             active = ActiveUnit[unit, user, (maxAttempt)]
@@ -993,6 +999,60 @@ def startUnit():
         return "user " + username + "not logged in.", 400
 
     return addQuestions(className, unitName, username)
+
+
+def getActiveUnits(className, unitName, username): #this is for dab
+    try:
+        with db_session:
+            active_units = ActiveUnit.select(lambda au: au.unit.cls.name == className and
+                                                        au.unit.name == unitName and
+                                                        au.student.name == username)[:]
+            json_data = json.dumps(active_unit_dicts)
+            return jsonify(json_data)
+    except Exception as e:
+        print(e)
+        return str(e), 400
+
+def itemByName(lst, name):
+    for item in lst:
+        if item["name"] == name:
+            return item
+    return None
+
+def getAllActiveUnits(className, unitName):
+    try:
+        with db_session:
+            active_units = ActiveUnit.select(lambda au: au.unit.cls.name == className and au.unit.name == unitName)[:]
+            students = []
+            names = []
+            for au in active_units:
+                if au.student.name not in names:
+                    names.append(au.student.name)
+                    single_obj = dict()
+                    single_obj["name"] = au.student.name
+                    single_obj["correct"] = au.totalCorrect
+                    single_obj["bad"] = (au.currentQuestion - au.totalCorrect)
+                    students.append(single_obj)
+                else:
+                    item = itemByName(students, au.student.name)
+                    item["correct"] += au.totalCorrect
+                    item["bad"] += (au.currentQuestion - au.totalCorrect)
+            return jsonify(students)
+    except Exception as e:
+        print(e)
+        return str(e), 400
+
+
+
+@app.route('/getStats')
+def getStats():
+    className = request.args.get('className')
+    unitName = request.args.get('unitName')
+    username = request.args.get('username')
+    if not isLogin(username):
+        return "user " + username + "not logged in.", 400
+
+    return getAllActiveUnits(className, unitName)
 
 
 @app.route('/getQuestion')
@@ -1056,6 +1116,7 @@ def submitQuestion():
             if question.correct_ans == ans_number:
                 question.solved_correctly = True
                 activeUnit.consecQues += 1
+                activeUnit.totalCorrect += 1
 
             else:
                 question.solved_correctly = False
@@ -1064,7 +1125,7 @@ def submitQuestion():
 
             if (activeUnit.consecQues == int(unit.Qnum) or activeUnit.consecQues > int(unit.Qnum)):
                 activeUnit.inProgress = False
-                activeUnit.grade = 100
+                activeUnit.grade = activeUnit.totalCorrect / activeUnit.currentQuestion
                 return "answered enough consecutive questions", 205
 
             return "correct"
