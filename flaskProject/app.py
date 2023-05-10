@@ -1,9 +1,8 @@
 import logging
 import math
 import random
-import time
 import traceback
-from fractions import Fraction
+from datetime import datetime
 
 from flask import Flask, request, jsonify
 from flask_pony import Pony
@@ -93,6 +92,7 @@ class ActiveUnit(DB.Entity):
     quesAmount = Required(int)
     currentQuestion = Required(int)
     totalCorrect = Required(int)
+    lastTimeAnswered = Optional(str)
     PrimaryKey(unit, student, attempt)
 
 
@@ -800,10 +800,12 @@ def generate_cut_axis(function_types, params):
         m_maximum = int(params[1])
         b_minimum = int(params[2])
         b_maximum = int(params[3])
-        m =0
+        m = 0
+        b = 0
         while m == 0:
             m = random.randint(m_minimum, m_maximum)
-        b = random.randint(b_minimum, b_maximum)
+        while b == 0:
+            b = random.randint(b_minimum, b_maximum)
         """
         else:
             m = random.randint(minimum_range, maximum_range)
@@ -954,14 +956,14 @@ def addQuestions(className, unitName, username):
             user = User[username]
 
             maxAttempt = get_max_unit(unit, user)
-            ActiveUnit(inProgress=True, unit=unit, student=user, attempt=maxAttempt + 1, currentQuestion=0,
-                       consecQues=0, quesAmount=0, totalCorrect=0)
-            maxAttempt += 1
-
+            if(maxAttempt ==0 ):
+                ActiveUnit(inProgress=True, unit=unit, student=user, attempt=maxAttempt + 1, currentQuestion=0,
+                           consecQues=0, quesAmount=0, totalCorrect=0,grade=0)
+                maxAttempt += 1
             active = ActiveUnit[unit, user, (maxAttempt)]
 
             if (active.currentQuestion < active.quesAmount):
-                return "enough questions"
+                return jsonify(unit.maxTime)
             id = active.quesAmount + 1
             active.quesAmount += 10
             for single_question in get_questions(unit):
@@ -998,6 +1000,47 @@ def startUnit():
 
     return addQuestions(className, unitName, username)
 
+
+# now all this does is add 10 questions to the active unit
+@app.route('/individualStats')
+def individualStats():
+    className = request.args.get('className')
+    unitName = request.args.get('unitName')
+    teacherUsername = request.args.get('usernameT')
+    studentUsername =request.args.get('usernameS')
+    if not isLogin(teacherUsername):
+        return "user " + teacherUsername + "not logged in.", 400
+    try:
+        with db_session:
+            ret = dict()
+            unit = Unit[unitName, Cls[className]]
+            user = User[studentUsername]
+
+            active = ActiveUnit[unit, user, 1]
+            ans = list()
+            ans.append(active.totalCorrect)
+            ans.append((active.currentQuestion - active.totalCorrect))
+            ret["correctIncorrect"] = ans
+
+            entity_count = ActiveUnit.select(student=user).count()
+            last_five_entities = ActiveUnit.select(student=user).order_by(lambda e:e.lastTimeAnswered)[max(0, entity_count-2):]
+            last5grades=list()
+
+            for entity in last_five_entities:
+                last5grades.append(entity.grade)
+                print(entity.lastTimeAnswered)
+
+            last5grades.reverse()
+            if (len(last_five_entities)<5):
+                for i in range (5-len(last_five_entities)):
+                    last5grades.append(0)
+
+            ret["L5"]= last5grades
+
+            return jsonify(ret)
+    except Exception as e:
+        print(e)
+        return str(e), 400
 
 def getActiveUnits(className, unitName, username): #this is for dab
     try:
@@ -1101,12 +1144,15 @@ def submitQuestion():
 
     try:
         with db_session:
+            now = datetime.now()
+            date_string = now.strftime("%d.%m.%Y")
             retValue = 200
             unit = Unit[unit_name, Cls[class_name]]
             attempt = get_max_unit(unit, user)
             activeUnit = ActiveUnit[unit, user, attempt]
             question = Question[activeUnit, question_number]
             activeUnit.currentQuestion += 1
+            activeUnit.lastTimeAnswered = date_string
 
             if (not activeUnit.currentQuestion < activeUnit.quesAmount):
                 addQuestions(class_name, unit_name, user)
@@ -1115,15 +1161,16 @@ def submitQuestion():
                 question.solved_correctly = True
                 activeUnit.consecQues += 1
                 activeUnit.totalCorrect += 1
+                activeUnit.grade = int(((activeUnit.totalCorrect / activeUnit.currentQuestion)*100))
 
             else:
                 question.solved_correctly = False
                 activeUnit.consecQues = 0
+                activeUnit.grade = int(((activeUnit.totalCorrect / activeUnit.currentQuestion)*100))
                 return "incorrect", (200 + question.correct_ans)
 
             if (activeUnit.consecQues == int(unit.Qnum) or activeUnit.consecQues > int(unit.Qnum)):
                 activeUnit.inProgress = False
-                activeUnit.grade = activeUnit.totalCorrect / activeUnit.currentQuestion
                 return "answered enough consecutive questions", 205
 
             return "correct"
