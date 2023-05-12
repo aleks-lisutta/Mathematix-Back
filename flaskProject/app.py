@@ -1171,7 +1171,10 @@ def submitQuestion():
 
             if (activeUnit.consecQues == int(unit.Qnum) or activeUnit.consecQues > int(unit.Qnum)):
                 activeUnit.inProgress = False
-                return "answered enough consecutive questions", 205
+                if activeUnit.unit.next:
+                    return jsonify(activeUnit.unit.next), 206
+                else:
+                    return "answered enough consecutive questions", 205
 
             return "correct"
 
