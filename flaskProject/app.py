@@ -877,10 +877,10 @@ def generate_cut_axis(function_types, params):
                            (str(c) if c != 0 else "")
 
         ans1 = quadQuestion(a, b, c)
-        ans2 = quadQuestion(a, b + random.randint(1, 5), c + random.randint(1, 5))
-        ans3 = quadQuestion(a + random.randint(1, 5) if a > 0 else a + random.randint(-5, -1), b + random.randint(1, 5),
-                            c)
-        ans4 = quadQuestion(a + random.randint(1, 5) if a > 0 else a + random.randint(-5, -1), b, c)
+        ans2 = quadQuestion(-a, b + random.randint(1, 5), c + random.randint(1, 5))
+        ans3 = quadQuestion(a + random.randint(1, 10) if a > 0 else a + random.randint(-10, -1),
+                            b + random.randint(1, 5), c)
+        ans4 = quadQuestion(-a + random.randint(1, 10) if a > 0 else a + random.randint(-10, -1), b, c)
 
     return (preamble, questions_string, ans1, ans2, ans3, ans4, 0)
 
