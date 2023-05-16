@@ -223,7 +223,7 @@ def checkType(username):
     except Exception:
         return 0
 
-
+# 
 def loadController(username):
     type = checkType(username)
     if type == 1:
