@@ -11,17 +11,33 @@ from pony.orm import *
 from scipy.optimize import minimize_scalar
 import json
 
+import pony.orm as pony
+from flask import Response
+
+from urllib.parse import urlparse, parse_qs
+
 
 import numpy as np
 from pony_database_facade import DatabaseFacade
 
+# app = Flask(__name__)
+# app.logger.setLevel(logging.DEBUG)
+# CORS(app)
+# pony = Pony(app)
+
+# DB = pony.db
+# DB.bind(provider='sqlite', filename='dbtest', create_db=True)
+
+
 app = Flask(__name__)
 app.logger.setLevel(logging.DEBUG)
 CORS(app)
-pony = Pony(app)
+DB = pony.Database()
+Pony(app)
 
-DB = pony.db
-DB.bind(provider='sqlite', filename='dbtest', create_db=True)
+
+# Bind the database object to a provider and a filename
+DB.bind(provider='sqlite', filename='dbtest.sqlite', create_db=True)
 
 DATATYPE_SIZE = 3
 QUESTIONTYPE_SIZE = 4
@@ -113,6 +129,14 @@ def isLogin(username):
         return False
     return True
 
+@db_session
+def isTeacher(username):
+    user = User.get(name=username)
+    if user is None:
+        return False  # User does not exist
+    return user.type == 1
+
+
 
 def checkValidUsername(username):
     try:
@@ -161,6 +185,23 @@ def register():
     return ans
 
 
+def register_for_test(URL):
+    parsed_url = urlparse(URL)
+    query_params = parse_qs(parsed_url.query)
+    username = query_params.get('username', [None])[0]
+    password = query_params.get('password', [None])[0]
+    typ = query_params.get('typ', [None])[0]
+
+
+    if not checkValidUsername(username) or not checkValidPassword(password):
+        return Response("invalid username or password", status=400)
+
+    ans = makeUser(username, password, typ)
+    if ans is None:
+        return Response(f"{username} {password} {typ}")
+    return Response(ans, status=200)
+
+
 def checkUserPass(username, password):
     try:
         with db_session:
@@ -203,6 +244,19 @@ def login():
         return str(1) + " " + username
     return str(2) + " " + username
 
+def login_for_tests(URL):
+    parsed_url = urlparse(URL)
+    query_params = parse_qs(parsed_url.query)
+    username = query_params.get('username', [None])[0]
+    password = query_params.get('password', [None])[0]
+    if not checkUserPass(username, password):
+        return "invalid username or password", 400
+    loadController(username)
+    if isinstance(activeControllers[username], teacherCont):
+        return str(1) + " " + username
+    return str(2) + " " + username
+
+
 
 @app.route('/changePassword')
 def change_password():
@@ -234,22 +288,47 @@ def logout():
         print("AAAAAAAAAAAAAA", activeControllers)
     return username + " " + str(len(activeControllers))
 
+@app.route('/logout')
+def logout_for_tests(URL):
+    parsed_url = urlparse(URL)
+    query_params = parse_qs(parsed_url.query)
+    username = query_params.get('username', [None])[0]
+    if username in activeControllers.keys():
+        #print(activeControllers)
+        activeControllers.pop(username)
+        #print(activeControllers)
+    else:
+        print("AAAAAAAAAAAAAA", activeControllers)
+    return username + " " + str(len(activeControllers))
+
+
 
 @app.route('/openClass')
 def openClass():
     teacherName = request.args.get('teacher')
-    if not isLogin(teacherName):
-        return "user " + str(teacherName) + "not logged in.", 400
     className = request.args.get('className')
     try:
-        with db_session:
-            t = User[teacherName]
-            if t.type == 1:
-                Cls(name=className, teacher=User[teacherName])
-                return "successful", 200
-            return "failed wrong type", 400
+        return makeClass(teacherName, className)
     except Exception as e:
         return str(e), 400
+
+def openClass_for_tests(URL):
+    parsed_url = urlparse(URL)
+    query_params = parse_qs(parsed_url.query)
+    teacherName = query_params.get('username', [None])[0]
+    className = query_params.get('username', [None])[0]
+    try:
+        return makeClass(teacherName, className)
+    except Exception as e:
+        return str(e), 400
+
+def makeClass(teacherName, className):
+    with db_session:
+        t = User[teacherName]
+        if t.type == 1:
+            Cls(name=className, teacher=User[teacherName])
+            return "successful", 200
+        return "failed wrong type", 400
 
 
 @app.route('/removeClass')
@@ -270,6 +349,30 @@ def removeClass():
         return str(e), 400
 
 
+
+def removeClass_for_tests(URL):
+    parsed_url = urlparse(URL)
+    query_params = parse_qs(parsed_url.query)
+    teacherName = query_params.get('username', [None])[0]
+    className = query_params.get('className', [None])[0]
+    if not isLogin(teacherName):
+        return "user " + str(teacherName) + "not logged in.", 400
+    if not isTeacher(teacherName):
+        return "user " + str(teacherName) + " is not a teacher", 400
+    try:
+        with db_session:
+            t = User[teacherName]
+            c = Cls[className]
+            if c.teacher == t:
+                c.delete()
+                return "successful", 200
+            return "failed", 400
+    except Exception as e:
+        return str(e), 400
+
+
+
+
 @app.route('/editClass')
 def editClass():
     teacherName = request.args.get('teacher')
@@ -277,6 +380,30 @@ def editClass():
     newClassName = request.args.get('newClassName')
     if not isLogin(teacherName):
         return "user " + str(teacherName) + "not logged in.", 400
+    try:
+        with db_session:
+            t = User[teacherName]
+            c = Cls[className]
+            if c.teacher == t:
+                Cls(name=newClassName, teacher=User[teacherName], students=c.students, hasUnits=c.hasUnits)
+                c.delete()
+                return "successful", 200
+            return "failed", 400
+    except Exception as e:
+        return str(e), 400
+
+
+
+def editClass_for_tests(URL):
+    parsed_url = urlparse(URL)
+    query_params = parse_qs(parsed_url.query)
+    teacherName = query_params.get('username', [None])[0]
+    className = query_params.get('className', [None])[0]
+    newClassName = query_params.get('newClassName', [None])[0]
+    if not isLogin(teacherName):
+        return "user " + str(teacherName) + " not logged in.", 400
+    if not isTeacher(teacherName):
+        return "user " + str(teacherName) + " is not a teacher", 400
     try:
         with db_session:
             t = User[teacherName]
@@ -353,6 +480,40 @@ def editUnit():
     except Exception as e:
         return str(e), 400
 
+def editUnit_for_tests(URL):
+    parsed_url = urlparse(URL)
+    query_params = parse_qs(parsed_url.query)
+    unitName = query_params.get('unitName', [None])[0]
+    className = query_params.get('className', [None])[0]
+    newUnitName = query_params.get('newUnitName', [None])[0]
+    Qnum = query_params.get('Qnum', [None])[0]
+    maxTime = query_params.get('maxTime', [None])[0]
+    subDate = query_params.get('subDate', [None])[0]
+    newDesc = query_params.get('newDesc', [None])[0]
+    teacherName = query_params.get('teacherName', [None])[0]
+    if not isLogin(teacherName):
+        return "user " + str(teacherName) + " not logged in.", 400
+    if not isTeacher(teacherName):
+        return "user " + str(teacherName) + " is not a teacher", 400
+    try:
+        with db_session:
+            c = Cls[className]
+            u = Unit[unitName, c]
+            ins = u.instances
+            order = u.order
+            nex = u.next
+            temp = u.template
+            if newUnitName != unitName:
+                Unit(cls=c, name=newUnitName, desc=newDesc, template=temp, Qnum=Qnum, maxTime=maxTime,
+                     subDate=subDate,
+                     instances=ins, order=order, next=nex)
+                Unit[unitName, c].delete()
+            else:
+                u.set(desc=newDesc, Qnum=Qnum, maxTime=maxTime, subDate=subDate)
+            return {"message": "successful"}, 200
+    except Exception as e:
+        return str(e) + " not found", 400
+
 
 @app.route('/removeUnit')
 def removeUnit():
@@ -369,11 +530,57 @@ def removeUnit():
     except Exception as e:
         return str(e), 400
 
+def removeUnit_for_test(URL):
+    parsed_url = urlparse(URL)
+    query_params = parse_qs(parsed_url.query)
+    unitName = query_params.get('unitName', [None])[0]
+    className = query_params.get('className', [None])[0]
+    teacherName = query_params.get('teacherName', [None])[0]
+    if not isLogin(teacherName):
+        return "user " + str(teacherName) + "not logged in.", 400
+    try:
+        with db_session:
+            u = Unit[unitName, Cls[className]]
+            u.delete()
+            return "successful", 200
+    except Exception as e:
+        return str(e), 400
+
 
 @app.route('/getAllClassesNotIn')
 def getAllClassesNotIn():
     ret = []
     student = request.args.get('username')
+    if not isLogin(student):
+        return "user " + student + "not logged in.", 400
+    id = 0
+
+    try:
+        with db_session:
+            already_in = list()
+            for aUnit in Cls_User.select(user=student):
+                already_in.append(aUnit.cls.name)
+            for singleClass in Cls.select(lambda p: True):
+                if singleClass.name in already_in:
+                    continue
+                single_obj = dict()
+                id += 1
+                single_obj["id"] = id
+                single_obj["className"] = singleClass.name
+                single_obj["teacher"] = singleClass.teacher.name
+                ret.append(single_obj)
+
+        return jsonify(ret)
+    except Exception as e:
+        return str(e), 400
+
+
+@app.route('/getAllClassesNotIn')
+def getAllClassesNotIn_for_tests(URL):
+    ret = []
+    parsed_url = urlparse(URL)
+    query_params = parse_qs(parsed_url.query)
+    student = query_params.get('username', [None])[0]
     if not isLogin(student):
         return "user " + student + "not logged in.", 400
     id = 0
@@ -439,6 +646,26 @@ def registerClass():
         print(e)
         return str(e), 400
 
+@app.route('/registerClass')
+def registerClass_for_tests(URL):
+    parsed_url = urlparse(URL)
+    query_params = parse_qs(parsed_url.query)
+    studentName = query_params.get('studentName', [None])[0]
+    className = query_params.get('className', [None])[0]
+    if not isLogin(studentName):
+        return "user " + studentName + " not logged in.", 400
+    try:
+        with db_session:
+            c = Cls[className]
+            u = User[studentName]
+            c_u = Cls_User(cls=c, user=u, approved=False)
+
+            # db_session.commit()
+            return "successful", 200
+    except Exception as e:
+        print(e)
+        return str(e), 400
+
 
 @app.route('/removeRegistrationClass')
 def removeRegistrationClass():
@@ -481,7 +708,34 @@ def getUnapprovedStudents():
 
 
 @app.route('/approveStudentToClass')
-def approveStudentToClass():
+def approveStudentToClass(URL):
+    parsed_url = urlparse(URL)
+    query_params = parse_qs(parsed_url.query)
+    studentName = query_params.get('studentName', [None])[0]
+    teacherName = query_params.get('teacherName', [None])[0]
+    className = query_params.get('className', [None])[0]
+    approve = query_params.get('approve', [None])[0]
+
+
+    if not isLogin(teacherName):
+        return "user " + teacherName + "not logged in.", 400
+    try:
+        with db_session:
+            c = Cls[className]
+            u = User[studentName]
+            if approve == "True":
+                b = Cls_User[c, u]
+                Cls_User[c, u].approved = True
+                u.inClass.add(b)
+                c.students.add(b)
+            else:
+                Cls_User[c, u].delete()
+            return "successful", 200
+    except Exception as e:
+        print(e)
+        return str(e), 400
+
+def approveStudentToClass_tests(URL):
     teacherName = request.args.get('teacher')
     studentName = request.args.get('student')
     className = request.args.get('className')
@@ -540,7 +794,7 @@ def teacherOpenUnit(unitName, teacherName, className, template, Qnum, maxTime, s
             return "success"
     except Exception as e:
         print(e)
-        return str(e), 400, 400
+        return str(e), 400
 
 
 @app.route('/openUnit')
@@ -561,6 +815,7 @@ def openUnit():
 
     result = teacherOpenUnit(unitName, teacherName, className, template, Qnum, maxTime, subDate, first, prev, desc)
     return result
+
 
 
 @app.route('/getUnit')
@@ -594,12 +849,57 @@ def deleteUnit():
         return str(e), 400
 
 
+def deleteUnit(URL):
+    parsed_url = urlparse(URL)
+    query_params = parse_qs(parsed_url.query)
+    unitName = query_params.get('unitName', [None])[0]
+    className = query_params.get('className', [None])[0]
+    teacherName = query_params.get('teacherName', [None])[0]
+
+    if not isLogin(teacherName):
+        return "user " + str(teacherName) + "not logged in.", 400
+    try:
+        with db_session:
+            Unit[unitName, Cls[className]].delete()
+            commit()
+            return "deleted successfully"
+    except Exception as e:
+        return str(e), 400
+
+
 @app.route('/getClassUnits')
 def getClassUnits():
     className = request.args.get('className')
     teacherName = request.args.get('teacher')
     if not isLogin(teacherName):
         return "user " + str(teacherName) + "not logged in.", 400
+    try:
+        with db_session:
+            ret = []
+            id = 0
+            for aUnit in Cls[className].hasUnits:
+                if not aUnit.order == 1:
+                    continue
+                single_obj = dict()
+                id += 1
+                single_obj["id"] = id
+                single_obj["primary"] = aUnit.name
+                single_obj["secondary"] = aUnit.desc
+                single_obj["due"] = aUnit.subDate
+                ret.append(single_obj)
+            return ret
+    except Exception as e:
+        print(e)
+        return str(e), 400
+
+
+def getClassUnits(URL):
+    parsed_url = urlparse(URL)
+    query_params = parse_qs(parsed_url.query)
+    className = query_params.get('className', [None])[0]
+    teacherName = query_params.get('teacherName', [None])[0]
+    if not isLogin(teacherName):
+        return "user " + str(teacherName) + " not logged in.", 400
     try:
         with db_session:
             ret = []
@@ -670,6 +970,35 @@ def getUnitDetails():
     className = request.args.get('className')
     unitName = request.args.get('unitName')
     teacherName = request.args.get('teacher')
+    if not isLogin(teacherName):
+        return "user " + str(teacherName) + "not logged in.", 400
+    try:
+        with db_session:
+            unit = Unit.get(name=unitName, cls=className)
+            if unit:
+                return {
+                    "name": unit.name,
+                    "desc": unit.desc,
+                    "template": unit.template,
+                    "Qnum": unit.Qnum,
+                    "maxTime": unit.maxTime,
+                    "subDate": unit.subDate,
+                    "order": unit.order,
+                    "next": unit.next
+                }
+            else:
+                return ""
+    except Exception as e:
+        print(e)
+        return str(e), 400
+
+def getUnitDetails_for_tests(URL):
+    parsed_url = urlparse(URL)
+    query_params = parse_qs(parsed_url.query)
+    className = query_params.get('className', [None])[0]
+    unitName = query_params.get('unitName', [None])[0]
+    teacherName = query_params.get('teacherName', [None])[0]
+
     if not isLogin(teacherName):
         return "user " + str(teacherName) + "not logged in.", 400
     try:
