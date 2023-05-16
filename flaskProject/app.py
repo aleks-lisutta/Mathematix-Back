@@ -1066,10 +1066,25 @@ def getQuadratic(a_min, a_max, b_min, b_max, c_min, c_max):
 
 
 def inc_dec(function_types, params):
+    params = [int(p) for p in params]
+    print(params)
+    preamble = "מצא תחומי עלייה וירידה:"
     if ("linear" in function_types):
-        raise Exception("Cannot create a linear min,max question")
+        m=0
+        b=0
+        while m == 0:
+            m = random.randint(params[0], params[1])
+        while b == 0:
+            b = random.randint(params[2], params[3])
+        if (b == 0):
+            question_string = "y=" + str(m) + "x"
+        else:
+            question_string = ("y=" + str(m) + "x" + ('+' if b > 0 else "") + str(b))
+        result2 = " "+get_random_result(False, True)
+        result3 = " "+get_random_result(False, True)
+        return (preamble, question_string," תמיד עולה " if m>0 else " תמיד יורד ",result2, result3," תמיד עולה " if m<0 else " תמיד יורד ", 0)
     if ("quadratic" in function_types):
-        preamble = "מצא תחומי עלייה וירידה:"
+
         a, b, c = getQuadratic(params[0], params[1], params[2], params[3], params[4], params[5])
 
         ans = dict()
@@ -1098,7 +1113,22 @@ def min_max_points(function_types, params):
     minimum_range = MIN_RANGE
     maximum_range = MAX_RANGE
     if ("linear" in function_types):
-        raise Exception("Cannot create a linear min,max question")
+        preamble = "מצא את נקודת הקיצון:"
+        if ("linear" in function_types):
+            m = 0
+            b = 0
+            while m == 0:
+                m = random.randint(params[0], params[1])
+            while b == 0:
+                b = random.randint(params[2], params[3])
+            if (b == 0):
+                question_string = "y=" + str(m) + "x"
+            else:
+                question_string = ("y=" + str(m) + "x" + ('+' if b > 0 else "") + str(b))
+            result2 = get_random_result(False, False)
+            result3 = get_random_result(False, False)
+            result4 = get_random_result(False, False)
+            return (preamble, question_string, "אין נקודות קיצון", result2, result3, result4, 0)
     if ("quadratic" in function_types):
         preamble = "מצא את נקודת הקיצון:"
         a, b, c = getQuadratic(params[0], params[1], params[2], params[3], params[4], params[5])
@@ -1176,10 +1206,10 @@ def generate_cut_axis(function_types, params):
                            (str(c) if c != 0 else "")
 
         ans1 = quadQuestion(a, b, c)
-        ans2 = quadQuestion(a, b + random.randint(1, 5), c + random.randint(1, 5))
-        ans3 = quadQuestion(a + random.randint(1, 5) if a > 0 else a + random.randint(-5, -1), b + random.randint(1, 5),
-                            c)
-        ans4 = quadQuestion(a + random.randint(1, 5) if a > 0 else a + random.randint(-5, -1), b, c)
+        ans2 = quadQuestion(-a, b + random.randint(1, 5), c + random.randint(1, 5))
+        ans3 = quadQuestion(a + random.randint(1, 10) if a > 0 else a + random.randint(-10, -1),
+                            b + random.randint(1, 5), c)
+        ans4 = ((random.randint(1, 10), random.randint(1, 10)),((random.randint(1, 10), random.randint(1, 10)),(random.randint(1, 10), random.randint(1, 10))))
 
     return (preamble, questions_string, ans1, ans2, ans3, ans4, 0)
 
@@ -1500,7 +1530,10 @@ def submitQuestion():
 
             if (activeUnit.consecQues == int(unit.Qnum) or activeUnit.consecQues > int(unit.Qnum)):
                 activeUnit.inProgress = False
-                return "answered enough consecutive questions", 205
+                if activeUnit.unit.next:
+                    return jsonify(activeUnit.unit.next), 206
+                else:
+                    return "answered enough consecutive questions", 205
 
             return "correct"
 
