@@ -1183,7 +1183,7 @@ def generate_cut_axis(function_types, params):
         else:
             questions_string = ("y=" + str(m) + "x" + ('+' if b > 0 else "") + str(b))
 
-        ans1 = (ans_y, ans_xf)
+        ans1 = (ans_xf,ans_y)
         ans2 = get_random_result(True, False)
         ans3 = get_random_result(True, False)
         ans4 = get_random_result(True, False)
