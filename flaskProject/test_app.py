@@ -1137,7 +1137,7 @@ class MyTestCase(unittest.TestCase):
 
         # Call the approveStudentToClass function with the mocked URL
 
-        result = app.approveStudentToClass(url)
+        result = app.approveStudentToClass_tests(url)
 
         # Verify the result
         expected_result = "successful"

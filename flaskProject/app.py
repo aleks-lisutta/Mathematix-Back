@@ -708,13 +708,17 @@ def getUnapprovedStudents():
 
 
 @app.route('/approveStudentToClass')
-def approveStudentToClass(URL):
-    parsed_url = urlparse(URL)
+def approveStudentToClass():
+    """parsed_url = urlparse(URL)
     query_params = parse_qs(parsed_url.query)
     studentName = query_params.get('studentName', [None])[0]
     teacherName = query_params.get('teacherName', [None])[0]
     className = query_params.get('className', [None])[0]
-    approve = query_params.get('approve', [None])[0]
+    approve = query_params.get('approve', [None])[0]"""
+    teacherName = request.args.get('teacher')
+    studentName = request.args.get('student')
+    className = request.args.get('className')
+    approve = request.args.get('approve')
 
 
     if not isLogin(teacherName):
@@ -736,10 +740,12 @@ def approveStudentToClass(URL):
         return str(e), 400
 
 def approveStudentToClass_tests(URL):
-    teacherName = request.args.get('teacher')
-    studentName = request.args.get('student')
-    className = request.args.get('className')
-    approve = request.args.get('approve')
+    parsed_url = urlparse(URL)
+    query_params = parse_qs(parsed_url.query)
+    studentName = query_params.get('studentName', [None])[0]
+    teacherName = query_params.get('teacherName', [None])[0]
+    className = query_params.get('className', [None])[0]
+    approve = query_params.get('approve', [None])[0]
     if not isLogin(teacherName):
         return "user " + teacherName + "not logged in.", 400
     try:
@@ -1542,6 +1548,90 @@ def submitQuestion():
         print(e)
         return str(e), 400
 
+@app.route('/quitActiveUnit')
+def quitActiveUnit():
+    user = request.args.get('username')
+    unit_name = request.args.get('unitName')
+    class_name = request.args.get('className')
+    with db_session:
+        unit = Unit[unit_name, Cls[class_name]]
+        attempt = get_max_unit(unit, user)
+        activeUnit = ActiveUnit[unit, user, attempt]
+        activeUnit.inProgress = False
+    return 'done'
+
+
+def makePoly(p):
+
+    print([str(p[i])+'*(x**'+str(len(p)-i-1)+')' for i in range(len(p))])
+    return (lambda x:
+            sum([
+                p[i]*(x**(len(p)-i-1))
+                for i in range(len(p))
+            ]))
+
+def makeIntersections(poly, error=1e-3, xmin=-100, xmax=100, step=0.001):
+    intersections = []
+    x = xmin
+    unique_x_values = set()  # Set to store unique x-values
+    while x <= xmax:
+        fx = poly(x)
+        if abs(fx) < error:
+            if round(x,int(-math.log(error))-1) not in unique_x_values:  # Check if x-value is unique
+                intersections.append((round(x,int(-math.log(error))-1), 0))
+                unique_x_values.add(round(x,int(-math.log(error))-1))
+        x += step
+    # Add the intersection point at x = 0 if it is unique
+    if 0 not in unique_x_values:
+        intersections.append((0, poly(0)))
+    return intersections
+
+def makeExtremes(params):
+    # Calculate the derivative of the polynomial
+    derivative = [(len(params)-1-i)*params[i] for i in range(len(params)-1)]
+    print(derivative)
+    poly = makePoly(derivative)
+    org = makePoly(params)
+    extremes = makeIntersections(poly)
+    extremes = [(e[0], org(e[0])) for e in extremes if e[1]==0]
+    return extremes
+
+def makeIncDec(poly):
+    extremes = makeExtremes(poly)
+
+    # Sort the extreme points by their x-values
+    sorted_extremes = sorted(extremes, key=lambda x: x[0])
+
+    inc_ranges = []
+    dec_ranges = []
+
+    # Add the initial range
+    if sorted_extremes[0][0] != float('-inf'):
+        dec_ranges.append((float('-inf'), sorted_extremes[0][0]))
+
+    # Iterate over the sorted extreme points
+    for i in range(len(sorted_extremes) - 1):
+        x1, y1 = sorted_extremes[i]
+        x2, y2 = sorted_extremes[i + 1]
+
+        if y1 < y2:
+            inc_ranges.append((x1, x2))
+        elif y1 > y2:
+            dec_ranges.append((x1, x2))
+
+    # Add the final range
+    if sorted_extremes[-1][0] != float('inf'):
+        inc_ranges.append((sorted_extremes[-1][0], float('inf')))
+
+    return inc_ranges, dec_ranges
+
+#[random.randint(params[2*i], params[2*i+1]) for i in range(int(len(params)/2))]
+#a = makePoly([1, -10, 1])
+#print(a)
+#print(a(3))
+#print(makeIntersections(a))
+#print(makeExtremes([1, -10, 1]))
+#print(makeIncDec([1, -10, 1]))
 
 class userCont:
 
