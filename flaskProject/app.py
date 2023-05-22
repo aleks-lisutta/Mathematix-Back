@@ -3,7 +3,7 @@ import math
 import random
 import traceback
 from datetime import datetime
-
+from collections.abc import Iterable
 from flask import Flask, request, jsonify
 from flask_pony import Pony
 from flask_cors import CORS
@@ -15,7 +15,6 @@ import pony.orm as pony
 from flask import Response
 
 from urllib.parse import urlparse, parse_qs
-
 
 import numpy as np
 from pony_database_facade import DatabaseFacade
@@ -34,7 +33,6 @@ app.logger.setLevel(logging.DEBUG)
 CORS(app)
 DB = pony.Database()
 Pony(app)
-
 
 # Bind the database object to a provider and a filename
 DB.bind(provider='sqlite', filename='dbtest.sqlite', create_db=True)
@@ -125,9 +123,10 @@ def hello_world():  # put application's code here
 def isLogin(username):
     return True
     if username not in activeControllers.keys():
-        #print(username, activeControllers.keys())
+        # print(username, activeControllers.keys())
         return False
     return True
+
 
 @db_session
 def isTeacher(username):
@@ -135,7 +134,6 @@ def isTeacher(username):
     if user is None:
         return False  # User does not exist
     return user.type == 1
-
 
 
 def checkValidUsername(username):
@@ -192,7 +190,6 @@ def register_for_test(URL):
     password = query_params.get('password', [None])[0]
     typ = query_params.get('typ', [None])[0]
 
-
     if not checkValidUsername(username) or not checkValidPassword(password):
         return Response("invalid username or password", status=400)
 
@@ -223,7 +220,8 @@ def checkType(username):
     except Exception:
         return 0
 
-# 
+
+#
 def loadController(username):
     type = checkType(username)
     if type == 1:
@@ -244,6 +242,7 @@ def login():
         return str(1) + " " + username
     return str(2) + " " + username
 
+
 def login_for_tests(URL):
     parsed_url = urlparse(URL)
     query_params = parse_qs(parsed_url.query)
@@ -255,7 +254,6 @@ def login_for_tests(URL):
     if isinstance(activeControllers[username], teacherCont):
         return str(1) + " " + username
     return str(2) + " " + username
-
 
 
 @app.route('/changePassword')
@@ -281,12 +279,13 @@ def change_password():
 def logout():
     username = request.args.get('username')
     if username in activeControllers.keys():
-        #print(activeControllers)
+        # print(activeControllers)
         activeControllers.pop(username)
-        #print(activeControllers)
+        # print(activeControllers)
     else:
         print("AAAAAAAAAAAAAA", activeControllers)
     return username + " " + str(len(activeControllers))
+
 
 @app.route('/logout')
 def logout_for_tests(URL):
@@ -294,13 +293,12 @@ def logout_for_tests(URL):
     query_params = parse_qs(parsed_url.query)
     username = query_params.get('username', [None])[0]
     if username in activeControllers.keys():
-        #print(activeControllers)
+        # print(activeControllers)
         activeControllers.pop(username)
-        #print(activeControllers)
+        # print(activeControllers)
     else:
         print("AAAAAAAAAAAAAA", activeControllers)
     return username + " " + str(len(activeControllers))
-
 
 
 @app.route('/openClass')
@@ -312,6 +310,7 @@ def openClass():
     except Exception as e:
         return str(e), 400
 
+
 def openClass_for_tests(URL):
     parsed_url = urlparse(URL)
     query_params = parse_qs(parsed_url.query)
@@ -321,6 +320,7 @@ def openClass_for_tests(URL):
         return makeClass(teacherName, className)
     except Exception as e:
         return str(e), 400
+
 
 def makeClass(teacherName, className):
     with db_session:
@@ -349,7 +349,6 @@ def removeClass():
         return str(e), 400
 
 
-
 def removeClass_for_tests(URL):
     parsed_url = urlparse(URL)
     query_params = parse_qs(parsed_url.query)
@@ -371,8 +370,6 @@ def removeClass_for_tests(URL):
         return str(e), 400
 
 
-
-
 @app.route('/editClass')
 def editClass():
     teacherName = request.args.get('teacher')
@@ -391,7 +388,6 @@ def editClass():
             return "failed", 400
     except Exception as e:
         return str(e), 400
-
 
 
 def editClass_for_tests(URL):
@@ -480,6 +476,7 @@ def editUnit():
     except Exception as e:
         return str(e), 400
 
+
 def editUnit_for_tests(URL):
     parsed_url = urlparse(URL)
     query_params = parse_qs(parsed_url.query)
@@ -529,6 +526,7 @@ def removeUnit():
             return "successful", 200
     except Exception as e:
         return str(e), 400
+
 
 def removeUnit_for_test(URL):
     parsed_url = urlparse(URL)
@@ -646,6 +644,7 @@ def registerClass():
         print(e)
         return str(e), 400
 
+
 @app.route('/registerClass')
 def registerClass_for_tests(URL):
     parsed_url = urlparse(URL)
@@ -720,7 +719,6 @@ def approveStudentToClass():
     className = request.args.get('className')
     approve = request.args.get('approve')
 
-
     if not isLogin(teacherName):
         return "user " + teacherName + "not logged in.", 400
     try:
@@ -738,6 +736,7 @@ def approveStudentToClass():
     except Exception as e:
         print(e)
         return str(e), 400
+
 
 def approveStudentToClass_tests(URL):
     parsed_url = urlparse(URL)
@@ -821,7 +820,6 @@ def openUnit():
 
     result = teacherOpenUnit(unitName, teacherName, className, template, Qnum, maxTime, subDate, first, prev, desc)
     return result
-
 
 
 @app.route('/getUnit')
@@ -998,6 +996,7 @@ def getUnitDetails():
         print(e)
         return str(e), 400
 
+
 def getUnitDetails_for_tests(URL):
     parsed_url = urlparse(URL)
     query_params = parse_qs(parsed_url.query)
@@ -1075,8 +1074,8 @@ def inc_dec(function_types, params):
     params = [int(p) for p in params]
     preamble = "מצא תחומי עלייה וירידה:"
     if ("linear" in function_types):
-        m=0
-        b=0
+        m = 0
+        b = 0
         while m == 0:
             m = random.randint(params[0], params[1])
         while b == 0:
@@ -1085,9 +1084,10 @@ def inc_dec(function_types, params):
             question_string = "y=" + str(m) + "x"
         else:
             question_string = ("y=" + str(m) + "x" + ('+' if b > 0 else "") + str(b))
-        result2 = " "+get_random_result(False, True)
-        result3 = " "+get_random_result(False, True)
-        return (preamble, question_string," תמיד עולה " if m>0 else " תמיד יורד ",result2, result3," תמיד עולה " if m<0 else " תמיד יורד ", 0)
+        result2 = " " + get_random_result(False, True)
+        result3 = " " + get_random_result(False, True)
+        return (preamble, question_string, " תמיד עולה " if m > 0 else " תמיד יורד ", result2, result3,
+                " תמיד עולה " if m < 0 else " תמיד יורד ", 0)
     if ("quadratic" in function_types):
 
         a, b, c = getQuadratic(params[0], params[1], params[2], params[3], params[4], params[5])
@@ -1188,7 +1188,7 @@ def generate_cut_axis(function_types, params):
         else:
             questions_string = ("y=" + str(m) + "x" + ('+' if b > 0 else "") + str(b))
 
-        ans1 = (ans_xf,ans_y)
+        ans1 = (ans_xf, ans_y)
         ans2 = get_random_result(True, False)
         ans3 = get_random_result(True, False)
         ans4 = get_random_result(True, False)
@@ -1214,7 +1214,8 @@ def generate_cut_axis(function_types, params):
         ans2 = quadQuestion(-a, b + random.randint(1, 5), c + random.randint(1, 5))
         ans3 = quadQuestion(a + random.randint(1, 10) if a > 0 else a + random.randint(-10, -1),
                             b + random.randint(1, 5), c)
-        ans4 = ((random.randint(1, 10), random.randint(1, 10)),((random.randint(1, 10), random.randint(1, 10)),(random.randint(1, 10), random.randint(1, 10))))
+        ans4 = ((random.randint(1, 10), random.randint(1, 10)),
+                ((random.randint(1, 10), random.randint(1, 10)), (random.randint(1, 10), random.randint(1, 10))))
 
     return (preamble, questions_string, ans1, ans2, ans3, ans4, 0)
 
@@ -1257,20 +1258,20 @@ def change_order(questions):
         ans_place = random.randint(2, 5)
         if (ans_place == 2):
             new_single_question = (
-            single_question[0], single_question[1], single_question[2], single_question[3], single_question[4],
-            single_question[5], 1, single_question[6])
+                single_question[0], single_question[1], single_question[2], single_question[3], single_question[4],
+                single_question[5], 1, single_question[6])
         elif (ans_place == 3):
             new_single_question = (
-            single_question[0], single_question[1], single_question[3], single_question[2], single_question[4],
-            single_question[5], 2, single_question[6])
+                single_question[0], single_question[1], single_question[3], single_question[2], single_question[4],
+                single_question[5], 2, single_question[6])
         elif (ans_place == 4):
             new_single_question = (
-            single_question[0], single_question[1], single_question[4], single_question[3], single_question[2],
-            single_question[5], 3, single_question[6])
+                single_question[0], single_question[1], single_question[4], single_question[3], single_question[2],
+                single_question[5], 3, single_question[6])
         elif (ans_place == 5):
             new_single_question = (
-            single_question[0], single_question[1], single_question[5], single_question[3], single_question[4],
-            single_question[2], 4, single_question[6])
+                single_question[0], single_question[1], single_question[5], single_question[3], single_question[4],
+                single_question[2], 4, single_question[6])
         questions_scrambled.append(new_single_question)
     return questions_scrambled
 
@@ -1289,61 +1290,72 @@ def parse_template(template):
     params = parts[2].split(',')
     return questions, parts[1], params
 
+
 def get_questions(unit):
     questions = list()
     for i in range(QUESTIONS_TO_GENERATE):
         question_type, function_types, params = parse_template(unit.template)
         question = random.choice(question_type)
 
-        if function_types in ['linear','quadratic']:
+        if function_types in ['linear', 'quadratic']:
             print(params)
             p = [random.randint(int(params[2 * i]), int(params[2 * i + 1])) for i in range(int(len(params) / 2))]
             poly = makePoly(p)
             if ('intersection' in question):
-                points = makeIntersections(poly)
+                if not any(p):
+                    points = "כל הנקודות"
+                else:
+                    points = makeIntersections(poly)
                 preamble = "מצא את נקודות החיתוך עם הצירים:"
-                ans2 = [(random.randint(-100,100)/10,0.0) for i in range(len(p)-1)]
-                ans2.append((0.0,(random.randint(-100,100)/10)))
-                ans3 = [(random.randint(-100,100)/10,0.0) for i in range(len(p)-1)]
-                ans3.append((0.0,(random.randint(-100,100)/10)))
-                ans4 = [(random.randint(-100,100)/10,0.0) for i in range(len(p)-1)]
-                ans4.append((0.0,(random.randint(-100,100)/10)))
+                ans2 = [(random.randint(-1000, 1000) / 100, 0.0) for i in range(len(p) - 1)]
+                ans2.append((0.0, (random.randint(-1000, 1000) / 100)))
+                ans3 = [(random.randint(-1000, 1000) / 10, 0.0) for i in range(len(p) - 1)]
+                ans3.append((0.0, (random.randint(-1000, 1000) / 100)))
+                ans4 = [(random.randint(-1000, 1000) / 10, 0.0) for i in range(len(p) - 1)]
+                ans4.append((0.0, (random.randint(-1000, 1000) / 100)))
                 q = (preamble, polySrting(p), points, ans2, ans3, ans4, 0)
 
             elif ('minMaxPoints' in question):
                 points = makeExtremes(p)
-                if points==[]:
-                    points=[()]
-                ans2 = [(random.randint(-100,100)/10,(random.randint(-100,100)/10)) for i in range(len(p)-2)]
-                ans3 = [(random.randint(-100,100)/10,(random.randint(-100,100)/10)) for i in range(len(p)-2)]
-                ans4 = [(random.randint(-100,100)/10,(random.randint(-100,100)/10)) for i in range(len(p)-2)]
+                if points == []:
+                    points = [()]
+                ans2 = [(random.randint(-1000, 1000) / 100, (random.randint(-1000, 1000) / 100)) for i in
+                        range(len(p) - 2)]
+                ans3 = [(random.randint(-1000, 1000) / 100, (random.randint(-1000, 1000) / 100)) for i in
+                        range(len(p) - 2)]
+                ans4 = [(random.randint(-1000, 1000) / 100, (random.randint(-1000, 1000) / 100)) for i in
+                        range(len(p) - 2)]
                 preamble = "מצא את נקודת הקיצון:"
                 q = (preamble, polySrting(p), points, ans2, ans3, ans4, 0)
             elif ('incDec' in question):
                 inc, dec = makeIncDec(p)
                 preamble = "מצא תחומי עלייה וירידה:"
-                i1,d1 = randFillPair(len(inc)+len(dec))
-                result2 = (" עלייה: "+str(i1)+" ירידה: "+str(d1)+" ")
                 i1, d1 = randFillPair(len(inc) + len(dec))
-                result3 = (" עלייה: "+str(i1)+" ירידה: "+str(d1)+" ")
+                result2 = (" עלייה: " + str(i1) + " ירידה: " + str(d1) + " ")
                 i1, d1 = randFillPair(len(inc) + len(dec))
-                result4 = (" עלייה: "+str(i1)+" ירידה: "+str(d1)+" ")
-                q=(preamble, polySrting(p), (" עלייה: "+str(inc)+" ירידה: "+str(dec)+" "), result2, result3,
-                 result4, 0)
+                result3 = (" עלייה: " + str(i1) + " ירידה: " + str(d1) + " ")
+                i1, d1 = randFillPair(len(inc) + len(dec))
+                result4 = (" עלייה: " + str(i1) + " ירידה: " + str(d1) + " ")
+                q = (preamble, polySrting(p), (" עלייה: " + str(inc) + " ירידה: " + str(dec) + " "), result2, result3,
+                     result4, 0)
         questions.append(q)
     return change_order(questions)
 
+
 def randFillPair(n):
-    sort = sorted([random.randint(-100,100)/10 for _ in range(n)])
+    if n < 1:
+        n = 1
+    sort = sorted([random.randint(-100, 100) / 10 for _ in range(n)])
     dec, inc = [], []
     dec.append((float('-inf'), sort[0]))
-    for i,s in enumerate(sort[:-1]):
-        if i%2:
-            inc.append((s,sort[i + 1]))
+    for i, s in enumerate(sort[:-1]):
+        if i % 2:
+            inc.append((s, sort[i + 1]))
         else:
             dec.append((s, sort[i + 1]))
     inc.append((sort[-1], float('inf')))
     return inc, dec
+
 
 def get_questions2(unit):
     questions = list()
@@ -1375,14 +1387,14 @@ def addQuestions(className, unitName, username):
             user = User[username]
 
             maxAttempt = get_max_unit(unit, user)
-            if(maxAttempt ==0 ):
+            if (maxAttempt == 0):
                 ActiveUnit(inProgress=True, unit=unit, student=user, attempt=maxAttempt + 1, currentQuestion=0,
-                           consecQues=0, quesAmount=0, totalCorrect=0,grade=0)
+                           consecQues=0, quesAmount=0, totalCorrect=0, grade=0)
                 maxAttempt += 1
             active = ActiveUnit[unit, user, (maxAttempt)]
             if not active.inProgress:
-                active=ActiveUnit(inProgress=True, unit=unit, student=user, attempt=maxAttempt + 1, currentQuestion=0,
-                           consecQues=0, quesAmount=0, totalCorrect=0,grade=0)
+                active = ActiveUnit(inProgress=True, unit=unit, student=user, attempt=maxAttempt + 1, currentQuestion=0,
+                                    consecQues=0, quesAmount=0, totalCorrect=0, grade=0)
                 maxAttempt += 1
 
             if (active.currentQuestion < active.quesAmount):
@@ -1391,7 +1403,7 @@ def addQuestions(className, unitName, username):
             active.quesAmount += 10
             for single_question in get_questions(unit):
                 if (single_question[7] == 0):
-                    print("==============================================================\n",single_question)
+                    print("==============================================================\n", single_question)
                     Question(id=id, question_preamble=single_question[0], question=single_question[1],
                              correct_ans=single_question[6], answer1=str(single_question[2])[1:-1],
                              answer2=str(single_question[3])[1:-1], answer3=str(single_question[4])[1:-1],
@@ -1431,7 +1443,7 @@ def individualStats():
     className = request.args.get('className')
     unitName = request.args.get('unitName')
     teacherUsername = request.args.get('usernameT')
-    studentUsername =request.args.get('usernameS')
+    studentUsername = request.args.get('usernameS')
     if not isLogin(teacherUsername):
         return "user " + teacherUsername + "not logged in.", 400
     try:
@@ -1447,26 +1459,28 @@ def individualStats():
             ret["correctIncorrect"] = ans
 
             entity_count = ActiveUnit.select(student=user).count()
-            last_five_entities = ActiveUnit.select(student=user).order_by(lambda e:e.lastTimeAnswered)[max(0, entity_count-2):]
-            last5grades=list()
+            last_five_entities = ActiveUnit.select(student=user).order_by(lambda e: e.lastTimeAnswered)[
+                                 max(0, entity_count - 2):]
+            last5grades = list()
 
             for entity in last_five_entities:
                 last5grades.append(entity.grade)
                 print(entity.lastTimeAnswered)
 
             last5grades.reverse()
-            if (len(last_five_entities)<5):
-                for i in range (5-len(last_five_entities)):
+            if (len(last_five_entities) < 5):
+                for i in range(5 - len(last_five_entities)):
                     last5grades.append(0)
 
-            ret["L5"]= last5grades
+            ret["L5"] = last5grades
 
             return jsonify(ret)
     except Exception as e:
         print(e)
         return str(e), 400
 
-def getActiveUnits(className, unitName, username): #this is for dab
+
+def getActiveUnits(className, unitName, username):  # this is for dab
     try:
         with db_session:
             active_units = ActiveUnit.select(lambda au: au.unit.cls.name == className and
@@ -1478,11 +1492,13 @@ def getActiveUnits(className, unitName, username): #this is for dab
         print(e)
         return str(e), 400
 
+
 def itemByName(lst, name):
     for item in lst:
         if item["name"] == name:
             return item
     return None
+
 
 def getAllActiveUnits(className, unitName):
     try:
@@ -1506,7 +1522,6 @@ def getAllActiveUnits(className, unitName):
     except Exception as e:
         print(e)
         return str(e), 400
-
 
 
 @app.route('/getStats')
@@ -1585,12 +1600,12 @@ def submitQuestion():
                 question.solved_correctly = True
                 activeUnit.consecQues += 1
                 activeUnit.totalCorrect += 1
-                activeUnit.grade = int(((activeUnit.totalCorrect / activeUnit.currentQuestion)*100))
+                activeUnit.grade = int(((activeUnit.totalCorrect / activeUnit.currentQuestion) * 100))
 
             else:
                 question.solved_correctly = False
                 activeUnit.consecQues = 0
-                activeUnit.grade = int(((activeUnit.totalCorrect / activeUnit.currentQuestion)*100))
+                activeUnit.grade = int(((activeUnit.totalCorrect / activeUnit.currentQuestion) * 100))
                 return "incorrect", (200 + question.correct_ans)
 
             if (activeUnit.consecQues == int(unit.Qnum) or activeUnit.consecQues > int(unit.Qnum)):
@@ -1607,6 +1622,7 @@ def submitQuestion():
         print(e)
         return str(e), 400
 
+
 @app.route('/quitActiveUnit')
 def quitActiveUnit():
     user = request.args.get('username')
@@ -1621,65 +1637,160 @@ def quitActiveUnit():
 
 
 def makePoly(p):
-
-    print([str(p[i])+'*(x**'+str(len(p)-i-1)+')' for i in range(len(p))])
+    print([str(p[i]) + '*(x**' + str(len(p) - i - 1) + ')' for i in range(len(p))])
     return (lambda x:
             sum([
-                p[i]*(x**(len(p)-i-1))
+                p[i] * (x ** (len(p) - i - 1))
                 for i in range(len(p))
             ]))
 
-def makeIntersections(poly, error=1e-3, xmin=-100, xmax=100, step=0.0003):
+
+def regulaFalsi(f1: callable, f2: callable, x1: float, x2: float, a: float, b: float, maxerr=0.001) -> float:
+    max_amount_of_iteration_loop = 30
+    f_x1 = f1(x1) - f2(x1)
+    f_x2 = f1(x2) - f2(x2)
+    if f_x1 == f_x2:
+        return None
+    x = (x1 * f_x2 - x1 * f_x1) / (f_x2 - f_x1)
+
+    i = 0
+    while np.abs(f1(x) - f2(x)) >= maxerr and a - maxerr <= x <= b + maxerr and i < max_amount_of_iteration_loop:
+
+        x = (x1 * f_x2 - x2 * f_x1) / (f_x2 - f_x1)
+
+        if np.abs(f1(x) - f2(x)) <= maxerr:
+            break
+        elif f_x1 * (f1(x) - f2(x)) < 0:
+            x1 = x
+            f_x1 = f1(x1) - f2(x1)
+        else:
+            x2 = x
+            f_x2 = f1(x2) - f2(x2)
+        i += 1
+    if i > max_amount_of_iteration_loop or (x > b or x < a) or np.abs(f1(x) - f2(x)) > maxerr:
+        return None
+    return x
+
+
+def helper(f1: callable, f2: callable, a: float, b: float, maxerr=0.001) -> Iterable:
+    diff = b - a
+    int_of_diff = int(diff)
+
+    max_amount_of_points = int_of_diff * 50
+    x1 = a
+
+    # check this if
+    if max_amount_of_points == 0:
+        max_amount_of_points = 50
+
+    delta = (b - a) / max_amount_of_points
+    x2 = x1
+    f_x1 = f1(x1) - f2(x1)
+    f_x2 = f1(x2) - f2(x2)
+    while x1 <= b + maxerr and x2 <= b + maxerr:
+
+        if abs(f_x1) <= maxerr:
+            yield x1
+            x1 += delta
+            x2 = x1 + delta
+            f_x1 = f1(x1) - f2(x1)
+        elif abs(f_x2) <= maxerr:
+            yield x2
+            x1 = x2 + delta
+            x2 = x1 + delta
+            # x2 = x2 + delta
+            # x1 = x2 + delta
+            f_x1 = f1(x1) - f2(x1)
+        elif f_x1 * f_x2 < 0 and f_x1 != f_x2:
+            x = regulaFalsi(f1, f2, x1, x2, a, b, maxerr)
+            # print("here x="+str(x))
+            # print("f1(x)-f2(x)="+str(f1(x))+"-"+str(f2(x))+"="+str(f1(x)-f2(x)))
+            if x is not None:
+                yield x
+            x1 = x2 + delta
+            x2 = x2 + delta
+            f_x1 = f1(x1) - f2(x1)
+        else:
+            x1 = x2
+            x2 += delta
+
+        f_x2 = f1(x2) - f2(x2)
+
+
+def intersections(f1: callable, f2: callable, a: float, b: float, maxerr=0.001) -> Iterable:
+    iterator = helper(f1, f2, a, b, maxerr)
+    arr = np.array([])
+    for x in iterator:
+        if len(arr) == 0 or abs(x - arr[len(arr) - 1]) > maxerr:
+            arr = np.append(arr, [x])
+    return arr
+
+
+def makeIntersections(poly):
+    xs = intersections(poly, lambda x: 0, -100, 100)
+    points = [(float(round(i)), 0.0) for i in xs]
+    if 0 not in xs:
+        points.append((0.0, float(round(poly(0), 3))))
+    return points
+
+
+def makeIntersections2(poly, error=1e-3, xmin=-20, xmax=20, step=0.0003):
     intersections = []
     x = xmin
     unique_x_values = set()  # Set to store unique x-values
     while x <= xmax:
         fx = poly(x)
         if abs(fx) < error:
-            if round(x,int(-math.log(error,10)-1)) not in unique_x_values:  # Check if x-value is unique
-                print(round(x,int(-math.log(error,10)-1)),unique_x_values)
-                intersections.append((round(x,int(-math.log(error,10)-1)), 0))
-                unique_x_values.add(round(x,int(-math.log(error,10)-1)))
+            if round(x, int(-math.log(error, 10) - 1)) not in unique_x_values:  # Check if x-value is unique
+                print(round(x, int(-math.log(error, 10) - 1)), unique_x_values)
+                intersections.append((round(x, int(-math.log(error, 10) - 1)), 0))
+                unique_x_values.add(round(x, int(-math.log(error, 10) - 1)))
         x += step
     # Add the intersection point at x = 0 if it is unique
     if 0 not in unique_x_values:
         intersections.append((0, poly(0)))
     return intersections
 
+
 def makeDer(params):
-    return [(len(params)-1-i)*params[i] for i in range(len(params)-1)]
+    return [(len(params) - 1 - i) * params[i] for i in range(len(params) - 1)]
+
 
 def makeExtremes(params):
     # Calculate the derivative of the polynomial
+    if not any(params):
+        return "כל הנקודות"
     derivative = makeDer(params)
-    print('der',derivative)
+    print('der', derivative)
     poly = makePoly(derivative)
     org = makePoly(params)
     extremes = makeIntersections(poly)
     print("ex", extremes)
-    extremes = [(e[0], org(e[0])) for e in extremes if e[1]==0]
+    extremes = [(e[0], org(e[0])) for e in extremes if e[1] == 0]
     return extremes
 
+
 def makeIncDec(p):
+    if not any(p[:-1]):
+        return [], []
     extremes = makeExtremes(p)
     f = makePoly(makeDer(p))
     # Sort the extreme points by their x-values
     sorted_extremes = sorted(extremes, key=lambda x: x[0])
     f = makePoly(makeDer(p))
-    if len(sorted_extremes)==0:
+    if len(sorted_extremes) == 0:
 
-        if f(0)>0:
-            return [(float('-inf'),float('inf'))], []
+        if f(0) > 0:
+            return [(float('-inf'), float('inf'))], []
         else:
-            return [], [(float('-inf'),float('inf'))]
-    s = f(sorted_extremes[0][0]-1)
+            return [], [(float('-inf'), float('inf'))]
+    s = f(sorted_extremes[0][0] - 1)
 
     inc_ranges = []
     dec_ranges = []
 
-
     # Add the initial range
-    if s>0:
+    if s > 0:
         dec_ranges.append((float('-inf'), sorted_extremes[0][0]))
     else:
         inc_ranges.append((float('-inf'), sorted_extremes[0][0]))
@@ -1693,34 +1804,46 @@ def makeIncDec(p):
             inc_ranges.append((x1, x2))
         elif y1 > y2:
             dec_ranges.append((x1, x2))
-    s=f(sorted_extremes[-1][0]+1)
+    s = f(sorted_extremes[-1][0] + 1)
     # Add the final range
-    if s>0:
+    if s > 0:
         dec_ranges.append((sorted_extremes[-1][0], float('inf')))
     else:
         inc_ranges.append((sorted_extremes[-1][0], float('inf')))
 
-
     return inc_ranges, dec_ranges
+
+
 def polySrting(params):
-    ret ="y="
+    ret = "y="
     for i in range(len(params)):
-        if params[i]!=0:
+        if params[i] != 0:
             if ret != "y=":
                 ret += '+' if params[i] > 0 else ''
-            ret+=(str(params[i]) if params[i]!=1 else "")+(('x'+(('^'+str(len(params)-1-i)) if len(params)-1-i>1 else "")) if len(params)-1-i>0 else "")
+            ret += (
+                       str(params[i])
+                       if not (params[i] == 1 or params[i] == -1) or len(params) - 1 - i == 0
+                       else ("" if params[i] == 1 else "-")) \
+                   + (
+                       ('x' +
+                        (('^' + str(len(params) - 1 - i))
+                         if len(params) - 1 - i > 1
+                         else "")
+                        )
+                       if len(params) - 1 - i > 0
+                       else ""
+                   )
+    if ret == "y=":
+        return "y=0"
     return ret
 
 
-
-
-
-#[random.randint(params[2*i], params[2*i+1]) for i in range(int(len(params)/2))]
-#a = makePoly([3,0,-1])
-#print(a)
-#print(a(3))
-#print(makeIntersections(a))
-#print(makeExtremes([1, 0, -1,0]))
+# [random.randint(params[2*i], params[2*i+1]) for i in range(int(len(params)/2))]
+# a = makePoly([3,0,-1])
+# print(a)
+# print(a(3))
+# print(makeIntersections(a))
+# print(makeExtremes([1, 0, -1,0]))
 
 
 class userCont:
