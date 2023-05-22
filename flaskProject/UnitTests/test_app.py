@@ -13,7 +13,7 @@ STUDENT = 2
 class MyTestCase(unittest.TestCase):
     def setUp(self):
         DB = Database()
-        DB.bind(provider='sqlite', filename='dbtest.sqlite', create_db=True)
+        DB.bind(provider='sqlite', filename='..\\dbtest.sqlite', create_db=True)
 
         class User(DB.Entity):
             name = PrimaryKey(str)
@@ -98,7 +98,8 @@ class MyTestCase(unittest.TestCase):
     def tearDown(self):
         DB.disconnect()
         # Remove the test database file after testing
-        os.remove('dbtest.sqlite')
+        cwd =os.getcwd()
+        os.remove('\\'.join(cwd.split('\\'))+r'\dbtest.sqlite')
 
     def test_makeClass_successful(self):
         # Add test data

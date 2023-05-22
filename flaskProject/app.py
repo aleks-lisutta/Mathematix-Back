@@ -1322,7 +1322,7 @@ def get_questions(unit):
                 ans2 = [(random.randint(-10000, 10000) / 1000, (random.randint(-10000, 10000) / 1000)) for i in
                         range(max(len(p) - 2, 1))]
                 ans3 = [(random.randint(-10000, 10000) / 1000, (random.randint(-10000, 10000) / 1000)) for i in
-                        mrange(max(len(p) - 2, 1))]
+                        range(max(len(p) - 2, 1))]
                 ans4 = [(random.randint(-10000, 10000) / 1000, (random.randint(-10000, 10000) / 1000)) for i in
                         range(max(len(p) - 2, 1))]
                 preamble = "מצא את נקודת הקיצון:"
