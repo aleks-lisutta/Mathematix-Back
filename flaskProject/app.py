@@ -1726,9 +1726,11 @@ def intersections(f1: callable, f2: callable, a: float, b: float, maxerr=0.001) 
     return arr
 
 
+
+
 def makeIntersections(poly):
     xs = intersections(poly, lambda x: 0, -100, 100)
-    points = [(float(round(i)), 0.0) for i in xs]
+    points = [(float(round(i, 3)), 0.0) for i in xs]
     if 0 not in xs:
         points.append((0.0, float(round(poly(0), 3))))
     return points
