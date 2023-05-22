@@ -1307,24 +1307,24 @@ def get_questions(unit):
                 else:
                     points = makeIntersections(poly)
                 preamble = "מצא את נקודות החיתוך עם הצירים:"
-                ans2 = [(random.randint(-1000, 1000) / 100, 0.0) for i in range(len(p) - 1)]
-                ans2.append((0.0, (random.randint(-1000, 1000) / 100)))
-                ans3 = [(random.randint(-1000, 1000) / 10, 0.0) for i in range(len(p) - 1)]
-                ans3.append((0.0, (random.randint(-1000, 1000) / 100)))
-                ans4 = [(random.randint(-1000, 1000) / 10, 0.0) for i in range(len(p) - 1)]
-                ans4.append((0.0, (random.randint(-1000, 1000) / 100)))
+                ans2 = [(random.randint(-10000, 10000) / 1000, 0.0) for i in range(len(p) - 1)]
+                ans2.append((0.0, (random.randint(-10000, 10000) / 1000)))
+                ans3 = [(random.randint(-10000, 10000) / 1000, 0.0) for i in range(len(p) - 1)]
+                ans3.append((0.0, (random.randint(-10000, 10000) / 1000)))
+                ans4 = [(random.randint(-10000, 10000) / 1000, 0.0) for i in range(len(p) - 1)]
+                ans4.append((0.0, (random.randint(-10000, 10000) / 1000)))
                 q = (preamble, polySrting(p), points, ans2, ans3, ans4, 0)
 
             elif ('minMaxPoints' in question):
                 points = makeExtremes(p)
                 if points == []:
                     points = [()]
-                ans2 = [(random.randint(-1000, 1000) / 100, (random.randint(-1000, 1000) / 100)) for i in
-                        range(len(p) - 2)]
-                ans3 = [(random.randint(-1000, 1000) / 100, (random.randint(-1000, 1000) / 100)) for i in
-                        range(len(p) - 2)]
-                ans4 = [(random.randint(-1000, 1000) / 100, (random.randint(-1000, 1000) / 100)) for i in
-                        range(len(p) - 2)]
+                ans2 = [(random.randint(-10000, 10000) / 1000 / 100, (random.randint(-10000, 10000) / 1000)) for i in
+                        max(range(len(p) - 2),1)]
+                ans3 = [(random.randint(-10000, 10000) / 1000, (random.randint(-10000, 10000) / 1000)) for i in
+                        max(range(len(p) - 2),1)]
+                ans4 = [(random.randint(-10000, 10000) / 1000, (random.randint(-10000, 10000) / 1000)) for i in
+                        max(range(len(p) - 2),1)]
                 preamble = "מצא את נקודת הקיצון:"
                 q = (preamble, polySrting(p), points, ans2, ans3, ans4, 0)
             elif ('incDec' in question):
@@ -1345,7 +1345,7 @@ def get_questions(unit):
 def randFillPair(n):
     if n < 1:
         n = 1
-    sort = sorted([random.randint(-100, 100) / 10 for _ in range(n)])
+    sort = sorted([random.randint(-10000, 10000) / 1000 for _ in range(n)])
     dec, inc = [], []
     dec.append((float('-inf'), sort[0]))
     for i, s in enumerate(sort[:-1]):
@@ -1645,7 +1645,7 @@ def makePoly(p):
             ]))
 
 
-def regulaFalsi(f1: callable, f2: callable, x1: float, x2: float, a: float, b: float, maxerr=0.001) -> float:
+def regulaFalsi(f1: callable, f2: callable, x1: float, x2: float, a: float, b: float, maxerr=0.0001) -> float:
     max_amount_of_iteration_loop = 30
     f_x1 = f1(x1) - f2(x1)
     f_x2 = f1(x2) - f2(x2)
