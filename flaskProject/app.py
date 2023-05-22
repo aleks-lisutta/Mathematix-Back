@@ -1319,7 +1319,7 @@ def get_questions(unit):
                 points = makeExtremes(p)
                 if points == []:
                     points = [()]
-                ans2 = [(random.randint(-10000, 10000) / 1000 / 100, (random.randint(-10000, 10000) / 1000)) for i in
+                ans2 = [(random.randint(-10000, 10000) / 1000, (random.randint(-10000, 10000) / 1000)) for i in
                         range(max(len(p) - 2, 1))]
                 ans3 = [(random.randint(-10000, 10000) / 1000, (random.randint(-10000, 10000) / 1000)) for i in
                         mrange(max(len(p) - 2, 1))]
@@ -1768,7 +1768,7 @@ def makeExtremes(params):
     org = makePoly(params)
     extremes = makeIntersections(poly)
     print("ex", extremes)
-    extremes = [(e[0], org(e[0])) for e in extremes if e[1] == 0]
+    extremes = [(e[0], round(org(e[0]), 3)) for e in extremes if e[1] == 0]
     return extremes
 
 
