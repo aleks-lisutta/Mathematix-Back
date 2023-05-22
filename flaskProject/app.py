@@ -1320,11 +1320,11 @@ def get_questions(unit):
                 if points == []:
                     points = [()]
                 ans2 = [(random.randint(-10000, 10000) / 1000 / 100, (random.randint(-10000, 10000) / 1000)) for i in
-                        max(range(len(p) - 2),1)]
+                        range(max(len(p) - 2, 1))]
                 ans3 = [(random.randint(-10000, 10000) / 1000, (random.randint(-10000, 10000) / 1000)) for i in
-                        max(range(len(p) - 2),1)]
+                        mrange(max(len(p) - 2, 1))]
                 ans4 = [(random.randint(-10000, 10000) / 1000, (random.randint(-10000, 10000) / 1000)) for i in
-                        max(range(len(p) - 2),1)]
+                        range(max(len(p) - 2, 1))]
                 preamble = "מצא את נקודת הקיצון:"
                 q = (preamble, polySrting(p), points, ans2, ans3, ans4, 0)
             elif ('incDec' in question):
@@ -1336,7 +1336,7 @@ def get_questions(unit):
                 result3 = (" עלייה: " + str(i1) + " ירידה: " + str(d1) + " ")
                 i1, d1 = randFillPair(len(inc) + len(dec))
                 result4 = (" עלייה: " + str(i1) + " ירידה: " + str(d1) + " ")
-                q = (preamble, polySrting(p), (" עלייה: " + str(inc) + " ירידה: " + str(dec) + " "), result2, result3,
+                q = (preamble, polySrting(p), (" עלייה: " + str(dec) + " ירידה: " + str(inc) + " "), result2, result3,
                      result4, 0)
         questions.append(q)
     return change_order(questions)
@@ -1776,7 +1776,6 @@ def makeIncDec(p):
     if not any(p[:-1]):
         return [], []
     extremes = makeExtremes(p)
-    f = makePoly(makeDer(p))
     # Sort the extreme points by their x-values
     sorted_extremes = sorted(extremes, key=lambda x: x[0])
     f = makePoly(makeDer(p))
