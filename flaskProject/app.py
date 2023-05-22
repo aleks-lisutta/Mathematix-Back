@@ -1073,7 +1073,6 @@ def getQuadratic(a_min, a_max, b_min, b_max, c_min, c_max):
 
 def inc_dec(function_types, params):
     params = [int(p) for p in params]
-    print(params)
     preamble = "מצא תחומי עלייה וירידה:"
     if ("linear" in function_types):
         m=0
@@ -1102,7 +1101,7 @@ def inc_dec(function_types, params):
             ans["up"] = "x > " + str(result["minimum"]["x"])
             ans["down"] = "x < " + str(result["minimum"]["x"])
 
-        question_string = func_to_string(a, b, c)
+        question_string = polySrting([a, b, c])
 
         result2 = get_random_result(False, True)
         result3 = get_random_result(False, True)
@@ -1148,7 +1147,7 @@ def min_max_points(function_types, params):
         else:
             result1 = result["maximum"]
 
-        question_string = func_to_string(a, b, c)
+        question_string = polySrting([a, b, c])
 
     return (preamble, question_string, (result1["x"], result1["y"]), result2, result3, result4, 0)
 
@@ -1290,8 +1289,63 @@ def parse_template(template):
     params = parts[2].split(',')
     return questions, parts[1], params
 
-
 def get_questions(unit):
+    questions = list()
+    for i in range(QUESTIONS_TO_GENERATE):
+        question_type, function_types, params = parse_template(unit.template)
+        question = random.choice(question_type)
+
+        if function_types in ['linear','quadratic']:
+            print(params)
+            p = [random.randint(int(params[2 * i]), int(params[2 * i + 1])) for i in range(int(len(params) / 2))]
+            poly = makePoly(p)
+            if ('intersection' in question):
+                points = makeIntersections(poly)
+                preamble = "מצא את נקודות החיתוך עם הצירים:"
+                ans2 = [(random.randint(-100,100)/10,0.0) for i in range(len(p)-1)]
+                ans2.append((0.0,(random.randint(-100,100)/10)))
+                ans3 = [(random.randint(-100,100)/10,0.0) for i in range(len(p)-1)]
+                ans3.append((0.0,(random.randint(-100,100)/10)))
+                ans4 = [(random.randint(-100,100)/10,0.0) for i in range(len(p)-1)]
+                ans4.append((0.0,(random.randint(-100,100)/10)))
+                q = (preamble, polySrting(p), points, ans2, ans3, ans4, 0)
+
+            elif ('minMaxPoints' in question):
+                points = makeExtremes(p)
+                if points==[]:
+                    points=[()]
+                ans2 = [(random.randint(-100,100)/10,(random.randint(-100,100)/10)) for i in range(len(p)-2)]
+                ans3 = [(random.randint(-100,100)/10,(random.randint(-100,100)/10)) for i in range(len(p)-2)]
+                ans4 = [(random.randint(-100,100)/10,(random.randint(-100,100)/10)) for i in range(len(p)-2)]
+                preamble = "מצא את נקודת הקיצון:"
+                q = (preamble, polySrting(p), points, ans2, ans3, ans4, 0)
+            elif ('incDec' in question):
+                inc, dec = makeIncDec(p)
+                preamble = "מצא תחומי עלייה וירידה:"
+                i1,d1 = randFillPair(len(inc)+len(dec))
+                result2 = (" עלייה: "+str(i1)+" ירידה: "+str(d1)+" ")
+                i1, d1 = randFillPair(len(inc) + len(dec))
+                result3 = (" עלייה: "+str(i1)+" ירידה: "+str(d1)+" ")
+                i1, d1 = randFillPair(len(inc) + len(dec))
+                result4 = (" עלייה: "+str(i1)+" ירידה: "+str(d1)+" ")
+                q=(preamble, polySrting(p), (" עלייה: "+str(inc)+" ירידה: "+str(dec)+" "), result2, result3,
+                 result4, 0)
+        questions.append(q)
+    return change_order(questions)
+
+def randFillPair(n):
+    sort = sorted([random.randint(-100,100)/10 for _ in range(n)])
+    dec, inc = [], []
+    dec.append((float('-inf'), sort[0]))
+    for i,s in enumerate(sort[:-1]):
+        if i%2:
+            inc.append((s,sort[i + 1]))
+        else:
+            dec.append((s, sort[i + 1]))
+    inc.append((sort[-1], float('inf')))
+    return inc, dec
+
+def get_questions2(unit):
     questions = list()
     for i in range(QUESTIONS_TO_GENERATE):
         question_type, function_types, params = parse_template(unit.template)
@@ -1326,6 +1380,10 @@ def addQuestions(className, unitName, username):
                            consecQues=0, quesAmount=0, totalCorrect=0,grade=0)
                 maxAttempt += 1
             active = ActiveUnit[unit, user, (maxAttempt)]
+            if not active.inProgress:
+                active=ActiveUnit(inProgress=True, unit=unit, student=user, attempt=maxAttempt + 1, currentQuestion=0,
+                           consecQues=0, quesAmount=0, totalCorrect=0,grade=0)
+                maxAttempt += 1
 
             if (active.currentQuestion < active.quesAmount):
                 return jsonify(unit.maxTime)
@@ -1333,6 +1391,7 @@ def addQuestions(className, unitName, username):
             active.quesAmount += 10
             for single_question in get_questions(unit):
                 if (single_question[7] == 0):
+                    print("==============================================================\n",single_question)
                     Question(id=id, question_preamble=single_question[0], question=single_question[1],
                              correct_ans=single_question[6], answer1=str(single_question[2])[1:-1],
                              answer2=str(single_question[3])[1:-1], answer3=str(single_question[4])[1:-1],
@@ -1570,44 +1629,60 @@ def makePoly(p):
                 for i in range(len(p))
             ]))
 
-def makeIntersections(poly, error=1e-3, xmin=-100, xmax=100, step=0.001):
+def makeIntersections(poly, error=1e-3, xmin=-100, xmax=100, step=0.0003):
     intersections = []
     x = xmin
     unique_x_values = set()  # Set to store unique x-values
     while x <= xmax:
         fx = poly(x)
         if abs(fx) < error:
-            if round(x,int(-math.log(error))-1) not in unique_x_values:  # Check if x-value is unique
-                intersections.append((round(x,int(-math.log(error))-1), 0))
-                unique_x_values.add(round(x,int(-math.log(error))-1))
+            if round(x,int(-math.log(error,10)-1)) not in unique_x_values:  # Check if x-value is unique
+                print(round(x,int(-math.log(error,10)-1)),unique_x_values)
+                intersections.append((round(x,int(-math.log(error,10)-1)), 0))
+                unique_x_values.add(round(x,int(-math.log(error,10)-1)))
         x += step
     # Add the intersection point at x = 0 if it is unique
     if 0 not in unique_x_values:
         intersections.append((0, poly(0)))
     return intersections
 
+def makeDer(params):
+    return [(len(params)-1-i)*params[i] for i in range(len(params)-1)]
+
 def makeExtremes(params):
     # Calculate the derivative of the polynomial
-    derivative = [(len(params)-1-i)*params[i] for i in range(len(params)-1)]
-    print(derivative)
+    derivative = makeDer(params)
+    print('der',derivative)
     poly = makePoly(derivative)
     org = makePoly(params)
     extremes = makeIntersections(poly)
+    print("ex", extremes)
     extremes = [(e[0], org(e[0])) for e in extremes if e[1]==0]
     return extremes
 
-def makeIncDec(poly):
-    extremes = makeExtremes(poly)
-
+def makeIncDec(p):
+    extremes = makeExtremes(p)
+    f = makePoly(makeDer(p))
     # Sort the extreme points by their x-values
     sorted_extremes = sorted(extremes, key=lambda x: x[0])
+    f = makePoly(makeDer(p))
+    if len(sorted_extremes)==0:
+
+        if f(0)>0:
+            return [(float('-inf'),float('inf'))], []
+        else:
+            return [], [(float('-inf'),float('inf'))]
+    s = f(sorted_extremes[0][0]-1)
 
     inc_ranges = []
     dec_ranges = []
 
+
     # Add the initial range
-    if sorted_extremes[0][0] != float('-inf'):
+    if s>0:
         dec_ranges.append((float('-inf'), sorted_extremes[0][0]))
+    else:
+        inc_ranges.append((float('-inf'), sorted_extremes[0][0]))
 
     # Iterate over the sorted extreme points
     for i in range(len(sorted_extremes) - 1):
@@ -1618,20 +1693,35 @@ def makeIncDec(poly):
             inc_ranges.append((x1, x2))
         elif y1 > y2:
             dec_ranges.append((x1, x2))
-
+    s=f(sorted_extremes[-1][0]+1)
     # Add the final range
-    if sorted_extremes[-1][0] != float('inf'):
+    if s>0:
+        dec_ranges.append((sorted_extremes[-1][0], float('inf')))
+    else:
         inc_ranges.append((sorted_extremes[-1][0], float('inf')))
 
+
     return inc_ranges, dec_ranges
+def polySrting(params):
+    ret ="y="
+    for i in range(len(params)):
+        if params[i]!=0:
+            if ret != "y=":
+                ret += '+' if params[i] > 0 else ''
+            ret+=(str(params[i]) if params[i]!=1 else "")+(('x'+(('^'+str(len(params)-1-i)) if len(params)-1-i>1 else "")) if len(params)-1-i>0 else "")
+    return ret
+
+
+
+
 
 #[random.randint(params[2*i], params[2*i+1]) for i in range(int(len(params)/2))]
-#a = makePoly([1, -10, 1])
+#a = makePoly([3,0,-1])
 #print(a)
 #print(a(3))
 #print(makeIntersections(a))
-#print(makeExtremes([1, -10, 1]))
-#print(makeIncDec([1, -10, 1]))
+#print(makeExtremes([1, 0, -1,0]))
+
 
 class userCont:
 
