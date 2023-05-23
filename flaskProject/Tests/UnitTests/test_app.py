@@ -12,10 +12,8 @@ STUDENT = 2
 
 class MyTestCase(unittest.TestCase):
     def setUp(self):
-
         DB = Database()
-        DB.bind(provider='sqlite', filename='dbtest.sqlite', create_db=True)
-
+        DB.bind(provider='sqlite', filename='..\\..\\dbtest.sqlite', create_db=True)
 
         class User(DB.Entity):
             name = PrimaryKey(str)
@@ -76,30 +74,126 @@ class MyTestCase(unittest.TestCase):
             totalCorrect = Required(int)
             lastTimeAnswered = Optional(str)
             PrimaryKey(unit, student, attempt)
+
         # Generate mapping and create tables
 
         DB.generate_mapping(create_tables=True)
 
-        # Mock the User class
-        class UserMock(MagicMock):
-            name = "test_user"
-            password = "test_password"
-            type = 1
-            teaching = set()
-            inClass = set()
-            activeUnits = set()
-
-        # Create some initial data for testing
-        # self.teacher1 = app.makeUser("teacher1", "123", 1)  # teacher=1
-        # self.student1 = app.makeUser("student1", "123", 2)
-        # self.class1 = app.makeClass("teacher1", "class1")
-        # self.unit1 = app.teacherOpenUnit("unit1", "teacher1", "class1", "intersection_linear_5,5,5,5", 3, 0, "Tue Apr 04 2023 17:42:48 GMT 0300 (Israel Daylight Time)", True, None, "desc1")
-        # self.active_unit1 = app.addQuestions("class1", "unit1", "student1")
+    # def tearDown(self):
+    #     DB.disconnect()
+    #     # Remove the test database file after testing
+    #     cwd = os.getcwd()
+    #     os.remove('\\'.join(cwd.split('\\')) + r'\dbtest.sqlite')
 
     def tearDown(self):
         DB.disconnect()
         # Remove the test database file after testing
-        os.remove('dbtest.sqlite')
+        cwd = os.getcwd()
+        os.remove('\\'.join(cwd.split('\\')[:-2]) + r'\dbtest.sqlite')
+
+
+    def test_getAllActiveUnits_for_tests(self):
+        with db_session:
+            # Create test data
+            user1 = User(name="John", password="password", type=1)
+            user2 = User(name="Alice", password="password", type=1)
+            cls = Cls(name="Math1", teacher=user1)
+            unit = Unit(name="Math", cls=cls, desc="Basic algebra",
+                    template="template1", Qnum="10", maxTime="60", subDate="2023-05-31", order=1)
+            active_unit1 = app.ActiveUnit(inProgress=True, unit=unit, student=user1, attempt=1, currentQuestion=8,
+                                      consecQues=3, quesAmount=10, totalCorrect=5)
+            active_unit2 = app.ActiveUnit(inProgress=True, unit=unit, student=user2, attempt=1, currentQuestion=5,
+                                      consecQues=2, quesAmount=10, totalCorrect=3)
+            commit()
+
+            # Call the function under test
+            result = app.getAllActiveUnits_for_tests("Math1", "Math")
+
+        # Assert the result
+        expected_result = "Name: Alice, Correct: 3, Bad: 2\nName: John, Correct: 5, Bad: 3\n"
+        self.assertEqual(result, expected_result)
+
+
+
+    def test_get_max_unit_sucess(self):
+        with db_session:
+            # Create a test User and Unit
+            student1 = User(name="student1", password="123", type=2)
+            student2 = User(name="student2", password="123", type=2)
+            teacher = User(name="teacher1", password="123", type=1)
+            c = Cls(name="Math", teacher=teacher)
+            unit = Unit(
+                name="Math",
+                cls=c,
+                desc="Basic algebra",
+                template="template1",
+                Qnum="10",
+                maxTime="60",
+                subDate="2023-05-31",
+                order=1,
+                # next=None
+            )
+            app.ActiveUnit(unit=unit, student=student2, attempt=1, inProgress=False, consecQues=2, quesAmount=1,
+                       currentQuestion=5, totalCorrect=2)
+            # Create multiple ActiveUnit instances for the given User and Unit
+            active_units = [
+                app.ActiveUnit(unit=unit, student=student1, attempt=1, inProgress=False, consecQues=2, quesAmount=1,
+                           currentQuestion=5, totalCorrect=2),
+                app.ActiveUnit(unit=unit, student=student1, attempt=2, inProgress=False, consecQues=2, quesAmount=1,
+                           currentQuestion=5, totalCorrect=2),
+                app.ActiveUnit(unit=unit, student=student1, attempt=3, inProgress=False, consecQues=2, quesAmount=1,
+                           currentQuestion=5, totalCorrect=2),
+                app.ActiveUnit(unit=unit, student=student1, attempt=4, inProgress=False, consecQues=2, quesAmount=1,
+                               currentQuestion=5, totalCorrect=2)
+            ]
+            # Call the function under test
+            max_attempt = app.get_max_unit(unit, student1)
+
+            # Assert the expected result
+            self.assertEqual(max_attempt, 4)
+
+
+
+    def test_add_questions(self):
+        with db_session:
+            # Create test data
+            teacher = User(name="teacher1", password="123", type=1)
+            cls = Cls(name="Math1", teacher=teacher)
+            unit = Unit(name="Math", cls=cls, desc="Basic algebra", template="intersection_linear_-10,10,10,20",
+                        Qnum="10", maxTime="60", subDate="2023-05-31", order=1)
+            user = User(name="John", password="password", type=1)
+            active_unit = app.ActiveUnit(unit=unit, student=user, attempt=1, inProgress=False,
+                                     consecQues=2, quesAmount=10, currentQuestion=5, totalCorrect=2)
+
+            # Call the function under test
+            result = app.addQuestions_for_tests("Math1", "Math", "John")
+
+            # Check the result
+            self.assertEqual(result, "60")  # Assuming unit.maxTime is expected
+
+    def test_addQuestions_for_tests(self):
+        with db_session:
+            # Create test data
+            teacher = User(name="teacher1", password="123", type=1)
+            cls = Cls(name="Math1", teacher=teacher)
+            unit = Unit(name="Math", cls=cls, desc="Basic algebra", template="intersection_linear_-10,10,10,20",
+                        Qnum="10", maxTime="60", subDate="2023-05-31", order=1)
+            user1 = User(name="John", password="password", type=1)
+            user2 = User(name="Alice", password="password", type=1)
+            active_unit1 = app.ActiveUnit(unit=unit, student=user1, attempt=1, inProgress=False,
+                                      consecQues=2, quesAmount=10, currentQuestion=5, totalCorrect=2)
+            active_unit2 = app.ActiveUnit(unit=unit, student=user2, attempt=1, inProgress=False,
+                                      consecQues=5, quesAmount=10, currentQuestion=10, totalCorrect=7)
+
+
+
+            # Call the function under test
+            result1 = app.addQuestions_for_tests("Math1", "Math", "John")
+            result2 = app.addQuestions_for_tests("Math1", "Math", "Alice")
+
+            # Check the results
+            self.assertEqual(result1, "60")  # Assuming unit.maxTime is expected
+            self.assertEqual(result2, "60")  # Assuming unit.maxTime is expected
 
     def test_makeClass_successful(self):
         # Add test data
@@ -117,10 +211,20 @@ class MyTestCase(unittest.TestCase):
             self.assertIsNotNone(cls)
             self.assertEqual(cls.teacher.name, "John")
 
-            # Test that adding another class with the same name fails
-            with self.assertRaises(CacheIndexError):
-                Cls(name="Math", teacher=User.get(name="John"))
-                db_session.commit()
+
+    def test_makeClass_same_name_fail(self):
+        # Add test data
+        with db_session:
+            User(name="John", password="123", type=1)
+        # Test that makeClass returns "successful" and status code 200
+        with db_session:
+            response, status_code = app.makeClass("John", "Math")
+
+        # Try creating the same class again and assert that it raises an exception
+        with self.assertRaises(Exception):
+            app.makeClass("John", "Math")
+
+
 
     def test_makeClass_wrong_type(self):
         # Add test data
@@ -195,7 +299,6 @@ class MyTestCase(unittest.TestCase):
 
             self.assertEqual(response, "failed")
             self.assertEqual(status_code, 400)
-
 
 
     @patch('flaskProject.app.isLogin')
@@ -299,7 +402,7 @@ class MyTestCase(unittest.TestCase):
 
         # Test that editUnit returns "user <teacherName> not logged in." and status code 400
         url = "http://example.com?teacherName=John&unitName=Math&className=Math&Qnum=10&maxTime=60&subDate=2023-05-31&newUnitName=Calculus&newDesc=Advanced calculus"
-        response, status_code = app.editUnit_for_tests(url)
+        response, status_code =  app.editUnit_for_tests(url)
         self.assertEqual(response, "user John not logged in.")
         self.assertEqual(status_code, 400)
 
@@ -450,9 +553,16 @@ class MyTestCase(unittest.TestCase):
         result = app.checkValidPassword(" ")
         self.assertFalse(result)
 
-    def test_valid_registration(self):
-        response = app.register_for_test('/register?username=johndoe&password=secret123&typ=1')
-        self.assertEqual(response.status_code, 200, f"Registration failed with response {response}")
+    # def test_valid_registration(self):
+    #     response = app.register_for_test('/register?username=johndoe&password=secret123&typ=1')
+    #     self.assertEqual(response.status_code, 200, f"Registration failed with response {response}")
+
+    # def test_valid_registrationn(self):
+    #     appRoute.run(HttpRequest.POST("/register")
+    #                  .withEntity(MediaTypes.APPLICATION_JSON.toContentType(),
+    #                              "{\"username\": \"johndoe\", \"password\": secret123, \"typ\": \"1\"}"))
+    #     response = app.register()
+    #     self.assertEqual(response.status_code, 200)
 
     def test_invalid_username(self):
         # existing teacher with same username
@@ -834,8 +944,6 @@ class MyTestCase(unittest.TestCase):
 
 
     def test_teacherOpenUnit_exception_class_not_found(self):
-
-
         unitName = "Unit 2"
         teacherName = "John Doe"
         className = "Math Class"
@@ -1113,11 +1221,8 @@ class MyTestCase(unittest.TestCase):
             # Create necessary entities (User, Cls, Cls_User) for testing
             user = User(name='John', password='password', type=1)
             cls = Cls(name='Math', teacher=user)
-
-
-        # Call the registerClass_for_tests function with the mocked URL
-
-        result = app.registerClass_for_tests(url)
+            # Call the registerClass_for_tests function with the mocked URL
+            result = app.registerClass_for_tests(url)
 
         # Verify the result
         self.assertEqual(result, ('successful', 200))
@@ -1143,16 +1248,41 @@ class MyTestCase(unittest.TestCase):
         expected_result = "successful"
         self.assertEqual(result, ('successful', 200))
 
-    # def test_acceptance1(self):
-    #     # Set up a test database with a sample class and a nonexistent unit
-    #     with db_session:
-    #         teacher = User(name="teacher1", password="password", type=1)
-    #         cls = Cls(name="English Class", teacher=teacher)
-    #         app.teacherOpenUnit("unit1", "John Doe", "English Class", "template", 4, "60", "2023-05-31", True, "", "desc")
-    #         student1 = app.makeUser("student1", "123", 2)
-    #         app.registerClass_for_tests('http://example.com/registerClass?studentName=student1&className=English Class')
-    #         app.approveStudentToClass_tests('http://example.com/approveStudentToClass?studentName=student1&teacher=teacher1&className=English Class&approve=True')
-    #         commit()
+    def test_acceptance1(self):
+        # Set up a test database with a sample class and a nonexistent unit
+        with db_session:
+            teacher = User(name="teacher1", password="password", type=1)
+            cls = Cls(name="English Class", teacher=teacher)
+            app.teacherOpenUnit("unit1", "teacher1", "English Class", "template", 4, "60", "2023-05-31", True, "", "desc")
+            student1 = app.makeUser("student1", "123", 2)
+            app.registerClass_buisness("student1", "English Class")
+            # app.approveStudentToClass_tests('http://example.com/approveStudentToClass?studentName=student1&teacher=teacher1&className=English Class&approve=True')
+
+
+    # def create_app(self):
+    #     app.config['TESTING'] = True
+    #     return app
+    #
+    # def test_get_all_classes_not_in(self):
+    #     # Mock the request arguments
+    #     with self.client:
+    #         response = self.client.get('/getAllClassesNotIn?username=test_user')
+    #         data = response.json
+    #
+    #         # Assert the response code and data
+    #         self.assertEqual(response.status_code, 200)
+    #         self.assertIsInstance(data, list)
+    #         self.assertEqual(len(data), 2)  # assuming there are 2 classes not already in
+    #
+    #         first_class = data[0]
+    #         self.assertEqual(first_class['id'], 1)
+    #         self.assertEqual(first_class['className'], 'Class1')
+    #         self.assertEqual(first_class['teacher'], 'Teacher1')
+    #
+    #         second_class = data[1]
+    #         self.assertEqual(second_class['id'], 2)
+    #         self.assertEqual(second_class['className'], 'Class2')
+    #         self.assertEqual(second_class['teacher'], 'Teacher2')
 
 
 

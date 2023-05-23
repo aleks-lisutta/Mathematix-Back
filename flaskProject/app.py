@@ -3,8 +3,9 @@ import math
 import random
 import traceback
 from datetime import datetime
+from unittest.mock import MagicMock
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, make_response
 from flask_pony import Pony
 from flask_cors import CORS
 from pony.orm import *
@@ -15,6 +16,7 @@ import pony.orm as pony
 from flask import Response
 
 from urllib.parse import urlparse, parse_qs
+from flask import jsonify
 
 
 import numpy as np
@@ -23,11 +25,11 @@ from pony_database_facade import DatabaseFacade
 # app = Flask(__name__)
 # app.logger.setLevel(logging.DEBUG)
 # CORS(app)
-# pony = Pony(app)
-#
-# DB = pony.db
+# p = Pony(app)
+# print(p)
+# DB = p.db
+# print(DB)
 # DB.bind(provider='sqlite', filename='dbtest', create_db=True)
-
 
 app = Flask(__name__)
 app.logger.setLevel(logging.DEBUG)
@@ -35,14 +37,24 @@ CORS(app)
 DB = pony.Database()
 Pony(app)
 
-# Bind the database object to a provider and a filename
+
+# app = Flask(__name__)
+# app.logger.setLevel(logging.DEBUG)
+# CORS(app)
+# DB = pony.Database()
+# Pony(app)
+#
+# # Bind the database object to a provider and a filename
 DB.bind(provider='sqlite', filename='dbtest.sqlite', create_db=True)
+
+
 
 DATATYPE_SIZE = 3
 QUESTIONTYPE_SIZE = 4
 QUESTIONS_TO_GENERATE = 10
 MAX_RANGE = 10
 MIN_RANGE = -10
+
 
 
 class User(DB.Entity):
@@ -156,7 +168,7 @@ def makeUser(username, password, type):
             commit()
             return None
     except Exception as e:
-        return str(e), 400
+        return str(e)
 
 
 def is_legal_template(template: str):
@@ -169,7 +181,6 @@ def is_legal_template(template: str):
     # todo check the tuples are correct
     return True
 
-
 @app.route('/register')
 def register():
     username = request.args.get('username')
@@ -177,28 +188,15 @@ def register():
     typ = request.args.get('typ')
     if not checkValidUsername(username) or not checkValidPassword(password):
         return "invalid username or password", 400
+    return register_buisness(username, password, typ)
 
+
+def register_buisness(username, password, typ):
     ans = makeUser(username, password, typ)
     if ans is None:
-        return username + " " + password + " " + typ
-    return ans
+        return username + " " + password + " " + typ, 200
+    return ans, 400
 
-
-def register_for_test(URL):
-    parsed_url = urlparse(URL)
-    query_params = parse_qs(parsed_url.query)
-    username = query_params.get('username', [None])[0]
-    password = query_params.get('password', [None])[0]
-    typ = query_params.get('typ', [None])[0]
-
-
-    if not checkValidUsername(username) or not checkValidPassword(password):
-        return Response("invalid username or password", status=400)
-
-    ans = makeUser(username, password, typ)
-    if ans is None:
-        return Response(f"{username} {password} {typ}")
-    return Response(ans, status=200)
 
 
 def checkUserPass(username, password):
@@ -238,18 +236,9 @@ def login():
     password = request.args.get('password')
     if not checkUserPass(username, password):
         return "invalid username or password", 400
-    loadController(username)
-    if isinstance(activeControllers[username], teacherCont):
-        return str(1) + " " + username
-    return str(2) + " " + username
+    return login_buisness(username, password)
 
-def login_for_tests(URL):
-    parsed_url = urlparse(URL)
-    query_params = parse_qs(parsed_url.query)
-    username = query_params.get('username', [None])[0]
-    password = query_params.get('password', [None])[0]
-    if not checkUserPass(username, password):
-        return "invalid username or password", 400
+def login_buisness(username, password):
     loadController(username)
     if isinstance(activeControllers[username], teacherCont):
         return str(1) + " " + username
@@ -279,19 +268,10 @@ def change_password():
 @app.route('/logout')
 def logout():
     username = request.args.get('username')
-    if username in activeControllers.keys():
-        #print(activeControllers)
-        activeControllers.pop(username)
-        #print(activeControllers)
-    else:
-        print("AAAAAAAAAAAAAA", activeControllers)
-    return username + " " + str(len(activeControllers))
+    return logout_buisness(username)
 
 @app.route('/logout')
-def logout_for_tests(URL):
-    parsed_url = urlparse(URL)
-    query_params = parse_qs(parsed_url.query)
-    username = query_params.get('username', [None])[0]
+def logout_buisness(username):
     if username in activeControllers.keys():
         #print(activeControllers)
         activeControllers.pop(username)
@@ -309,6 +289,12 @@ def openClass():
         return "user " + str(teacherName) + "not logged in.", 400
     className = request.args.get('className')
     try:
+        return openClass_buisness(teacherName, className)
+    except Exception as e:
+        return str(e), 400
+
+def openClass_buisness(teacherName, className):
+    try:
         with db_session:
             t = User[teacherName]
             if t.type == 1:
@@ -318,15 +304,8 @@ def openClass():
     except Exception as e:
         return str(e), 400
 
-def openClass_for_tests(URL):
-    parsed_url = urlparse(URL)
-    query_params = parse_qs(parsed_url.query)
-    teacherName = query_params.get('username', [None])[0]
-    className = query_params.get('username', [None])[0]
-    try:
-        return makeClass(teacherName, className)
-    except Exception as e:
-        return str(e), 400
+
+
 
 def makeClass(teacherName, className):
     with db_session:
@@ -344,25 +323,13 @@ def removeClass():
     if not isLogin(teacherName):
         return "user " + str(teacherName) + "not logged in.", 400
     try:
-        with db_session:
-            t = User[teacherName]
-            c = Cls[className]
-            if c.teacher == t:
-                c.delete()
-                return "successful", 200
-            return "failed", 400
+        return removeClass_buisness(teacherName, className)
     except Exception as e:
         return str(e), 400
 
 
 
-def removeClass_for_tests(URL):
-    parsed_url = urlparse(URL)
-    query_params = parse_qs(parsed_url.query)
-    teacherName = query_params.get('username', [None])[0]
-    className = query_params.get('className', [None])[0]
-    if not isLogin(teacherName):
-        return "user " + str(teacherName) + "not logged in.", 400
+def removeClass_buisness(teacherName, className):
     if not isTeacher(teacherName):
         return "user " + str(teacherName) + " is not a teacher", 400
     try:
@@ -375,6 +342,7 @@ def removeClass_for_tests(URL):
             return "failed", 400
     except Exception as e:
         return str(e), 400
+
 
 
 
@@ -387,27 +355,13 @@ def editClass():
     if not isLogin(teacherName):
         return "user " + str(teacherName) + "not logged in.", 400
     try:
-        with db_session:
-            t = User[teacherName]
-            c = Cls[className]
-            if c.teacher == t:
-                Cls(name=newClassName, teacher=User[teacherName], students=c.students, hasUnits=c.hasUnits)
-                c.delete()
-                return "successful", 200
-            return "failed", 400
+        return editClass_buisness(teacherName, className, newClassName)
     except Exception as e:
         return str(e), 400
 
 
 
-def editClass_for_tests(URL):
-    parsed_url = urlparse(URL)
-    query_params = parse_qs(parsed_url.query)
-    teacherName = query_params.get('username', [None])[0]
-    className = query_params.get('className', [None])[0]
-    newClassName = query_params.get('newClassName', [None])[0]
-    if not isLogin(teacherName):
-        return "user " + str(teacherName) + " not logged in.", 400
+def editClass_buisness(teacherName, className, newClassName):
     if not isTeacher(teacherName):
         return "user " + str(teacherName) + " is not a teacher", 400
     try:
@@ -421,6 +375,7 @@ def editClass_for_tests(URL):
             return "failed", 400
     except Exception as e:
         return str(e), 400
+
 
 
 @app.route('/quickEditUnit')
@@ -469,38 +424,11 @@ def editUnit():
     if not isLogin(teacherName):
         return "user " + str(teacherName) + "not logged in.", 400
     try:
-        with db_session:
-            c = Cls[className]
-            u = Unit[unitName, c]
-            ins = u.instances  #
-            order = u.order
-            nex = u.next
-            temp = u.template
-            if newUnitName != unitName:
-                Unit(cls=c, name=newUnitName, desc=newDesc, template=temp, Qnum=Qnum, maxTime=maxTime, subDate=subDate,
-                     instances=ins, order=order, next=nex)
-                Unit[unitName, c].delete()
-            else:
-                u.set(desc=newDesc, Qnum=Qnum, maxTime=maxTime, subDate=subDate)
-            return {"message": "successful"}
+        return editUnit_buisness(unitName, className, newUnitName, Qnum, maxTime, subDate, newDesc, teacherName)
     except Exception as e:
         return str(e), 400
 
-def editUnit_for_tests(URL):
-    parsed_url = urlparse(URL)
-    query_params = parse_qs(parsed_url.query)
-    unitName = query_params.get('unitName', [None])[0]
-    className = query_params.get('className', [None])[0]
-    newUnitName = query_params.get('newUnitName', [None])[0]
-    Qnum = query_params.get('Qnum', [None])[0]
-    maxTime = query_params.get('maxTime', [None])[0]
-    subDate = query_params.get('subDate', [None])[0]
-    newDesc = query_params.get('newDesc', [None])[0]
-    teacherName = query_params.get('teacherName', [None])[0]
-    if not isLogin(teacherName):
-        return "user " + str(teacherName) + " not logged in.", 400
-    if not isTeacher(teacherName):
-        return "user " + str(teacherName) + " is not a teacher", 400
+def editUnit_buisness(unitName, className, newUnitName, Qnum, maxTime, subDate, newDesc, teacherName):
     try:
         with db_session:
             c = Cls[className]
@@ -509,16 +437,18 @@ def editUnit_for_tests(URL):
             order = u.order
             nex = u.next
             temp = u.template
+            if not isTeacher(teacherName):
+                return "user " + str(teacherName) + " is not a teacher", 400
             if newUnitName != unitName:
-                Unit(cls=c, name=newUnitName, desc=newDesc, template=temp, Qnum=Qnum, maxTime=maxTime,
-                     subDate=subDate,
+                Unit(cls=c, name=newUnitName, desc=newDesc, template=temp, Qnum=Qnum, maxTime=maxTime, subDate=subDate,
                      instances=ins, order=order, next=nex)
                 Unit[unitName, c].delete()
             else:
                 u.set(desc=newDesc, Qnum=Qnum, maxTime=maxTime, subDate=subDate)
             return {"message": "successful"}, 200
     except Exception as e:
-        return str(e) + " not found", 400
+        print(e)
+        return str(e), 400
 
 
 @app.route('/removeUnit')
@@ -529,27 +459,18 @@ def removeUnit():
     if not isLogin(teacherName):
         return "user " + str(teacherName) + "not logged in.", 400
     try:
-        with db_session:
-            u = Unit[unitName, Cls[className]]
-            u.delete()
-            return "successful", 200
+        return removeUnit_buisness(unitName, className, teacherName)
     except Exception as e:
         return str(e), 400
 
-def removeUnit_for_test(URL):
-    parsed_url = urlparse(URL)
-    query_params = parse_qs(parsed_url.query)
-    unitName = query_params.get('unitName', [None])[0]
-    className = query_params.get('className', [None])[0]
-    teacherName = query_params.get('teacherName', [None])[0]
-    if not isLogin(teacherName):
-        return "user " + str(teacherName) + "not logged in.", 400
+def removeUnit_buisness(unitName, className, teacherName):
     try:
         with db_session:
             u = Unit[unitName, Cls[className]]
             u.delete()
             return "successful", 200
     except Exception as e:
+        print(e)
         return str(e), 400
 
 
@@ -641,36 +562,20 @@ def registerClass():
     if not isLogin(studentName):
         return "user " + studentName + "not logged in.", 400
     try:
-        with db_session:
-            c = Cls[className]
-            u = User[studentName]
-            c_u = Cls_User(cls=c, user=u, approved=False)
-
-            commit()
-            return "successful", 200
+        return registerClass_buisness(studentName, className)
     except Exception as e:
         print(e)
         return str(e), 400
 
 @app.route('/registerClass')
-def registerClass_for_tests(URL):
-    parsed_url = urlparse(URL)
-    query_params = parse_qs(parsed_url.query)
-    studentName = query_params.get('studentName', [None])[0]
-    className = query_params.get('className', [None])[0]
-    if not isLogin(studentName):
-        return "user " + studentName + " not logged in.", 400
-    try:
-        with db_session:
-            c = Cls[className]
-            u = User[studentName]
-            c_u = Cls_User(cls=c, user=u, approved=False)
+def registerClass_buisness(studentName, className):
+    with db_session:
+        c = Cls[className]
+        u = User[studentName]
+        c_u = Cls_User(cls=c, user=u, approved=False)
 
-            # db_session.commit()
-            return "successful", 200
-    except Exception as e:
-        print(e)
-        return str(e), 400
+        commit()
+        return "successful", 200
 
 
 @app.route('/removeRegistrationClass')
@@ -680,14 +585,17 @@ def removeRegistrationClass():
     if not isLogin(studentName):
         return "user " + studentName + "not logged in.", 400
     try:
-        with db_session:
-            c = Cls[className]
-            u = User[studentName]
-            Cls_User.select(cls=c, user=u).delete(bulk=True)
-            commit()
-            return "successful", 200
+        return removeRegistrationClass_Buisness(studentName, className)
     except Exception as e:
         return str(e), 400
+
+def removeRegistrationClass_Buisness(studentName, className):
+    with db_session:
+        c = Cls[className]
+        u = User[studentName]
+        Cls_User.select(cls=c, user=u).delete(bulk=True)
+        commit()
+        return "successful", 200
 
 
 @app.route('/getUnapprovedStudents')
@@ -714,40 +622,21 @@ def getUnapprovedStudents():
 
 
 @app.route('/approveStudentToClass')
-def approveStudentToClass(URL):
-    parsed_url = urlparse(URL)
-    query_params = parse_qs(parsed_url.query)
-    studentName = query_params.get('studentName', [None])[0]
-    teacherName = query_params.get('teacherName', [None])[0]
-    className = query_params.get('className', [None])[0]
-    approve = query_params.get('approve', [None])[0]
-
-
-    if not isLogin(teacherName):
-        return "user " + teacherName + "not logged in.", 400
-    try:
-        with db_session:
-            c = Cls[className]
-            u = User[studentName]
-            if approve == "True":
-                b = Cls_User[c, u]
-                Cls_User[c, u].approved = True
-                u.inClass.add(b)
-                c.students.add(b)
-            else:
-                Cls_User[c, u].delete()
-            return "successful", 200
-    except Exception as e:
-        print(e)
-        return str(e), 400
-
-def approveStudentToClass_tests(URL):
+def approveStudentToClass():
     teacherName = request.args.get('teacher')
     studentName = request.args.get('student')
     className = request.args.get('className')
     approve = request.args.get('approve')
+
     if not isLogin(teacherName):
         return "user " + teacherName + "not logged in.", 400
+    try:
+        return approveStudentToClass_buisness(teacherName, studentName, className, approve)
+    except Exception as e:
+        print(e)
+        return str(e), 400
+
+def approveStudentToClass_buisness(teacherName, studentName, className, approve):
     try:
         with db_session:
             c = Cls[className]
@@ -847,23 +736,12 @@ def deleteUnit():
     if not isLogin(teacherName):
         return "user " + str(teacherName) + "not logged in.", 400
     try:
-        with db_session:
-            Unit[unitName, Cls[className]].delete()
-            commit()
-            return "deleted successfully"
+        return deleteUnit_buisness(unitName, className, teacherName)
     except Exception as e:
         return str(e), 400
 
 
-def deleteUnit(URL):
-    parsed_url = urlparse(URL)
-    query_params = parse_qs(parsed_url.query)
-    unitName = query_params.get('unitName', [None])[0]
-    className = query_params.get('className', [None])[0]
-    teacherName = query_params.get('teacherName', [None])[0]
-
-    if not isLogin(teacherName):
-        return "user " + str(teacherName) + "not logged in.", 400
+def deleteUnit_buisness(unitName, className, teacherName):
     try:
         with db_session:
             Unit[unitName, Cls[className]].delete()
@@ -880,32 +758,13 @@ def getClassUnits():
     if not isLogin(teacherName):
         return "user " + str(teacherName) + "not logged in.", 400
     try:
-        with db_session:
-            ret = []
-            id = 0
-            for aUnit in Cls[className].hasUnits:
-                if not aUnit.order == 1:
-                    continue
-                single_obj = dict()
-                id += 1
-                single_obj["id"] = id
-                single_obj["primary"] = aUnit.name
-                single_obj["secondary"] = aUnit.desc
-                single_obj["due"] = aUnit.subDate
-                ret.append(single_obj)
-            return ret
+        return getClassUnits_buisness(className, teacherName)
     except Exception as e:
         print(e)
         return str(e), 400
 
 
-def getClassUnits(URL):
-    parsed_url = urlparse(URL)
-    query_params = parse_qs(parsed_url.query)
-    className = query_params.get('className', [None])[0]
-    teacherName = query_params.get('teacherName', [None])[0]
-    if not isLogin(teacherName):
-        return "user " + str(teacherName) + " not logged in.", 400
+def getClassUnits_buisness(className, teacherName):
     try:
         with db_session:
             ret = []
@@ -979,53 +838,27 @@ def getUnitDetails():
     if not isLogin(teacherName):
         return "user " + str(teacherName) + "not logged in.", 400
     try:
-        with db_session:
-            unit = Unit.get(name=unitName, cls=className)
-            if unit:
-                return {
-                    "name": unit.name,
-                    "desc": unit.desc,
-                    "template": unit.template,
-                    "Qnum": unit.Qnum,
-                    "maxTime": unit.maxTime,
-                    "subDate": unit.subDate,
-                    "order": unit.order,
-                    "next": unit.next
-                }
-            else:
-                return ""
+        return getUnitDetails_buisness(className, unitName, teacherName)
     except Exception as e:
         print(e)
         return str(e), 400
 
-def getUnitDetails_for_tests(URL):
-    parsed_url = urlparse(URL)
-    query_params = parse_qs(parsed_url.query)
-    className = query_params.get('className', [None])[0]
-    unitName = query_params.get('unitName', [None])[0]
-    teacherName = query_params.get('teacherName', [None])[0]
-
-    if not isLogin(teacherName):
-        return "user " + str(teacherName) + "not logged in.", 400
-    try:
-        with db_session:
-            unit = Unit.get(name=unitName, cls=className)
-            if unit:
-                return {
-                    "name": unit.name,
-                    "desc": unit.desc,
-                    "template": unit.template,
-                    "Qnum": unit.Qnum,
-                    "maxTime": unit.maxTime,
-                    "subDate": unit.subDate,
-                    "order": unit.order,
-                    "next": unit.next
-                }
-            else:
-                return ""
-    except Exception as e:
-        print(e)
-        return str(e), 400
+def getUnitDetails_buisness(className, unitName, teacherName):
+    with db_session:
+        unit = Unit.get(name=unitName, cls=className)
+        if unit:
+            return {
+                "name": unit.name,
+                "desc": unit.desc,
+                "template": unit.template,
+                "Qnum": unit.Qnum,
+                "maxTime": unit.maxTime,
+                "subDate": unit.subDate,
+                "order": unit.order,
+                "next": unit.next
+            }
+        else:
+            return ""
 
 
 def get_random_result(zero, up_down):
@@ -1282,6 +1115,7 @@ def change_order(questions):
 # template - [0] = type of function
 #           [1] = type of question
 #           [2] = list of variable restrictions
+# template=intersection_linear_-10,10,10,20
 
 # question format - [0] = preamble
 #                - [1] = question string
@@ -1357,6 +1191,47 @@ def addQuestions(className, unitName, username):
         return str(e), 400
 
 
+def addQuestions_for_tests(className, unitName, username):
+    try:
+        with db_session:
+            unit = Unit[unitName, Cls[className]]
+            user = User[username]
+
+            maxAttempt = get_max_unit(unit, user)
+            if maxAttempt == 0:
+                ActiveUnit(inProgress=True, unit=unit, student=user, attempt=maxAttempt + 1, currentQuestion=0,
+                           consecQues=0, quesAmount=0, totalCorrect=0, grade=0)
+                maxAttempt += 1
+            active = ActiveUnit[unit, user, maxAttempt]
+
+            if active.currentQuestion < active.quesAmount:
+                return str(unit.maxTime)
+
+            id = active.quesAmount + 1
+            active.quesAmount += 10
+            for single_question in get_questions(unit):
+                if single_question[7] == 0:
+                    Question(id=id, question_preamble=single_question[0], question=single_question[1],
+                             correct_ans=single_question[6], answer1=str(single_question[2])[1:-1],
+                             answer2=str(single_question[3])[1:-1], answer3=str(single_question[4])[1:-1],
+                             answer4=str(single_question[5])[1:-1],
+                             active_unit=ActiveUnit[unit, user, maxAttempt])
+                else:
+                    Question(id=id, question_preamble=single_question[0], question=single_question[1],
+                             correct_ans=single_question[6], answer1=str(single_question[2]),
+                             answer2=str(single_question[3]), answer3=str(single_question[4]),
+                             answer4=str(single_question[5]),
+                             active_unit=ActiveUnit[unit, user, maxAttempt])
+                id += 1
+
+            commit()
+            return str(unit.maxTime)
+    except Exception as e:
+        print(traceback.format_exc())
+        print(e)
+        return str(e), 400
+
+
 # now all this does is add 10 questions to the active unit
 @app.route('/startUnit')
 def startUnit():
@@ -1365,6 +1240,9 @@ def startUnit():
     username = request.args.get('username')
     if not isLogin(username):
         return "user " + username + "not logged in.", 400
+    return startUnit(className, unitName, username)
+
+def startUnit(className, unitName, username):
 
     return addQuestions(className, unitName, username)
 
@@ -1452,6 +1330,33 @@ def getAllActiveUnits(className, unitName):
         print(e)
         return str(e), 400
 
+
+def getAllActiveUnits_for_tests(className, unitName):
+    try:
+        with db_session:
+            active_units = ActiveUnit.select(lambda au: au.unit.cls.name == className and au.unit.name == unitName)[:]
+            students = []
+            names = []
+            for au in active_units:
+                if au.student.name not in names:
+                    names.append(au.student.name)
+                    single_obj = dict()
+                    single_obj["name"] = au.student.name
+                    single_obj["correct"] = au.totalCorrect
+                    single_obj["bad"] = (au.currentQuestion - au.totalCorrect)
+                    students.append(single_obj)
+                else:
+                    item = itemByName(students, au.student.name)
+                    item["correct"] += au.totalCorrect
+                    item["bad"] += (au.currentQuestion - au.totalCorrect)
+
+            result = ""
+            for student in students:
+                result += f"Name: {student['name']}, Correct: {student['correct']}, Bad: {student['bad']}\n"
+
+            return result
+    except Exception as e:
+        return f"Error: {str(e)}", 400
 
 
 @app.route('/getStats')
