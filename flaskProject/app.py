@@ -1166,6 +1166,7 @@ def get_questions(unit):
 
 
 def randFillPair(n):
+    n=n-1
     if n < 1:
         n = 1
     sort = sorted([random.randint(-10000, 10000) / 1000 for _ in range(n)])
@@ -1177,6 +1178,7 @@ def randFillPair(n):
         else:
             dec.append((s, sort[i + 1]))
     inc.append((sort[-1], float('inf')))
+    #print("fake incdec ",n,inc, dec)
     return inc, dec
 
 
@@ -1626,7 +1628,7 @@ def intersections(f1: callable, f2: callable, a: float, b: float, maxerr=0.001) 
 def makeIntersections(poly):
     xs = intersections(poly, lambda x: 0, -100, 100)
     points = [(float(round(i, 3)), 0.0) for i in xs]
-    if 0 not in xs:
+    if 0 not in [float(round(i, 3)) for i in xs]:
         points.append((0.0, float(round(poly(0), 3))))
     return points
 
@@ -1686,7 +1688,7 @@ def makeIncDec(p):
     dec_ranges = []
 
     # Add the initial range
-    if s > 0:
+    if s < 0:
         dec_ranges.append((float('-inf'), sorted_extremes[0][0]))
     else:
         inc_ranges.append((float('-inf'), sorted_extremes[0][0]))
@@ -1702,7 +1704,7 @@ def makeIncDec(p):
             dec_ranges.append((x1, x2))
     s = f(sorted_extremes[-1][0] + 1)
     # Add the final range
-    if s > 0:
+    if s < 0:
         dec_ranges.append((sorted_extremes[-1][0], float('inf')))
     else:
         inc_ranges.append((sorted_extremes[-1][0], float('inf')))
