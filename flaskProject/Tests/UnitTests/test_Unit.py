@@ -81,7 +81,7 @@ class MyTestCase(unittest.TestCase):
         DB.disconnect()
         # Remove the test database file after testing
         cwd = os.getcwd()
-        os.remove('\\'.join(cwd.split('\\')) + r'\dbtest.sqlite')
+        os.remove('\\'.join(cwd.split('\\')[:-2]) + r'\dbtest.sqlite')
 
     @patch('flaskProject.app.isLogin')
     def test_editUnit_incorrect_teacher(self, mock_isLogin):
