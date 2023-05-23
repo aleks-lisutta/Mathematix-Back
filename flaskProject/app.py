@@ -696,6 +696,7 @@ def openUnit():
     return result
 
 
+
 @app.route('/getUnit')
 def getUnit():
     unitName = request.args.get('unitName')
@@ -1438,9 +1439,16 @@ def getQuestion():
     question_number = request.args.get('qnum')
     if not isLogin(user):
         return "user " + user + "not logged in.", 400
-    ret = []
+    try:
+        getQuestion_buisness(user, unit_name, class_name, question_number)
+    except Exception as e:
+        print(e)
+        return str(e), 400
+
+def getQuestion_buisness(user, unit_name, class_name, question_number):
     try:
         with db_session:
+            ret = []
             unit = Unit[unit_name, Cls[class_name]]
             attempt = get_max_unit(unit, user)
             active = ActiveUnit[unit, user, attempt]
@@ -1476,6 +1484,13 @@ def submitQuestion():
     if not isLogin(user):
         return "user " + user + "not logged in.", 400
 
+    try:
+        return submitQuestion_buisness(user, unit_name, class_name, question_number, ans_number)
+    except Exception as e:
+        print(e)
+        return str(e), 400
+
+def submitQuestion_buisness(user, unit_name, class_name, question_number, ans_number):
     try:
         with db_session:
             now = datetime.now()

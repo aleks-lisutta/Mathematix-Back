@@ -84,17 +84,49 @@ class MyTestCase(unittest.TestCase):
         os.remove('\\'.join(cwd.split('\\')[:-2]) + r'\dbtest.sqlite')
 
     def test_acceptance1(self):
+        # open new unit then approve student registration to class then delete the unit and check that
+        # the unit is no longer available for solving
         # Set up a test database with a sample class and a nonexistent unit
         with db_session:
             teacher = User(name="teacher1", password="password", type=1)
-            cls = Cls(name="English", teacher=teacher)
-            app.teacherOpenUnit("unit1", "teacher1", "English Class", "intersection_linear_-10,10,0,10", 4, "60", "2023-05-31", True, "", "desc")
+            Cls(name="English", teacher=teacher)
+            app.teacherOpenUnit("unit1", "teacher1", "English Class", "template", 4, "60", "2023-05-31", True, "", "desc")
+            app.makeUser("student1", "123", 2)
+            app.registerClass_buisness("student1", "English")
+            app.approveStudentToClass_buisness("teacher1", "student1", "English", True)
+            response = app.deleteUnit_buisness("unit1", "English", "teacher1")
+            self.assertEqual(response, ("Unit['unit1',Cls['English']]", 400))
+
+    def test_acceptance2(self):
+        # open new unit then approve student registration to class then delete the unit and check that
+        # the unit is no longer available for solving
+        # Set up a test database with a sample class and a nonexistent unit
+        attempt = 1
+        questionNum = 1
+        with db_session:
+            teacher = app.makeUser("teacher1", "password", 1)
+            c = app.openClass_buisness("English", "teacher1")
+            unit = app.teacherOpenUnit("unit1", "teacher1", "English", "intersection_linear_-10,0,1,6", "4", "60", "2023-05-31", "true", "", "desc")
+            # self.assertIsNone(Unit.get(name="unit1", cls=c))
             student1 = app.makeUser("student1", "123", 2)
             app.registerClass_buisness("student1", "English")
             app.approveStudentToClass_buisness("teacher1", "student1", "English", True)
-            app.deleteUnit_buisness("unit1", "English", "teacher1")
             app.startUnit("English", "unit1", "student1")
+            active_unit = app.ActiveUnit.get(unit=unit, student=student1, attempt=attempt)
 
+            # active_unit = app.ActiveUnit[unit, student1, attempt]
+            # active_unit = app.ActiveUnit[unit, student1, attempt]
+
+            # question = app.Question[active_unit, questionNum]
+            # app.submitQuestion_buisness("student1", "unit1", "English", 1, question.correct_ans)
+            # print(active_unit.grade)
+
+            # app.getQuestion_buisness("student1", "unit1", "English", 1)
+            # app.submitQuestion_buisness()
+
+
+
+            # self.assertEqual(response, ("Unit['unit1',Cls['English']]", 400))
 
 
 if __name__ == '__main__':
