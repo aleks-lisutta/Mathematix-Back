@@ -1297,7 +1297,7 @@ def get_questions(unit):
         question_type, function_types, params = parse_template(unit.template)
         question = random.choice(question_type)
 
-        if function_types in ['linear', 'quadratic']:
+        if function_types in ['linear', 'quadratic','polynomial']:
             print(params)
             p = [random.randint(int(params[2 * i]), int(params[2 * i + 1])) for i in range(int(len(params) / 2))]
             poly = makePoly(p)
@@ -1314,6 +1314,7 @@ def get_questions(unit):
                 ans4 = [(random.randint(-10000, 10000) / 1000, 0.0) for i in range(len(p) - 1)]
                 ans4.append((0.0, (random.randint(-10000, 10000) / 1000)))
                 q = (preamble, polySrting(p), points, ans2, ans3, ans4, 0)
+                questions.append(q)
 
             elif ('minMaxPoints' in question):
                 points = makeExtremes(p)
@@ -1327,6 +1328,7 @@ def get_questions(unit):
                         range(max(len(p) - 2, 1))]
                 preamble = "מצא את נקודת הקיצון:"
                 q = (preamble, polySrting(p), points, ans2, ans3, ans4, 0)
+                questions.append(q)
             elif ('incDec' in question):
                 inc, dec = makeIncDec(p)
                 preamble = "מצא תחומי עלייה וירידה:"
@@ -1338,7 +1340,7 @@ def get_questions(unit):
                 result4 = (" עלייה: " + str(i1) + " ירידה: " + str(d1) + " ")
                 q = (preamble, polySrting(p), (" עלייה: " + str(dec) + " ירידה: " + str(inc) + " "), result2, result3,
                      result4, 0)
-        questions.append(q)
+                questions.append(q)
     return change_order(questions)
 
 
