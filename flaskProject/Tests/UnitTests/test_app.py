@@ -13,7 +13,11 @@ STUDENT = 2
 class MyTestCase(unittest.TestCase):
     def setUp(self):
         DB = Database()
+<<<<<<<< HEAD:flaskProject/Tests/UnitTests/test_app.py
         DB.bind(provider='sqlite', filename='..\\..\\dbtest.sqlite', create_db=True)
+========
+        DB.bind(provider='sqlite', filename='..\\dbtest.sqlite', create_db=True)
+>>>>>>>> master:flaskProject/UnitTests/test_app.py
 
         class User(DB.Entity):
             name = PrimaryKey(str)
@@ -88,6 +92,7 @@ class MyTestCase(unittest.TestCase):
     def tearDown(self):
         DB.disconnect()
         # Remove the test database file after testing
+<<<<<<<< HEAD:flaskProject/Tests/UnitTests/test_app.py
         cwd = os.getcwd()
         os.remove('\\'.join(cwd.split('\\')[:-2]) + r'\dbtest.sqlite')
 
@@ -194,6 +199,10 @@ class MyTestCase(unittest.TestCase):
             # Check the results
             self.assertEqual(result1, "60")  # Assuming unit.maxTime is expected
             self.assertEqual(result2, "60")  # Assuming unit.maxTime is expected
+========
+        cwd =os.getcwd()
+        os.remove('\\'.join(cwd.split('\\'))+r'\dbtest.sqlite')
+>>>>>>>> master:flaskProject/UnitTests/test_app.py
 
     def test_makeClass_successful(self):
         # Add test data
@@ -271,13 +280,11 @@ class MyTestCase(unittest.TestCase):
             url = "http://example.com?username=John&className=Math"
             response, status_code = app.removeClass_for_tests(url)
 
-
             self.assertEqual(response, "successful")
             self.assertEqual(status_code, 200)
 
             # Assert that the class was removed from the database
             self.assertIsNone(Cls.get(name="Math"))
-
 
         # Test that attempting to remove a non-existent class returns "failed" and status code 400
         with db_session:
@@ -296,11 +303,13 @@ class MyTestCase(unittest.TestCase):
             url = "http://example.com?username=John&className=Science"
             response, status_code = app.removeClass_for_tests(url)
 
-
             self.assertEqual(response, "failed")
             self.assertEqual(status_code, 400)
 
+<<<<<<<< HEAD:flaskProject/Tests/UnitTests/test_app.py
 
+========
+>>>>>>>> master:flaskProject/UnitTests/test_app.py
     @patch('flaskProject.app.isLogin')
     def test_editClass_successful(self, mock_isLogin):
         # Set up the mock
@@ -427,7 +436,6 @@ class MyTestCase(unittest.TestCase):
                 # next=None
             )
 
-
         # Test that attempting to edit a non-existent unit returns an error message and status code 400
         with db_session:
             url = "http://example.com?teacherName=John&unitName=Math&className=Math&Qnum=10&maxTime=60&subDate=2023-05-31&newUnitName=Calculus&newDesc=Advanced calculus"
@@ -435,8 +443,6 @@ class MyTestCase(unittest.TestCase):
 
             self.assertEqual(response, "Unit['Math',Cls['Math']] not found")
             self.assertEqual(status_code, 400)
-
-
 
     @patch('flaskProject.app.isLogin')
     def test_editUnit_successful(self, mock_isLogin):
@@ -475,7 +481,6 @@ class MyTestCase(unittest.TestCase):
             self.assertEqual(unit.Qnum, "10")
             self.assertEqual(unit.maxTime, "60")
             self.assertEqual(unit.subDate, "2023-05-31")
-
 
         # success test
         with db_session:
@@ -525,7 +530,6 @@ class MyTestCase(unittest.TestCase):
             response, status_code = app.editUnit_for_tests(url)
             self.assertEqual(response, "user John is not a teacher")
             self.assertEqual(status_code, 400)
-
 
     def test_valid_username(self):
         # Test that a valid username returns True
@@ -582,7 +586,6 @@ class MyTestCase(unittest.TestCase):
         response = app.register_for_test('/register?username=student_1&password=7 &typ=2')
         self.assertEqual(response.status_code, 400, f"Registration failed with response {response}")
 
-
     @mock.patch('flaskProject.app.User')
     def test_checkUserPass(self, mock_db):
         # Mocking the User object
@@ -610,7 +613,6 @@ class MyTestCase(unittest.TestCase):
 
         # Null password
         self.assertFalse(app.checkUserPass('user1', None))
-
 
     @patch('flaskProject.app.Cls')
     @patch('flaskProject.app.User')
@@ -661,7 +663,6 @@ class MyTestCase(unittest.TestCase):
             cls = Cls.get(name="English Class")
             self.assertIsNone(cls)
 
-
     @patch('flaskProject.app.makeClass')
     def test_openClass_success(self, mock_makeClass):
         # Set up the mock
@@ -688,12 +689,10 @@ class MyTestCase(unittest.TestCase):
             cls = Cls.get(name="English")
             self.assertIsNone(cls)
 
-
-
     @patch('flaskProject.app.checkUserPass')
     @patch('flaskProject.app.loadController')
     def test_login_for_tests_teacher_correct_username(self, mock_loadController, mock_checkUserPass):
-        #login with correct teacher name and password
+        # login with correct teacher name and password
         # setup
         mock_checkUserPass.return_value = True
         mock_teacherCont = MagicMock(spec=teacherCont)
@@ -832,9 +831,6 @@ class MyTestCase(unittest.TestCase):
         # Assert that student1 has been removed from activeControllers
         self.assertNotIn('student1', app.activeControllers)
 
-
-
-
     @patch('flaskProject.app.activeControllers', {'student1': 'controller'})
     def test_logout_student_non_exist_user(self):
         # Set up initial state
@@ -848,8 +844,6 @@ class MyTestCase(unittest.TestCase):
 
         # Assert that activeControllers has not been modified
         self.assertEqual(len(app.activeControllers), 1)
-
-
 
     @patch('flaskProject.app.activeControllers', {'teacher1': 'controller'})
     def test_logout_teacher_succesfully(self, teachertCont=None):
@@ -865,7 +859,6 @@ class MyTestCase(unittest.TestCase):
 
         # Assert that student1 has been removed from activeControllers
         self.assertNotIn('teacher1', app.activeControllers)
-
 
     @patch('flaskProject.app.activeControllers', {'teacher1': 'controller'})
     def test_logout_teacher_non_exist_user(self, teachertCont=None):
@@ -941,8 +934,6 @@ class MyTestCase(unittest.TestCase):
             # Assert that the unit was not removed from the database
             self.assertIsNotNone(Unit.get(name="Calculus", cls=c))
 
-
-
     def test_teacherOpenUnit_exception_class_not_found(self):
         unitName = "Unit 2"
         teacherName = "John Doe"
@@ -956,11 +947,10 @@ class MyTestCase(unittest.TestCase):
         desc = "Unit 2 description"
 
         result = app.teacherOpenUnit(unitName, teacherName, className, template, Qnum, maxTime, subDate, first, prev,
-                                 desc)
+                                     desc)
         self.assertIsInstance(result, tuple)
         self.assertEqual(result[0], "Cls['Math Class']")
         self.assertEqual(result[1], 400)
-
 
     def test_teacherOpenUnit_success(self):
         unitName = "Unit 1"
@@ -976,12 +966,14 @@ class MyTestCase(unittest.TestCase):
         with db_session:
             teacher = app.makeUser("teacher1", "123", 1)
             app.makeClass("teacher1", "English Class")
-            result = app.teacherOpenUnit(unitName, teacherName, className, template, Qnum, maxTime, subDate, first, prev, desc)
+            result = app.teacherOpenUnit(unitName, teacherName, className, template, Qnum, maxTime, subDate, first,
+                                         prev, desc)
             self.assertEqual(result, "success")
             result = app.teacherOpenUnit(unitName, teacherName, className, template, Qnum, maxTime, subDate,
                                          first,
                                          prev, desc)
-            self.assertEqual(result, ("Cannot create Unit: instance with primary key Unit 1, Cls['English Class'] "'already exists', 400))
+            self.assertEqual(result, (
+            "Cannot create Unit: instance with primary key Unit 1, Cls['English Class'] "'already exists', 400))
 
     @patch('flaskProject.app.db_session')
     def test_teacherOpenUnit_fail_name_unique(self, mock_isLogin=None):
@@ -1008,8 +1000,7 @@ class MyTestCase(unittest.TestCase):
                                          first,
                                          prev, desc)
             self.assertEqual(result, (
-            "Cannot create Unit: instance with primary key Unit 2, Cls['English Class'] "'already exists', 400))
-
+                "Cannot create Unit: instance with primary key Unit 2, Cls['English Class'] "'already exists', 400))
 
     @patch('flaskProject.app.db_session')
     def test_teacherOpenUnit_failure_incorrect_class_name(self, mock_db_session):
@@ -1024,20 +1015,16 @@ class MyTestCase(unittest.TestCase):
         prev = None
         desc = "Unit 3 description"
 
-
         # Raise an exception within the db_session context
         mock_db_session.side_effect = Exception("Something went wrong")
-
 
         with db_session:
             teacher = app.makeUser("teacher1", "123", 1)
             app.makeClass("teacher1", "English Classs")
             result = app.teacherOpenUnit(unitName, teacherName, className, template, Qnum, maxTime, subDate, first,
-                                     prev, desc)
+                                         prev, desc)
 
             self.assertEqual(result, ("Cls['English Class']", 400))
-
-
 
     @patch('flaskProject.app.isLogin')
     def test_deleteUnit_success(self, mock_isLogin):
@@ -1142,14 +1129,13 @@ class MyTestCase(unittest.TestCase):
 
         # Verify the returned unit details
         expected_unit = {'Qnum': '10',
-                     'desc': 'Unit 1 description',
-                     'maxTime': '60',
-                     'name': 'Unit 1',
-                     'next': '',
-                     'order': 1,
-                     'subDate': '2023-05-20',
-                     'template': 'Template A'}
-
+                         'desc': 'Unit 1 description',
+                         'maxTime': '60',
+                         'name': 'Unit 1',
+                         'next': '',
+                         'order': 1,
+                         'subDate': '2023-05-20',
+                         'template': 'Template A'}
 
         self.assertEqual(result, expected_unit)
 
@@ -1166,7 +1152,6 @@ class MyTestCase(unittest.TestCase):
 
         # Verify that an empty string is returned
         self.assertEqual(result, "")
-
 
     def test_find_min(self):
         # Call the find_min_max function with parameters for a minimum
@@ -1221,8 +1206,15 @@ class MyTestCase(unittest.TestCase):
             # Create necessary entities (User, Cls, Cls_User) for testing
             user = User(name='John', password='password', type=1)
             cls = Cls(name='Math', teacher=user)
+<<<<<<<< HEAD:flaskProject/Tests/UnitTests/test_app.py
             # Call the registerClass_for_tests function with the mocked URL
             result = app.registerClass_for_tests(url)
+========
+
+        # Call the registerClass_for_tests function with the mocked URL
+
+        result = app.registerClass_for_tests(url)
+>>>>>>>> master:flaskProject/UnitTests/test_app.py
 
         # Verify the result
         self.assertEqual(result, ('successful', 200))
@@ -1242,7 +1234,7 @@ class MyTestCase(unittest.TestCase):
 
         # Call the approveStudentToClass function with the mocked URL
 
-        result = app.approveStudentToClass(url)
+        result = app.approveStudentToClass_tests(url)
 
         # Verify the result
         expected_result = "successful"
@@ -1283,8 +1275,6 @@ class MyTestCase(unittest.TestCase):
     #         self.assertEqual(second_class['id'], 2)
     #         self.assertEqual(second_class['className'], 'Class2')
     #         self.assertEqual(second_class['teacher'], 'Teacher2')
-
-
 
 
 if __name__ == '__main__':
