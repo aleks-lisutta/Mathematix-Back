@@ -38,7 +38,7 @@ CORS(app)
 DB = pony.Database()
 Pony(app)
 
-DB.bind(provider='sqlite', filename='dbtest', create_db=True)
+DB.bind(provider='sqlite', filename='dbtest.sqlite', create_db=True)
 
 
 
