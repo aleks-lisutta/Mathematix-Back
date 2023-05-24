@@ -198,7 +198,9 @@ def checkUserPass(username, password):
             if result:
                 return result.password == password
             return False
-    except Exception:
+    except Exception as e:
+        print("in excpetion and the user is")
+        print ( e)
         return False
 
 
@@ -1457,6 +1459,8 @@ def getQuestion():
             single_question["answer4"] = question.answer4
             single_question["correct_ans"] = question.correct_ans
             single_question["preamble"] = question.question_preamble
+            single_question["currentQuestion"] = active.consecQues
+            single_question["questionsNeeded"] = unit.Qnum
 
             ret.append(single_question)
         return jsonify(ret)
