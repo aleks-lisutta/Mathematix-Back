@@ -1123,16 +1123,56 @@ def parse_template(template):
     return questions, parts[1], params
 
 
+def integrate(f: callable, a: float, b: float, n: int) -> np.float32:
+
+    if n == 1:
+        h = float(b - a)
+        x0 = (a + b) / 2.0
+        return np.float32(h * f(x0))
+    elif n == 2:
+        return np.float32(((float(b - a)) / 2.0) * (f(a) + f(b)))
+
+    if n % 2 == 0:
+        n -= 2
+    else:
+        n -= 1
+
+    h = (b - a) / float(n)
+    # result = f(a) + f(b)
+    result_of_even = 0
+    result_of_odds = 0
+
+    for i in range(1, n, 1):
+        if i % 2 == 0:
+            result_of_even += f(a + i * h)
+        else:
+            result_of_odds += f(a + i * h)
+    result = 2 * result_of_even + 4 * result_of_odds + f(a) + f(b)
+    result *= (h / 3.0)
+    return np.float32(result)
+
+
 def get_questions(unit):
     questions = list()
     for i in range(QUESTIONS_TO_GENERATE):
         question_type, function_types, params = parse_template(unit.template)
         question = random.choice(question_type)
-
-        if function_types in ['linear', 'quadratic','polynomial']:
+        if function_types in ['linear', 'quadratic', 'polynomial']:
             print(params)
             p = [random.randint(int(params[2 * i]), int(params[2 * i + 1])) for i in range(int(len(params) / 2))]
             poly = makePoly(p)
+            if ('integral' in question):
+                min_range = 0.0
+                max_range = 10.0
+                ans = integrate(poly, min_range, max_range, int((max_range-min_range)*100))
+                string_range = str(max_range) + "," + str(min_range)
+                preamble = string_range + "מצא את האינטגרל בתחום: "
+                ans2 = ans + random.randint(-5000, 5000) / 1000
+                ans3 = ans + random.randint(-5000, 5000) / 1000
+                ans4 = ans + random.randint(-5000, 5000) / 1000
+                q = (preamble, polySrting(p), ans, ans2, ans3, ans4, 0)
+                questions.append(q)
+
             if ('intersection' in question):
                 if not any(p):
                     points = "כל הנקודות"
