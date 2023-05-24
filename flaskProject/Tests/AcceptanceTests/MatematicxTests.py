@@ -98,21 +98,20 @@ class MyTestCase(unittest.TestCase):
             self.assertEqual(response, ("Unit['unit1',Cls['English']]", 400))
 
     def test_acceptance2(self):
-        # open new unit then approve student registration to class then delete the unit and check that
-        # the unit is no longer available for solving
-        # Set up a test database with a sample class and a nonexistent unit
+        #
         attempt = 1
         questionNum = 1
         with db_session:
             teacher = app.makeUser("teacher1", "password", 1)
             c = app.openClass_buisness("English", "teacher1")
-            unit = app.teacherOpenUnit("unit1", "teacher1", "English", "intersection_linear_-10,0,1,6", "4", "60", "2023-05-31", "true", "", "desc")
+            app.teacherOpenUnit("unit1", "teacher1", "English", "intersection_linear_-10,0,1,6", "4", "60", "2023-05-31", "true", "", "desc")
+            unit = app.getUnit_buisness("unit1", "English")
             # self.assertIsNone(Unit.get(name="unit1", cls=c))
             student1 = app.makeUser("student1", "123", 2)
-            app.registerClass_buisness("student1", "English")
             app.approveStudentToClass_buisness("teacher1", "student1", "English", True)
             app.startUnit("English", "unit1", "student1")
             active_unit = app.ActiveUnit.get(unit=unit, student=student1, attempt=attempt)
+            app.registerClass_buisness("student1", "English")
 
             # active_unit = app.ActiveUnit[unit, student1, attempt]
             # active_unit = app.ActiveUnit[unit, student1, attempt]

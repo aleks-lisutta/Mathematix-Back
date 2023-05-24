@@ -486,12 +486,8 @@ def getAllClassesNotIn():
         return str(e), 400
 
 
-@app.route('/getAllClassesNotIn')
-def getAllClassesNotIn_for_tests(URL):
+def getAllClassesNotIn_Buisness(student):
     ret = []
-    parsed_url = urlparse(URL)
-    query_params = parse_qs(parsed_url.query)
-    student = query_params.get('username', [None])[0]
     if not isLogin(student):
         return "user " + student + "not logged in.", 400
     id = 0
@@ -666,7 +662,7 @@ def teacherOpenUnit(unitName, teacherName, className, template, Qnum, maxTime, s
                 p = Unit[prev, Cls[className]]
                 p.next = unitName
                 ord = p.order + 1
-            u = Unit(cls=Cls[className], name=unitName, desc=desc, template=template, Qnum=Qnum, maxTime=maxTime,
+            Unit(cls=Cls[className], name=unitName, desc=desc, template=template, Qnum=Qnum, maxTime=maxTime,
                      subDate=subDate,
                      order=ord)
             commit()
@@ -705,9 +701,23 @@ def getUnit():
     if not isLogin(teacherName):
         return "user " + str(teacherName) + "not logged in.", 400
     try:
+        return getUnitName_buisness(unitName, className)
+    except Exception as e:
+        return str(e), 400
+
+def getUnitName_buisness(unitName, className):
+    try:
         with db_session:
             retUnit = Unit[unitName, Cls[className]]
             return retUnit.name
+    except Exception as e:
+        return str(e), 400
+
+def getUnit_buisness(unitName, className):
+    try:
+        with db_session:
+            retUnit = Unit[unitName, Cls[className]]
+            return retUnit
     except Exception as e:
         return str(e), 400
 
@@ -1634,7 +1644,6 @@ def intersections(f1: callable, f2: callable, a: float, b: float, maxerr=0.001) 
         if len(arr) == 0 or abs(x - arr[len(arr) - 1]) > maxerr:
             arr = np.append(arr, [x])
     return arr
-
 
 
 
