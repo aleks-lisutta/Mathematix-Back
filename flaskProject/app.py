@@ -1428,7 +1428,6 @@ def getStats():
     className = request.args.get('className')
     unitName = request.args.get('unitName')
     username = request.args.get('username')
-    getLessonGrade("dan",unitName,className)
     if not isLogin(username):
         return "user " + username + "not logged in.", 400
 
