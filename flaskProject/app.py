@@ -1428,6 +1428,7 @@ def getStats():
     className = request.args.get('className')
     unitName = request.args.get('unitName')
     username = request.args.get('username')
+    getLessonGrade("dan",unitName,className)
     if not isLogin(username):
         return "user " + username + "not logged in.", 400
 
@@ -1746,6 +1747,35 @@ def polySrting(params):
 # print(a(3))
 # print(makeIntersections(a))
 # print(makeExtremes([1, 0, -1,0]))
+
+def getLessonGrade(user,unit_name,class_name):
+
+    try:
+        with db_session:
+            unit_name_n = unit_name
+            total_correct = 0
+            total_solved =0
+            try:
+                while(True):
+                    unit = Unit[unit_name_n, Cls[class_name]]
+                    activeUnit = ActiveUnit[unit, user, 1]
+                    total_correct += activeUnit.totalCorrect
+                    total_solved +=  activeUnit.currentQuestion
+
+                    unit_name_n += "n"
+            except Exception as e:
+                print("does not exists " + str(e))
+
+            grade = int(((total_correct / total_solved) * 100))
+            return grade
+
+
+    except Exception as e:
+        print(e)
+        return str(e), 400
+
+
+
 
 
 class userCont:
