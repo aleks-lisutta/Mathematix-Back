@@ -1184,7 +1184,7 @@ def get_questions(unit):
                 if not any(p):
                     points = "כל הנקודות"
                 else:
-                    points = makeIntersections(f,c,b)
+                    points = makeIntersections(f,c)
                 preamble = "מצא את נקודות החיתוך עם הצירים:"
                 ans2 = [(random.randint(-10000, 10000) / 1000, 0.0) for i in range(len(p) - 1)]
                 ans2.append((0.0, (random.randint(-10000, 10000) / 1000)))
@@ -1500,7 +1500,7 @@ def getQuestion():
     if not isLogin(user):
         return "user " + user + "not logged in.", 400
     try:
-        getQuestion_buisness(user, unit_name, class_name, question_number)
+        return getQuestion_buisness(user, unit_name, class_name, question_number)
     except Exception as e:
         print(e)
         return str(e), 400
@@ -1527,6 +1527,7 @@ def getQuestion_buisness(user, unit_name, class_name, question_number):
             single_question["questionsNeeded"] = unit.Qnum
 
             ret.append(single_question)
+            print("ret=",ret)
         return jsonify(ret)
     except Exception as e:
         print(e)
@@ -1657,6 +1658,7 @@ def helper(f1: callable, f2: callable, a: float, b: float, maxerr=0.001) -> Iter
 
     delta = (b - a) / max_amount_of_points
     x2 = x1
+
     f_x1 = f1(x1) - f2(x1)
     f_x2 = f1(x2) - f2(x2)
     while x1 <= b + maxerr and x2 <= b + maxerr:
@@ -1699,7 +1701,7 @@ def intersections(f1: callable, f2: callable, a: float, b: float, maxerr=0.001) 
 
 
 def makeIntersections(poly, c = 0):
-    xs = intersections(poly, lambda x: 0, -10 if c == 0 else -3 , 10 if c == 0 else 3)
+    xs = intersections(poly, lambda x: 0, -10 if c == 0 else -10 , 10 if c == 0 else 10)
     points = [(float(round(i, 3)), 0.0) if abs(round(i, 3))>0.001 else (0.0, 0.0) for i in xs]
     if 0 not in [float(round(i, 3)) for i in xs]:
         points.append((0.0, float(round(poly(0), 3))))
@@ -1736,7 +1738,7 @@ def makeExtremes(params, c=0, b=math.e):
     #print('der', derivative)
     poly = makeFunc(derivative)
     org = makeFunc(params, c, b)
-    f = lambda x: poly(x) * makeFunc(p[:-1] + [0], c, b)(x)
+    f = lambda x: poly(x) * makeFunc(params[:-1] + [0], c, b)(x)
     extremes = makeIntersections(f, c)
     #print("ex", extremes)
     extremes = [(e[0], round(org(e[0]), 3)) for e in extremes if e[1] == 0]
@@ -1838,7 +1840,16 @@ def makeLog(p, base=math.e):
     if len(p) < 1:
         return lambda x: 0
     else:
-        return lambda x: math.log(makePoly(p[:-1])(x), base) + p[-1]
+
+        def func(x):
+            temp=makePoly(p[:-1])(x)
+            if temp > 0 :
+                return math.log(makePoly(p[:-1])(x), base) + p[-1]
+            else:
+                None
+
+        return func
+
 
 
 def makeSin(p):
