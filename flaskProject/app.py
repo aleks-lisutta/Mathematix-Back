@@ -667,8 +667,8 @@ def teacherOpenUnit(unitName, teacherName, className, template, Qnum, maxTime, s
                 p.next = unitName
                 ord = p.order + 1
             Unit(cls=Cls[className], name=unitName, desc=desc, template=template, Qnum=Qnum, maxTime=maxTime,
-                     subDate=subDate,
-                     order=ord)
+                 subDate=subDate,
+                 order=ord)
             commit()
             return "success"
     except Exception as e:
@@ -696,7 +696,6 @@ def openUnit():
     return result
 
 
-
 @app.route('/getUnit')
 def getUnit():
     unitName = request.args.get('unitName')
@@ -709,6 +708,7 @@ def getUnit():
     except Exception as e:
         return str(e), 400
 
+
 def getUnitName_buisness(unitName, className):
     try:
         with db_session:
@@ -716,6 +716,7 @@ def getUnitName_buisness(unitName, className):
             return retUnit.name
     except Exception as e:
         return str(e), 400
+
 
 def getUnit_buisness(unitName, className):
     try:
@@ -1126,11 +1127,15 @@ def parse_template(template):
     parts = template.split('_')
     questions = parts[0].split(',')
     params = parts[2].split(',')
-    return questions, parts[1], params
+    if len(parts) == 3:
+        return questions, parts[1], params
+    integral_range = parts[3].split(',')
+    print("integral format:")
+    print(questions, parts[1], params, integral_range)
+    return questions, parts[1], params, integral_range
 
 
 def integrate(f: callable, a: float, b: float, n: int) -> np.float32:
-
     if n == 1:
         h = float(b - a)
         x0 = (a + b) / 2.0
@@ -1159,32 +1164,41 @@ def integrate(f: callable, a: float, b: float, n: int) -> np.float32:
 
 
 def get_questions(unit):
-    intMap={'linear':0, 'quadratic':0, 'polynomial':0,'2exp':1,'3exp':1,'eexp':1,'log':2,'sin':3,'cos':4}
+    intMap = {'linear': 0, 'quadratic': 0, 'polynomial': 0, '2exp': 1, '3exp': 1, 'eexp': 1, 'log': 2, 'sin': 3,
+              'cos': 4}
     questions = list()
     for i in range(QUESTIONS_TO_GENERATE):
-        question_type, function_types, params = parse_template(unit.template)
+        question_type = []
+        function_types = ""
+        params = []
+        integral_range = []
+
+        if "definiteIntegral" in unit.template:
+            question_type, function_types, params, integral_range = parse_template(unit.template)
+        else:
+            question_type, function_types, params = parse_template(unit.template)
         question = random.choice(question_type)
-        if function_types in ['linear', 'quadratic', 'polynomial','2exp','3exp','eexp','log','sin','cos']:
-            c= intMap[function_types]
-            b= 2 if function_types=='2exp' else (3 if function_types=='3exp' else math.e)
+        if function_types in ['linear', 'quadratic', 'polynomial', '2exp', '3exp', 'eexp', 'log', 'sin', 'cos']:
+            c = intMap[function_types]
+            b = 2 if function_types == '2exp' else (3 if function_types == '3exp' else math.e)
             p = [random.randint(int(params[2 * i]), int(params[2 * i + 1])) for i in range(int(len(params) / 2))]
-            f = makeFunc(p,c,b)
-            if ('integral' in question):
-                min_range = 0.0
-                max_range = 10.0
-                ans = integrate(f, min_range, max_range, int((max_range-min_range)*100))
+            f = makeFunc(p, c, b)
+            if ('definiteIntegral' in question):
+                min_range = int(integral_range[0])
+                max_range = int(integral_range[1])
+                ans = integrate(f, min_range, max_range, int((max_range - min_range) * 100))
                 string_range = str(max_range) + "," + str(min_range)
                 preamble = string_range + "מצא את האינטגרל בתחום: "
-                ans2 = ans + random.randint(-5000, 5000) / 1000
-                ans3 = ans + random.randint(-5000, 5000) / 1000
-                ans4 = ans + random.randint(-5000, 5000) / 1000
-                q = (preamble, funcString(p,c,b), ans, ans2, ans3, ans4, 0)
+                ans2 = ans + 5.0
+                ans3 = ans - 5.0
+                ans4 = ans + 10
+                q = (preamble, funcString(p, c, b), ans, ans2, ans3, ans4, 0)
                 questions.append(q)
             if ('intersection' in question):
                 if not any(p):
                     points = "כל הנקודות"
                 else:
-                    points = makeIntersections(f,c)
+                    points = makeIntersections(f, c)
                 preamble = "מצא את נקודות החיתוך עם הצירים:"
                 ans2 = [(random.randint(-10000, 10000) / 1000, 0.0) for i in range(len(p) - 1)]
                 ans2.append((0.0, (random.randint(-10000, 10000) / 1000)))
@@ -1192,11 +1206,11 @@ def get_questions(unit):
                 ans3.append((0.0, (random.randint(-10000, 10000) / 1000)))
                 ans4 = [(random.randint(-10000, 10000) / 1000, 0.0) for i in range(len(p) - 1)]
                 ans4.append((0.0, (random.randint(-10000, 10000) / 1000)))
-                q = (preamble, funcString(p,c,b), points, ans2, ans3, ans4, 0)
+                q = (preamble, funcString(p, c, b), points, ans2, ans3, ans4, 0)
                 questions.append(q)
 
             elif ('minMaxPoints' in question):
-                points = makeExtremes(p,c,b)
+                points = makeExtremes(p, c, b)
                 if points == []:
                     points = [()]
                 ans2 = [(random.randint(-10000, 10000) / 1000, (random.randint(-10000, 10000) / 1000)) for i in
@@ -1206,10 +1220,10 @@ def get_questions(unit):
                 ans4 = [(random.randint(-10000, 10000) / 1000, (random.randint(-10000, 10000) / 1000)) for i in
                         range(max(len(p) - 2, 1))]
                 preamble = "מצא את נקודת הקיצון:"
-                q = (preamble, funcString(p,c,b), points, ans2, ans3, ans4, 0)
+                q = (preamble, funcString(p, c, b), points, ans2, ans3, ans4, 0)
                 questions.append(q)
             elif ('incDec' in question):
-                inc, dec = makeIncDec(p,c,b)
+                inc, dec = makeIncDec(p, c, b)
                 preamble = "מצא תחומי עלייה וירידה:"
                 i1, d1 = randFillPair(len(inc) + len(dec))
                 result2 = (" עלייה: " + str(i1) + " ירידה: " + str(d1) + " ")
@@ -1217,8 +1231,10 @@ def get_questions(unit):
                 result3 = (" עלייה: " + str(i1) + " ירידה: " + str(d1) + " ")
                 i1, d1 = randFillPair(len(inc) + len(dec))
                 result4 = (" עלייה: " + str(i1) + " ירידה: " + str(d1) + " ")
-                q = (preamble, funcString(p,c,b), (" עלייה: " + str(dec) + " ירידה: " + str(inc) + " "), result2, result3,
-                     result4, 0)
+                q = (
+                    preamble, funcString(p, c, b), (" עלייה: " + str(dec) + " ירידה: " + str(inc) + " "), result2,
+                    result3,
+                    result4, 0)
                 questions.append(q)
     return change_order(questions)
 
@@ -1285,19 +1301,19 @@ def addQuestions(className, unitName, username):
             id = active.quesAmount + 1
             active.quesAmount += 10
             for single_question in get_questions(unit):
-                if (single_question[7] == 0):
-                    print("==============================================================\n", single_question)
-                    Question(id=id, question_preamble=single_question[0], question=single_question[1],
-                             correct_ans=single_question[6], answer1=str(single_question[2])[1:-1],
-                             answer2=str(single_question[3])[1:-1], answer3=str(single_question[4])[1:-1],
-                             answer4=str(single_question[5])[1:-1],
-                             active_unit=ActiveUnit[unit, user, maxAttempt])
-                else:
-                    Question(id=id, question_preamble=single_question[0], question=single_question[1],
-                             correct_ans=single_question[6], answer1=str(single_question[2]),
-                             answer2=str(single_question[3]), answer3=str(single_question[4]),
-                             answer4=str(single_question[5]),
-                             active_unit=ActiveUnit[unit, user, maxAttempt])
+                # if (single_question[7] == 0):
+                #      print("==============================================================\n", single_question)
+                #     Question(id=id, question_preamble=single_question[0], question=single_question[1],
+                #              correct_ans=single_question[6], answer1=str(single_question[2])[1:-1],
+                #              answer2=str(single_question[3])[1:-1], answer3=str(single_question[4])[1:-1],
+                #              answer4=str(single_question[5])[1:-1],
+                #              active_unit=ActiveUnit[unit, user, maxAttempt])
+                # else:
+                Question(id=id, question_preamble=single_question[0], question=single_question[1],
+                         correct_ans=single_question[6], answer1=str(single_question[2]),
+                         answer2=str(single_question[3]), answer3=str(single_question[4]),
+                         answer4=str(single_question[5]),
+                         active_unit=ActiveUnit[unit, user, maxAttempt])
                 id += 1
 
             commit()
@@ -1505,6 +1521,7 @@ def getQuestion():
         print(e)
         return str(e), 400
 
+
 def getQuestion_buisness(user, unit_name, class_name, question_number):
     try:
         with db_session:
@@ -1527,7 +1544,7 @@ def getQuestion_buisness(user, unit_name, class_name, question_number):
             single_question["questionsNeeded"] = unit.Qnum
 
             ret.append(single_question)
-            print("ret=",ret)
+            print("ret=", ret)
         return jsonify(ret)
     except Exception as e:
         print(e)
@@ -1552,6 +1569,7 @@ def submitQuestion():
     except Exception as e:
         print(e)
         return str(e), 400
+
 
 def submitQuestion_buisness(user, unit_name, class_name, question_number, ans_number):
     try:
@@ -1610,7 +1628,7 @@ def quitActiveUnit():
 
 
 def makePoly(p):
-    #print([str(p[i]) + '*(x**' + str(len(p) - i - 1) + ')' for i in range(len(p))])
+    # print([str(p[i]) + '*(x**' + str(len(p) - i - 1) + ')' for i in range(len(p))])
     return (lambda x:
             float(sum([
                 p[i] * (x ** (len(p) - i - 1))
@@ -1700,9 +1718,9 @@ def intersections(f1: callable, f2: callable, a: float, b: float, maxerr=0.001) 
     return arr
 
 
-def makeIntersections(poly, c = 0):
-    xs = intersections(poly, lambda x: 0, -10 if c == 0 else -10 , 10 if c == 0 else 10)
-    points = [(float(round(i, 3)), 0.0) if abs(round(i, 3))>0.001 else (0.0, 0.0) for i in xs]
+def makeIntersections(poly, c=0):
+    xs = intersections(poly, lambda x: 0, -100 if c == 0 else -10, 100 if c == 0 else 10)
+    points = [(float(round(i, 3)), 0.0) if abs(round(i, 3)) > 0.001 else (0.0, 0.0) for i in xs]
     if 0 not in [float(round(i, 3)) for i in xs]:
         points.append((0.0, float(round(poly(0), 3))))
     return points
@@ -1735,12 +1753,12 @@ def makeExtremes(params, c=0, b=math.e):
     if not any(params):
         return "כל הנקודות"
     derivative = makeDer(params) if c == 0 else makeDer(params[:-1])
-    #print('der', derivative)
+    # print('der', derivative)
     poly = makeFunc(derivative)
     org = makeFunc(params, c, b)
     f = lambda x: poly(x) * makeFunc(params[:-1] + [0], c, b)(x)
     extremes = makeIntersections(f, c)
-    #print("ex", extremes)
+    # print("ex", extremes)
     extremes = [(e[0], round(org(e[0]), 3)) for e in extremes if e[1] == 0]
     return extremes
 
@@ -1792,9 +1810,11 @@ def funcString(p, c=0, b=math.e):
     if c == 0:
         return "y=" + polySrting(p)
     elif c == 1:
-        return "y=" + ("e" if b == math.e else str(b)) + "^(" + polySrting(p[:-1]) + ")" + ("+" + str(p[-1]) if p[-1] else "")
+        return "y=" + ("e" if b == math.e else str(b)) + "^(" + polySrting(p[:-1]) + ")" + (
+            "+" + str(p[-1]) if p[-1] else "")
     elif c == 2:
-        return "y="+ ("ln" if b == math.e else "log"+str(b)) + "(" + polySrting(p[:-1]) + ")" + ("+" + str(p[-1]) if p[-1] else "")
+        return "y=" + ("ln" if b == math.e else "log" + str(b)) + "(" + polySrting(p[:-1]) + ")" + (
+            "+" + str(p[-1]) if p[-1] else "")
     elif c == 3:
         return "y=sin(" + polySrting(p[:-1]) + ")" + ("+" + str(p[-1]) if p[-1] else "")
     elif c == 4:
@@ -1842,14 +1862,13 @@ def makeLog(p, base=math.e):
     else:
 
         def func(x):
-            temp=makePoly(p[:-1])(x)
-            if temp > 0 :
+            temp = makePoly(p[:-1])(x)
+            if temp > 0:
                 return math.log(makePoly(p[:-1])(x), base) + p[-1]
             else:
                 None
 
         return func
-
 
 
 def makeSin(p):
