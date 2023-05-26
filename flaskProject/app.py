@@ -1199,6 +1199,9 @@ def get_questions(unit):
                     points = "כל הנקודות"
                 else:
                     points = makeIntersections(f, c)
+                    if (not points is None):
+                        if abs(f(0)) >= 0.001:
+                            points.append((0.0, float(round(f(0), 3))))
                 preamble = "מצא את נקודות החיתוך עם הצירים:"
                 ans2 = [(random.randint(-10000, 10000) / 1000, 0.0) for i in range(len(p) - 1)]
                 ans2.append((0.0, (random.randint(-10000, 10000) / 1000)))
@@ -1212,9 +1215,15 @@ def get_questions(unit):
             elif ('minMaxPoints' in question):
                 points = makeExtremes(p, c, b)
                 if points == []:
-                    points = [()]
-                ans2 = [(random.randint(-10000, 10000) / 1000, (random.randint(-10000, 10000) / 1000)) for i in
-                        range(max(len(p) - 2, 1))]
+                    points = 'אין נקודות קיצון'
+                to_put_no_extreme_points = 0
+                if points != 'אין נקודות קיצון':
+                    to_put_no_extreme_points = random.randint(1, 4)
+                if to_put_no_extreme_points == 1:
+                    ans2 = 'אין נקודות קיצון'
+                else:
+                    ans2 = [(random.randint(-10000, 10000) / 1000, (random.randint(-10000, 10000) / 1000)) for i in
+                            range(max(len(p) - 2, 1))]
                 ans3 = [(random.randint(-10000, 10000) / 1000, (random.randint(-10000, 10000) / 1000)) for i in
                         range(max(len(p) - 2, 1))]
                 ans4 = [(random.randint(-10000, 10000) / 1000, (random.randint(-10000, 10000) / 1000)) for i in
@@ -1636,6 +1645,27 @@ def makePoly(p):
             ])))
 
 
+def makeRationalOfTwoFuncs(f1, f2):
+    def res(x):
+        if f2(x) == 0:
+            return None
+        return f1(x) / f2(x)
+
+    return res
+
+
+def makeMultOfTwoFuncs(f1, f2):
+    return (lambda x:
+            f1(x) * f2(x)
+            )
+
+
+def makeNegateFunc(f):
+    return (lambda x:
+            -f(x)
+            )
+
+
 def regulaFalsi(f1: callable, f2: callable, x1: float, x2: float, a: float, b: float, maxerr=0.0001) -> float:
     max_amount_of_iteration_loop = 30
     f_x1 = f1(x1) - f2(x1)
@@ -1720,9 +1750,11 @@ def intersections(f1: callable, f2: callable, a: float, b: float, maxerr=0.001) 
 
 def makeIntersections(poly, c=0):
     xs = intersections(poly, lambda x: 0, -100 if c == 0 else -10, 100 if c == 0 else 10)
+    if (xs is not None) and len(xs) == 0:
+        return []
     points = [(float(round(i, 3)), 0.0) if abs(round(i, 3)) > 0.001 else (0.0, 0.0) for i in xs]
-    if 0 not in [float(round(i, 3)) for i in xs]:
-        points.append((0.0, float(round(poly(0), 3))))
+    # if 0 not in [float(round(i, 3)) for i in xs]:
+    #     points.append((0.0, float(round(poly(0), 3))))
     return points
 
 
@@ -1748,10 +1780,60 @@ def makeDer(params):
     return [(len(params) - 1 - i) * params[i] for i in range(len(params) - 1)]
 
 
+def derive(params, type):
+    intMap = {'linear': 0, 'quadratic': 0, 'polynomial': 0, '2exp': 1, '3exp': 1, 'eexp': 1, 'log': 2, 'sin': 3,
+              'cos': 4}
+    if type in ['linear', 'quadratic', 'polynomial']:
+        return makeFunc(makeDer(params))
+    elif type == '2exp':
+        def res(x):
+            return math.pow(2, makePoly(params[:-1])(x)) * math.log(2, math.e)
+
+        return res
+    elif type == '3exp':
+        def res(x):
+            return math.pow(3, makePoly(params[:-1])(x)) * math.log(3, math.e)
+
+        return res
+    elif type == 'eexp':
+        def res(x):
+            return math.pow(math.e, makePoly(params[:-1])(x))
+
+        return res
+
+    elif type == 'log':
+        numerator = makeFunc(makeDer(params))
+        denominator = makeFunc(params)
+        return makeRationalOfTwoFuncs(numerator, denominator)
+    elif type == 'sin':
+        coefficients = params[:-1]
+        innerDerive = makeDer(coefficients)
+        cosElement = makeCos(coefficients)
+        return makeMultOfTwoFuncs(cosElement, innerDerive)
+    elif type == 'cos':
+        coefficients = params[:-1]
+        innerDerive = makeDer(coefficients)
+        sinElement = makeSin(coefficients)
+        return makeMultOfTwoFuncs(makeNegateFunc(sinElement), innerDerive)
+
+
 def makeExtremes(params, c=0, b=math.e):
     # Calculate the derivative of the polynomial
     if not any(params):
-        return "כל הנקודות"
+        return "אין נקודות קיצון"
+    if c == 0:
+        f = makeFunc(params)
+        derivative = makeDer(params)
+        poly = makeFunc(derivative)
+        extreme_points = makeIntersections(poly, c)
+
+        for i in range(len(extreme_points)):
+            tuple_value = extreme_points[i]
+            updated_tuple = (tuple_value[0], round(f(tuple_value[0]), 3))
+            extreme_points[i] = updated_tuple
+
+        return extreme_points
+
     derivative = makeDer(params) if c == 0 else makeDer(params[:-1])
     # print('der', derivative)
     poly = makeFunc(derivative)
