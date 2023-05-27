@@ -1198,7 +1198,8 @@ def get_questions(unit):
                 if not any(p):
                     points = "כל הנקודות"
                 else:
-                    points = makeIntersections(f, c, "polynomial")
+                    dom = makeDomain(p, c)
+                    points = makeIntersections(f, c, dom)
                     if (not points is None):
                         if abs(f(0)) >= 0.001:
                             points.append((0.0, float(round(f(0), 3))))
@@ -1752,23 +1753,34 @@ def makeDomain(params, c):
     if c == 0:
         return [(-100, 100)]
     elif c in [1, 3, 4]:
-        range = [(-math.pi, math.pi)]
+        r = [(-math.pi, math.pi)]
     elif c == 2:
-        range = []
+        r = []
         coefficient = params[:-1]
         f = makeFunc(coefficient)
         inters = intersections(lambda x: 0, f, -100, 100)
         for i in range(len(inters) - 1):
             a = (inters[i] + inters[i + 1]) / 2
             if f(a) > 0:
-                range.append((inters[i], inters[i + 1]))
-        return range
+                r.append((inters[i], inters[i + 1]))
+        return r
+    elif c in [5, 6]:
+        r = []
+        coefficient = params[:-1] + [0]
+        f = makeFunc(coefficient, 3 if c == 6 else 4)
+        inters = intersections(lambda x: 0, f, -100, 100)
+        if not inters:
+            return [(-100, 100)]
+        r.append((float('-inf'), inters[0]))
+        for i in range(len(inters) - 1):
+            r.append((inters[i], inters[i + 1]))
+        r.append((inters[-1], float('inf')))
 
 
-def makeIntersections(poly, c=0, function_types="polynomial"):
-    xs = intersections(poly, lambda x: 0, -100 if c == 0 else -1, 100 if c == 0 else 1)
-    if (xs is not None) and len(xs) == 0:
-        return []
+def makeIntersections(poly, c=0, r=[(-100, 100)]):
+    xs = []
+    for i in r:
+        xs.append(intersections(poly, lambda x: 0, i[0], i[1]))
     points = [(float(round(i, 3)), 0.0) if abs(round(i, 3)) > 0.001 else (0.0, 0.0) for i in xs]
     # if 0 not in [float(round(i, 3)) for i in xs]:
     #     points.append((0.0, float(round(poly(0), 3))))
@@ -1795,6 +1807,25 @@ def makeIntersections2(poly, error=1e-3, xmin=-20, xmax=20, step=0.0003):
 
 def makeDer(params):
     return [(len(params) - 1 - i) * params[i] for i in range(len(params) - 1)]
+
+
+def deriveString(p, c, b):
+    if c == 0:
+        return "y=" + polySrting(makeDer(p))
+    elif c == 1:
+        return "y=" + polySrting(makeDer(p[:-1])) + " * " + ("e" if b == math.e else str(b)) + "^(" + polySrting(
+            p[:-1]) + ")" + (("+" if p[-1] > 0 else "") + str(p[-1]) if p[-1] else "")
+    elif c == 2:
+        return "y=" + polySrting(p[:-1]) + " / " + polySrting(makeDer(p)) + (
+            ("+" if p[-1] > 0 else "") + str(p[-1]) if p[-1] else "")
+    elif c == 3:
+        return "y="+polySrting(makeDer(p))+" * cos(" + polySrting(p[:-1]) + ")" + (("+" if p[-1] > 0 else "") + str(p[-1]) if p[-1] else "")
+    elif c == 4:
+        return "y="+polySrting(makeDer(p))+" * -sin(" + polySrting(p[:-1]) + ")" + (("+" if p[-1] > 0 else "") + str(p[-1]) if p[-1] else "")
+    elif c == 5:
+        return "y=1/cos^2(" + polySrting(p[:-1]) + ")" + (("+" if p[-1] > 0 else "") + str(p[-1]) if p[-1] else "")
+    elif c == 6:
+        return "y=-1/sin^2(" + polySrting(p[:-1]) + ")" + (("+" if p[-1] > 0 else "") + str(p[-1]) if p[-1] else "")
 
 
 def derive(params, c, b):
@@ -1850,7 +1881,8 @@ def makeExtremes(params, c=0, b=math.e):
     #     return extreme_points
 
     realDerive = derive(params, c, b)
-    extreme_points = makeIntersections(realDerive, c)
+    dom = makeDomain(params, c)
+    extreme_points = makeIntersections(realDerive, c, dom)
     f = makeFunc(params, c, b)
 
     extremes = [(e[0], round(f(e[0]), 3)) for e in extreme_points]
@@ -1905,18 +1937,18 @@ def funcString(p, c=0, b=math.e):
         return "y=" + polySrting(p)
     elif c == 1:
         return "y=" + ("e" if b == math.e else str(b)) + "^(" + polySrting(p[:-1]) + ")" + (
-            "+" + str(p[-1]) if p[-1] else "")
+            ("+" if p[-1] > 0 else "") + str(p[-1]) if p[-1] else "")
     elif c == 2:
         return "y=" + ("ln" if b == math.e else "log" + str(b)) + "(" + polySrting(p[:-1]) + ")" + (
-            "+" + str(p[-1]) if p[-1] else "")
+            ("+" if p[-1] > 0 else "") + str(p[-1]) if p[-1] else "")
     elif c == 3:
-        return "y=sin(" + polySrting(p[:-1]) + ")" + ("+" + str(p[-1]) if p[-1] else "")
+        return "y=sin(" + polySrting(p[:-1]) + ")" + (("+" if p[-1] > 0 else "") + str(p[-1]) if p[-1] else "")
     elif c == 4:
-        return "y=cos(" + polySrting(p[:-1]) + ")" + ("+" + str(p[-1]) if p[-1] else "")
+        return "y=cos(" + polySrting(p[:-1]) + ")" + (("+" if p[-1] > 0 else "") + str(p[-1]) if p[-1] else "")
     elif c == 5:
-        return "y=tan(" + polySrting(p[:-1]) + ")" + ("+" + str(p[-1]) if p[-1] else "")
+        return "y=tan(" + polySrting(p[:-1]) + ")" + (("+" if p[-1] > 0 else "") + str(p[-1]) if p[-1] else "")
     elif c == 6:
-        return "y=cot(" + polySrting(p[:-1]) + ")" + ("+" + str(p[-1]) if p[-1] else "")
+        return "y=cot(" + polySrting(p[:-1]) + ")" + (("+" if p[-1] > 0 else "") + str(p[-1]) if p[-1] else "")
 
 
 def polySrting(params):
