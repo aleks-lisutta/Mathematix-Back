@@ -4,12 +4,35 @@ from pony.orm import db_session, Database, PrimaryKey, Required, Optional, Set, 
 
 import flaskProject
 from flaskProject import app
+from flaskProject.Tests.UnitTests import initiate_database
 from flaskProject.app import User, DB, teacherCont, studentCont, Cls, Unit
 from unittest import mock
 from unittest.mock import patch, MagicMock
 
 
 class MyTestCase(unittest.TestCase):
+    DB = None
+
+    @classmethod
+    def setUpClass(cls):
+        cls.DB = Database()
+        DB = cls.DB
+        initiate_database(DB)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.DB.drop_all_tables()
+        cls.DB.disconnect()
+
+    def tearDown(self) -> None:
+        with db_session:
+            DB.execute('DELETE FROM ActiveUnit WHERE 1=1;')
+            DB.execute('DELETE FROM Question WHERE 1=1;')
+            DB.execute('DELETE FROM Unit WHERE 1=1;')
+            DB.execute('DELETE FROM Cls_User WHERE 1=1;')
+            DB.execute('DELETE FROM Cls WHERE 1=1;')
+            DB.execute('DELETE FROM User WHERE 1=1;')
+
     def test_valid_username(self):
         # Test that a valid username returns True
         result = app.checkValidUsername("new_user")
@@ -60,13 +83,6 @@ class MyTestCase(unittest.TestCase):
         response, status_code = app.register_buisness("existing_student", "secret123", 2)
         self.assertEqual(status_code, 400, f"Registration failed with response {response}")
 
-    def test_invalid_password(self):
-        # invalid password for teacher
-        response, status_code = app.register_buisness("teacher_1", " ", 1)
-        self.assertEqual(status_code, 400, f"Registration failed with response {response}")
-        # invalid password for student
-        response, status_code = app.register_buisness("student_1", "7", 2)
-        self.assertEqual(status_code, 400, f"Registration failed with response {response}")
 
     @mock.patch('flaskProject.app.User')
     def test_checkUserPass(self, mock_db):

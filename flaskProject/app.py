@@ -187,7 +187,7 @@ def register():
 def register_buisness(username, password, typ):
     ans = makeUser(username, password, typ)
     if ans is None:
-        return username + " " + password + " " + typ, 200
+        return username + " " + password + " " + str(typ), 200
     return ans, 400
 
 

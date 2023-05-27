@@ -2,6 +2,7 @@ import unittest
 import os
 from pony.orm import db_session, Database, PrimaryKey, Required, Optional, Set, CacheIndexError, commit
 from flaskProject import app
+from flaskProject.Tests.UnitTests import initiate_database
 from flaskProject.app import User, DB, teacherCont, studentCont, Cls, Unit
 from unittest import mock
 from unittest.mock import patch, MagicMock
@@ -9,21 +10,27 @@ from unittest.mock import patch, MagicMock
 
 
 class TestGetMaxUnit(unittest.TestCase):
-    def setUp(self):
-        DB = Database()
-        DB.bind(provider='sqlite', filename='..\\..\\dbtest.sqlite', create_db=True)
+    DB = None
 
+    @classmethod
+    def setUpClass(cls):
+        cls.DB = Database()
+        DB = cls.DB
+        initiate_database(DB)
 
+    @classmethod
+    def tearDownClass(cls):
+        cls.DB.drop_all_tables()
+        cls.DB.disconnect()
 
-        # Generate mapping and create tables
-
-        DB.generate_mapping(create_tables=True)
-
-    def tearDown(self):
-        DB.disconnect()
-        # Remove the test database file after testing
-        cwd = os.getcwd()
-        os.remove('\\'.join(cwd.split('\\')[:-2]) + r'\dbtest.sqlite')
+    def tearDown(self) -> None:
+        with db_session:
+            DB.execute('DELETE FROM ActiveUnit WHERE 1=1;')
+            DB.execute('DELETE FROM Question WHERE 1=1;')
+            DB.execute('DELETE FROM Unit WHERE 1=1;')
+            DB.execute('DELETE FROM Cls_User WHERE 1=1;')
+            DB.execute('DELETE FROM Cls WHERE 1=1;')
+            DB.execute('DELETE FROM User WHERE 1=1;')
 
     def test_get_max_unit_sucess(self):
         with db_session:

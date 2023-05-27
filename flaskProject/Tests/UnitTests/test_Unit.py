@@ -2,6 +2,7 @@ import unittest
 import os
 from pony.orm import db_session, Database, PrimaryKey, Required, Optional, Set, CacheIndexError, commit
 from flaskProject import app
+from flaskProject.Tests.UnitTests import initiate_database
 from flaskProject.app import User, DB, teacherCont, studentCont, Cls, Unit
 from unittest import mock
 from unittest.mock import patch
@@ -9,79 +10,27 @@ from unittest.mock import patch
 
 
 class MyTestCase(unittest.TestCase):
-    def setUp(self):
-        DB = Database()
-        DB.bind(provider='sqlite', filename='..\\..\\dbtest.sqlite', create_db=True)
+    DB = None
 
-        class User(DB.Entity):
-            name = PrimaryKey(str)
-            password = Required(str)
-            type = Required(int)
-            teaching = Set('Cls', reverse='teacher', cascade_delete=False)
-            inClass = Set('Cls_User', cascade_delete=False)
-            activeUnits = Set("ActiveUnit", reverse='student')
+    @classmethod
+    def setUpClass(cls):
+        cls.DB = Database()
+        DB = cls.DB
+        initiate_database(DB)
 
-        class Cls(DB.Entity):
-            name = PrimaryKey(str)
-            teacher = Required(User, reverse='teaching')
-            students = Set('Cls_User')
-            hasUnits = Set('Unit', reverse='cls', cascade_delete=False)
+    @classmethod
+    def tearDownClass(cls):
+        cls.DB.drop_all_tables()
+        cls.DB.disconnect()
 
-        class Cls_User(DB.Entity):
-            cls = Required(Cls)
-            user = Required(User)
-            approved = Required(bool)
-            PrimaryKey(cls, user)
-
-        class Unit(DB.Entity):
-            name = Required(str)
-            cls = Required(Cls, reverse='hasUnits')
-            desc = Optional(str)
-            template = Required(str)
-            Qnum = Required(str)
-            maxTime = Required(str)
-            subDate = Required(str)
-            instances = Set('ActiveUnit', reverse='unit')
-            order = Required(int)
-            next = Optional(str)
-            PrimaryKey(name, cls)
-
-        class Question(DB.Entity):
-            id = Required(int)
-            question_preamble = Required(str)
-            question = Required(str)
-            answer1 = Required(str)
-            answer2 = Required(str)
-            answer3 = Required(str)
-            answer4 = Required(str)
-            correct_ans = Required(int)
-            active_unit = Required('ActiveUnit', reverse='questions')
-            solved_correctly = Optional(bool)
-            PrimaryKey(active_unit, id)
-
-        class ActiveUnit(DB.Entity):
-            inProgress = Required(bool)
-            attempt = Required(int)
-            questions = Set('Question', reverse='active_unit')
-            unit = Required(Unit, reverse='instances')
-            student = Required(User, reverse='activeUnits')
-            grade = Optional(int)
-            consecQues = Required(int)
-            quesAmount = Required(int)
-            currentQuestion = Required(int)
-            totalCorrect = Required(int)
-            lastTimeAnswered = Optional(str)
-            PrimaryKey(unit, student, attempt)
-
-        # Generate mapping and create tables
-
-        DB.generate_mapping(create_tables=True)
-
-    def tearDown(self):
-        DB.disconnect()
-        # Remove the test database file after testing
-        cwd = os.getcwd()
-        os.remove('\\'.join(cwd.split('\\')[:-2]) + r'\dbtest.sqlite')
+    def tearDown(self) -> None:
+        with db_session:
+            DB.execute('DELETE FROM ActiveUnit WHERE 1=1;')
+            DB.execute('DELETE FROM Question WHERE 1=1;')
+            DB.execute('DELETE FROM Unit WHERE 1=1;')
+            DB.execute('DELETE FROM Cls_User WHERE 1=1;')
+            DB.execute('DELETE FROM Cls WHERE 1=1;')
+            DB.execute('DELETE FROM User WHERE 1=1;')
 
     @patch('flaskProject.app.isLogin')
     def test_editUnit_incorrect_teacher(self, mock_isLogin):
