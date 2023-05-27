@@ -1440,7 +1440,7 @@ def getActiveUnits(className, unitName, username):  # this is for dab
             active_units = ActiveUnit.select(lambda au: au.unit.cls.name == className and
                                                         au.unit.name == unitName and
                                                         au.student.name == username)[:]
-            json_data = json.dumps(active_unit_dicts)
+            json_data = json.dumps(active_units)
             return jsonify(json_data)
     except Exception as e:
         print(e)
@@ -1784,6 +1784,7 @@ def makeIntersections(poly, c=0, r=[(-100, 100)]):
         inters = (intersections(poly, lambda x: 0, i[0], i[1]))
         for x in inters:
             xs.append(x)
+
     points = [(float(round(i, 3)), 0.0) if abs(round(i, 3)) > 0.001 else (0.0, 0.0) for i in xs]
     print(points)
     # if 0 not in [float(round(i, 3)) for i in xs]:
@@ -1820,7 +1821,7 @@ def deriveString(p, c, b):
         return "y=" + polySrting(makeDer(p[:-1])) + " * " + ("e" if b == math.e else str(b)) + "^(" + polySrting(
             p[:-1]) + ")" + (("+" if p[-1] > 0 else "") + str(p[-1]) if p[-1] else "")
     elif c == 2:
-        return "y=" + polySrting(p[:-1]) + " / " + polySrting(makeDer(p)) + (
+        return "y=(" + polySrting(p[:-1]) + " / " + polySrting(makeDer(p)) + ")" + (
             ("+" if p[-1] > 0 else "") + str(p[-1]) if p[-1] else "")
     elif c == 3:
         return "y=" + polySrting(makeDer(p)) + " * cos(" + polySrting(p[:-1]) + ")" + (
@@ -1829,9 +1830,9 @@ def deriveString(p, c, b):
         return "y=" + polySrting(makeDer(p)) + " * -sin(" + polySrting(p[:-1]) + ")" + (
             ("+" if p[-1] > 0 else "") + str(p[-1]) if p[-1] else "")
     elif c == 5:
-        return "y=1/cos^2(" + polySrting(p[:-1]) + ")" + (("+" if p[-1] > 0 else "") + str(p[-1]) if p[-1] else "")
+        return "y=(1/cos^2(" + polySrting(p[:-1]) + ")" + (("+" if p[-1] > 0 else "") + ")" + str(p[-1]) if p[-1] else "")
     elif c == 6:
-        return "y=-1/sin^2(" + polySrting(p[:-1]) + ")" + (("+" if p[-1] > 0 else "") + str(p[-1]) if p[-1] else "")
+        return "y=(-1/sin^2(" + polySrting(p[:-1]) + ")" + (("+" if p[-1] > 0 else "") + ")" + str(p[-1]) if p[-1] else "")
 
 
 def derive(params, c, b):
@@ -2056,16 +2057,19 @@ def makeFunc(p, c=0, b=math.e):
 
 
 # [random.randint(params[2*i], params[2*i+1]) for i in range(int(len(params)/2))]
-# p = [3, 4, 1, 7]
-# c=4
-# a = makeFunc(p, c=c)
-# print()
-# print("f: "+str(a))
-# print("f(2): "+str(a(2)))
-# print("Intersections: "+str(makeIntersections(a,c=c)))
-# print("Extremes: "+str(makeExtremes(p,c=c)))
-# print("IncDec: "+str(makeIncDec(p,c=c)))
-# print("funcString: "+str(funcString(p, c=c)))
+p = [3, 4, 1, 7]
+c=2
+a = makeFunc(p, c=c)
+print()
+print("f: "+str(a))
+print("f(2): "+str(a(2)))
+dom = makeDomain(p,c)
+print("Domain: "+str(dom))
+print("Intersections: "+str(makeIntersections(a,c=c,r=dom)))
+print("Extremes: "+str(makeExtremes(p,c=c)))
+print("IncDec: "+str(makeIncDec(p,c=c)))
+print("funcString: "+str(funcString(p, c=c)))
+print("deriveString: "+str(deriveString(p, c=c,b=math.e)))
 
 
 def getLessonGrade(user, unit_name, class_name):
