@@ -1740,12 +1740,13 @@ def helper(f1: callable, f2: callable, a: float, b: float, maxerr=0.001) -> Iter
         f_x2 = f1(x2) - f2(x2)
 
 
-def intersections(f1: callable, f2: callable, a: float, b: float, maxerr=0.001) -> Iterable:
+def intersections(f1: callable, f2: callable, a: float, b: float, maxerr=0.00001) -> Iterable:
     iterator = helper(f1, f2, a, b, maxerr)
     arr = np.array([])
     for x in iterator:
         if len(arr) == 0 or abs(x - arr[len(arr) - 1]) > maxerr:
             arr = np.append(arr, [x])
+    print("arr",arr)
     return arr
 
 
@@ -1780,8 +1781,11 @@ def makeDomain(params, c):
 def makeIntersections(poly, c=0, r=[(-100, 100)]):
     xs = []
     for i in r:
-        xs.append(intersections(poly, lambda x: 0, i[0], i[1]))
+        inters = (intersections(poly, lambda x: 0, i[0], i[1]))
+        for x in inters:
+            xs.append(x)
     points = [(float(round(i, 3)), 0.0) if abs(round(i, 3)) > 0.001 else (0.0, 0.0) for i in xs]
+    print(points)
     # if 0 not in [float(round(i, 3)) for i in xs]:
     #     points.append((0.0, float(round(poly(0), 3))))
     return points
@@ -1819,9 +1823,11 @@ def deriveString(p, c, b):
         return "y=" + polySrting(p[:-1]) + " / " + polySrting(makeDer(p)) + (
             ("+" if p[-1] > 0 else "") + str(p[-1]) if p[-1] else "")
     elif c == 3:
-        return "y="+polySrting(makeDer(p))+" * cos(" + polySrting(p[:-1]) + ")" + (("+" if p[-1] > 0 else "") + str(p[-1]) if p[-1] else "")
+        return "y=" + polySrting(makeDer(p)) + " * cos(" + polySrting(p[:-1]) + ")" + (
+            ("+" if p[-1] > 0 else "") + str(p[-1]) if p[-1] else "")
     elif c == 4:
-        return "y="+polySrting(makeDer(p))+" * -sin(" + polySrting(p[:-1]) + ")" + (("+" if p[-1] > 0 else "") + str(p[-1]) if p[-1] else "")
+        return "y=" + polySrting(makeDer(p)) + " * -sin(" + polySrting(p[:-1]) + ")" + (
+            ("+" if p[-1] > 0 else "") + str(p[-1]) if p[-1] else "")
     elif c == 5:
         return "y=1/cos^2(" + polySrting(p[:-1]) + ")" + (("+" if p[-1] > 0 else "") + str(p[-1]) if p[-1] else "")
     elif c == 6:
