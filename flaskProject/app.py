@@ -1736,12 +1736,19 @@ def helper(f1: callable, f2: callable, a: float, b: float, maxerr=0.001) -> Iter
         else:
             x1 = x2
             x2 += delta
+        if x2 < b and x2 > a:
+            f_x2 = f1(x2) - f2(x2)
+        elif x2>b:
+            #print(x2, b, b - 100 * maxerr)
+            f_x2 = f1(b-100*maxerr) - f2(b-100*maxerr)
+        else:
+            #print(x2, a, a+100*maxerr)
+            f_x2 = f1(a+100*maxerr) - f2(a+100*maxerr)
 
-        f_x2 = f1(x2) - f2(x2)
 
 
 def intersections(f1: callable, f2: callable, a: float, b: float, maxerr=0.00001) -> Iterable:
-    iterator = helper(f1, f2, a+5*maxerr, b-5*maxerr, maxerr)
+    iterator = helper(f1, f2, a+0.01, b-0.01, maxerr)
     arr = np.array([])
     for x in iterator:
         if len(arr) == 0 or abs(x - arr[len(arr) - 1]) > maxerr:
@@ -1759,11 +1766,11 @@ def makeDomain(params, c):
         r = []
         coefficient = params[:-1]
         f = makeFunc(coefficient)
-        inters = [x for x in intersections(lambda x: 0, f, -100, 100)]
+        inters = [x for x in intersections(f ,lambda x: 0,  -100, 100)]
         inters.append(-100)
         inters.append(100)
         inters = sorted([round(x,3) for x in inters])
-        print(inters)
+        #print(inters)
         for i in range(len(inters) - 1):
             a = (inters[i] + inters[i + 1]) / 2
             if f(a) > 0:
@@ -1821,21 +1828,17 @@ def deriveString(p, c, b):
     if c == 0:
         return "y=" + polySrting(makeDer(p))
     elif c == 1:
-        return "y=" + polySrting(makeDer(p[:-1])) + " * " + ("e" if b == math.e else str(b)) + "^(" + polySrting(
-            p[:-1]) + ")" + (("+" if p[-1] > 0 else "") + str(p[-1]) if p[-1] else "")
+        return "y=(" + polySrting(makeDer(p[:-1])) + ") * " + ("e" if b == math.e else str(b))+ "^(" + polySrting(p[:-1]) + ")"
     elif c == 2:
-        return "y=(" + polySrting(p[:-1]) + " / " + polySrting(makeDer(p)) + ")" + (
-            ("+" if p[-1] > 0 else "") + str(p[-1]) if p[-1] else "")
+        return "y=(" + polySrting(makeDer(p[:-1])) + " / " + polySrting(p[:-1]) + ")"
     elif c == 3:
-        return "y=" + polySrting(makeDer(p)) + " * cos(" + polySrting(p[:-1]) + ")" + (
-            ("+" if p[-1] > 0 else "") + str(p[-1]) if p[-1] else "")
+        return "y=" + polySrting(makeDer(p)) + " * cos(" + polySrting(p[:-1]) + ")"
     elif c == 4:
-        return "y=" + polySrting(makeDer(p)) + " * -sin(" + polySrting(p[:-1]) + ")" + (
-            ("+" if p[-1] > 0 else "") + str(p[-1]) if p[-1] else "")
+        return "y=" + polySrting(makeDer(p)) + " * -sin(" + polySrting(p[:-1]) + ")"
     elif c == 5:
-        return "y=(1/cos^2(" + polySrting(p[:-1]) + ")" + (("+" if p[-1] > 0 else "") + ")" + str(p[-1]) if p[-1] else "")
+        return "y=(1/cos^2(" + polySrting(p[:-1]) + ")"
     elif c == 6:
-        return "y=(-1/sin^2(" + polySrting(p[:-1]) + ")" + (("+" if p[-1] > 0 else "") + ")" + str(p[-1]) if p[-1] else "")
+        return "y=(-1/sin^2(" + polySrting(p[:-1]) + ")"
 
 
 def derive(params, c, b):
@@ -1845,7 +1848,9 @@ def derive(params, c, b):
         return makeFunc(makeDer(params))
     elif c == 1:
         def res(x):
-            return math.pow(b, makePoly(params[:-1])(x)) * math.log(b, math.e)
+            polyx = makePoly(params[:-1])(x)
+            derx = makeFunc(makeDer(params[:-1]))(x)
+            return derx*math.pow(b, polyx) * math.log(b, math.e)
 
         return res
 
@@ -1907,12 +1912,94 @@ def makeIncDec(p, c=0, b=math.e):
     if not any(p[:-1]):
         return [], []
     extremes = makeExtremes(p, c, b)
+    dom = makeDomain(p,c)
+    #print("dom, ext",dom, extremes)
+    ext = set()
+    f = makeFunc(p, c, b)
+    for i in extremes:
+        ext.add(i)
+    for i in dom:
+        if i[0] not in [-100,100,math.pi, -math.pi]:
+            if f(i[0]+0.001):
+                ext.add((i[0], float('-inf') if f(i[0]+0.001)<0 else float('inf')))
+            else:
+                ext.add((i[0], float('-inf') if f(i[0] - 0.001) < 0 else float('inf')))
+        if i[1] not in [-100,100,math.pi, -math.pi]:
+            if f(i[1] + 0.001):
+                ext.add((i[1], float('-inf') if f(i[1] + 0.001) < 0 else float('inf')))
+            else:
+                ext.add((i[1], float('-inf') if f(i[1] - 0.001) < 0 else float('inf')))
+    print(ext)
     # Sort the extreme points by their x-values
-    sorted_extremes = sorted(extremes, key=lambda x: x[0])
+    sorted_extremes = sorted(list(ext))
+    print("sorted",sorted_extremes)
+    f = derive(p,c,b)
+    if len(sorted_extremes) == 0:
+        dom = makeDomain(p, c)
+        sample = random.randint(dom[0][0]*1000, dom[0][1]*1000)/1000
+        if f(sample) > 0:
+            return [(float('-inf'), float('inf'))], []
+        else:
+            return [], [(float('-inf'), float('inf'))]
+    s = f(sorted_extremes[0][0] - 1)
+
+    inc_ranges = []
+    dec_ranges = []
+
+    # Add the initial range
+    if s < 0:
+        dec_ranges.append((float('-inf'), sorted_extremes[0][0]))
+    else:
+        inc_ranges.append((float('-inf'), sorted_extremes[0][0]))
+
+    # Iterate over the sorted extreme points
+    for i in range(len(sorted_extremes) - 1):
+        x1, y1 = sorted_extremes[i]
+        x2, y2 = sorted_extremes[i + 1]
+
+        if y1 < y2:
+            inc_ranges.append((x1, x2))
+        elif y1 > y2:
+            dec_ranges.append((x1, x2))
+    s = f(sorted_extremes[-1][0] + 1)
+    # Add the final range
+    if s < 0:
+        dec_ranges.append((sorted_extremes[-1][0], float('inf')))
+    else:
+        inc_ranges.append((sorted_extremes[-1][0], float('inf')))
+
+    return inc_ranges, dec_ranges
+
+def makeIncDec2(p, c=0, b=math.e):
+    if not any(p[:-1]):
+        return [], []
+    extremes = makeExtremes(p, c, b)
+    dom = makeDomain(p,c)
+    print("dom, ext",dom, extremes)
+    ext = set()
+    f = makeFunc(p, c, b)
+    for i in extremes:
+        ext.add(i)
+    for i in dom:
+        if i[0] not in [-100,100]:
+            if f(i[0]+0.001):
+                ext.add((i[0], float('-inf') if f(i[0]+0.001)<0 else float('inf')))
+            else:
+                ext.add((i[0], float('-inf') if f(i[0] - 0.001) < 0 else float('inf')))
+        if i[1] not in [-100,100]:
+            if f(i[1] + 0.001):
+                ext.add((i[1], float('-inf') if f(i[1] + 0.001) < 0 else float('inf')))
+            else:
+                ext.add((i[1], float('-inf') if f(i[1] - 0.001) < 0 else float('inf')))
+    print(ext)
+    # Sort the extreme points by their x-values
+    sorted_extremes = sorted(list(ext))
+    print("sorted",sorted_extremes)
     f = lambda x: makeFunc(makeDer(p))(x) * makeFunc(p[:-1] + [0], c, b)(x)
     if len(sorted_extremes) == 0:
-
-        if f(0) > 0:
+        dom = makeDomain(p, c)
+        sample = random.randint(dom[0][0]*1000, dom[0][1]*1000)/1000
+        if f(sample) > 0:
             return [(float('-inf'), float('inf'))], []
         else:
             return [], [(float('-inf'), float('inf'))]
@@ -2006,7 +2093,7 @@ def makeLog(p, base=math.e):
             if temp > 0:
                 return math.log(makePoly(p[:-1])(x), base) + p[-1]
             else:
-                #print("LOGNONE", funcString(p,2,base), x)
+                print("LOGNONE", funcString(p,2,base), x)
                 return None
 
         return func
@@ -2065,8 +2152,8 @@ def makeFunc(p, c=0, b=math.e):
 
 
 # [random.randint(params[2*i], params[2*i+1]) for i in range(int(len(params)/2))]
-p = [8,0,-2,-10]
-c=2
+p = [3,-6,2,-12]
+c=1
 a = makeFunc(p, c=c)
 print()
 print("f: "+str(a))
