@@ -1741,12 +1741,11 @@ def helper(f1: callable, f2: callable, a: float, b: float, maxerr=0.001) -> Iter
 
 
 def intersections(f1: callable, f2: callable, a: float, b: float, maxerr=0.00001) -> Iterable:
-    iterator = helper(f1, f2, a, b, maxerr)
+    iterator = helper(f1, f2, a+5*maxerr, b-5*maxerr, maxerr)
     arr = np.array([])
     for x in iterator:
         if len(arr) == 0 or abs(x - arr[len(arr) - 1]) > maxerr:
             arr = np.append(arr, [x])
-    print("arr",arr)
     return arr
 
 
@@ -1755,11 +1754,16 @@ def makeDomain(params, c):
         return [(-100, 100)]
     elif c in [1, 3, 4]:
         r = [(-math.pi, math.pi)]
+        return r
     elif c == 2:
         r = []
         coefficient = params[:-1]
         f = makeFunc(coefficient)
-        inters = intersections(lambda x: 0, f, -100, 100)
+        inters = [x for x in intersections(lambda x: 0, f, -100, 100)]
+        inters.append(-100)
+        inters.append(100)
+        inters = sorted([round(x,3) for x in inters])
+        print(inters)
         for i in range(len(inters) - 1):
             a = (inters[i] + inters[i + 1]) / 2
             if f(a) > 0:
@@ -1769,13 +1773,12 @@ def makeDomain(params, c):
         r = []
         coefficient = params[:-1] + [0]
         f = makeFunc(coefficient, 3 if c == 6 else 4)
-        inters = intersections(lambda x: 0, f, -100, 100)
-        if not inters:
+        inters = intersections(lambda x: 0, f, -3, 3)
+        if len(inters)==0:
             return [(-100, 100)]
-        r.append((float('-inf'), inters[0]))
         for i in range(len(inters) - 1):
             r.append((inters[i], inters[i + 1]))
-        r.append((inters[-1], float('inf')))
+        return r
 
 
 def makeIntersections(poly, c=0, r=[(-100, 100)]):
@@ -1786,7 +1789,7 @@ def makeIntersections(poly, c=0, r=[(-100, 100)]):
             xs.append(x)
 
     points = [(float(round(i, 3)), 0.0) if abs(round(i, 3)) > 0.001 else (0.0, 0.0) for i in xs]
-    print(points)
+    #print(points)
     # if 0 not in [float(round(i, 3)) for i in xs]:
     #     points.append((0.0, float(round(poly(0), 3))))
     return points
@@ -1867,6 +1870,10 @@ def derive(params, c, b):
             return math.sin((makePoly(coefficients))(x))
 
         return makeMultOfTwoFuncs(makeNegateFunc(sinElement), innerDerive)
+    if c == 5:
+        return lambda x: 1 / (makeFunc(params[:-1] + [0], 4)(x) ** 2)
+    if c == 6:
+        return lambda x: -1 / (makeFunc(params[:-1] + [0], 3)(x) ** 2)
 
 
 def makeExtremes(params, c=0, b=math.e):
@@ -1999,7 +2006,8 @@ def makeLog(p, base=math.e):
             if temp > 0:
                 return math.log(makePoly(p[:-1])(x), base) + p[-1]
             else:
-                None
+                #print("LOGNONE", funcString(p,2,base), x)
+                return None
 
         return func
 
@@ -2057,13 +2065,13 @@ def makeFunc(p, c=0, b=math.e):
 
 
 # [random.randint(params[2*i], params[2*i+1]) for i in range(int(len(params)/2))]
-p = [3, 4, 1, 7]
+p = [8,0,-2,-10]
 c=2
 a = makeFunc(p, c=c)
 print()
 print("f: "+str(a))
 print("f(2): "+str(a(2)))
-dom = makeDomain(p,c)
+dom = makeDomain(p, c)
 print("Domain: "+str(dom))
 print("Intersections: "+str(makeIntersections(a,c=c,r=dom)))
 print("Extremes: "+str(makeExtremes(p,c=c)))
