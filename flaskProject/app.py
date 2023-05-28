@@ -1926,6 +1926,61 @@ def makeExtremes(params, c=0, b=math.e):
     return extremes
 
 
+def getSymmetry2(p, c=0, b=math.e):
+    f = makeFunc(p, c, b)
+    fa = lambda a, b, x: a * f(-x + b)
+    err = 0.002
+    m = 10.0
+    a = -m / 5
+    b = -m
+    while a < m:
+        b = -m
+        while b < m:
+            found = True
+            x = -m
+            while x < m:
+                if round(f(x), 1) != round(fa(a, b, x), 1):
+                    found = False
+                    break
+                x += 10 * err
+
+            if found:
+                return round(a, 2), round(b, 2)
+            b += err
+        a += 10 * err
+    return None
+
+
+def getSymmetry(p, c=0, b=math.e):
+    f = makeFunc(p, c, b)
+    err = 0.0001
+    m = 10
+    center = -m
+    while center < m:
+        x = 0
+        sign = None
+        while x < m:
+            if sign is None:
+                l = round(f(center + x) - f(center), 1)
+                r = round(f(center - x) - f(center), 1)
+                if abs(l - r) < err:
+                    sign = 1
+                elif abs(l + r) < err:
+                    sign = -1
+                else:
+                    sign = None
+                    break
+            else:
+                if round(f(center + x) - f(center), 1) != sign * round(f(center - x) - f(center), 1):
+                    sign = None
+                    break
+            x += 10*err
+        if sign is not None:
+            return sign, round(center, 2)
+        center += err
+    return None
+
+
 def makeIncDec(p, c=0, b=math.e):
     if not any(p[:-1]):
         return [], []
@@ -1988,6 +2043,69 @@ def makeIncDec(p, c=0, b=math.e):
 
     return inc_ranges, dec_ranges
 
+def makePosNeg(p, c=0, b=math.e):
+    if not any(p[:-1]):
+        return [], []
+    dom = makeDomain(p, c)
+
+    # print("dom, ext",dom, extremes)
+    f = makeFunc(p, c, b)
+    inters = makeIntersections(f, c, dom)
+    points = set()
+    for i in inters:
+        points.add(i)
+    for i in dom:
+        if i[0] not in [-100, 100, math.pi, -math.pi]:
+            if f(i[0] + 0.001):
+                points.add((i[0], float('-inf') if f(i[0] + 0.001) < 0 else float('inf')))
+            else:
+                points.add((i[0], float('-inf') if f(i[0] - 0.001) < 0 else float('inf')))
+        if i[1] not in [-100, 100, math.pi, -math.pi]:
+            if f(i[1] + 0.001):
+                points.add((i[1], float('-inf') if f(i[1] + 0.001) < 0 else float('inf')))
+            else:
+                points.add((i[1], float('-inf') if f(i[1] - 0.001) < 0 else float('inf')))
+    # Sort the extreme points by their x-values
+    sorted_points = sorted(list(points))
+    print("sorted", sorted_points)
+    if len(sorted_points) == 0:
+        dom = makeDomain(p, c)
+        sample = random.randint(dom[0][0] * 1000, dom[0][1] * 1000) / 1000
+        if f(sample) > 0:
+            return [(float('-inf'), float('inf'))], []
+        else:
+            return [], [(float('-inf'), float('inf'))]
+    s = f(sorted_points[0][0] - 1)
+
+    pos = []
+    neg = []
+
+    # Add the initial range
+    if s < 0:
+        neg.append((float('-inf'), sorted_points[0][0]))
+    else:
+        pos.append((float('-inf'), sorted_points[0][0]))
+
+    # Iterate over the sorted extreme points
+    for i in range(len(sorted_points) - 1):
+        x1, y1 = sorted_points[i]
+        x2, y2 = sorted_points[i + 1]
+        x = (x1 + x2) / 2
+        y = f(x)
+        if y is None:
+            continue
+        if y > 0:
+            pos.append((x1, x2))
+        elif y < 0:
+            neg.append((x1, x2))
+    s = f(sorted_points[-1][0] + 1)
+    # Add the final range
+    if s < 0:
+        neg.append((sorted_points[-1][0], float('inf')))
+    else:
+        pos.append((sorted_points[-1][0], float('inf')))
+
+    return pos, neg
 
 def makeIncDec2(p, c=0, b=math.e):
     if not any(p[:-1]):
@@ -2171,8 +2289,10 @@ def makeFunc(p, c=0, b=math.e):
 
 
 # [random.randint(params[2*i], params[2*i+1]) for i in range(int(len(params)/2))]
-p = [3, -6, 2, -12]
-c = 1
+
+p = [1, 0, 0, 0]
+c = 0
+
 a = makeFunc(p, c=c)
 print()
 print("f: " + str(a))
@@ -2182,9 +2302,15 @@ print("Domain: " + str(dom))
 print("Intersections: " + str(makeIntersections(a, c=c, r=dom)))
 print("Extremes: " + str(makeExtremes(p, c=c)))
 print("IncDec: " + str(makeIncDec(p, c=c)))
+
 print("funcString: " + str(funcString(p, c=c)))
 print("deriveString: " + str(deriveString(p, c=c, b=math.e)))
 
+print("PosNeg: " + str(makePosNeg(p, c=c, b=math.e)))
+print("funcString: " + str(funcString(p, c=c)))
+print("deriveString: " + str(deriveString(p, c=c, b=math.e)))
+sym = getSymmetry(p, c)
+print("symmetry: " + ("f(x)=" + str(sym[0]) + "*f(-x+" + str(2 * sym[1]) + ")") if sym else sym)
 
 def getLessonGrade(user, unit_name, class_name):
     try:
