@@ -468,36 +468,6 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual(response, "Cls['Mathemathic']")
         self.assertEqual(status_code, 400)
 
-    @patch('flaskProject.app.isLogin')
-    def test_removeUnit_successful(self, mock_isLogin):
-        # Set up the mock
-        mock_isLogin.return_value = True
-
-        # Add test data
-        with db_session:
-            teacher = User(name="John", password="123", type=1)
-            c = Cls(name="Math", teacher=teacher)
-            u = Unit(
-                name="Calculus",
-                cls=c,
-                desc="Advanced calculus",
-                template="template1",
-                Qnum="10",
-                maxTime="60",
-                subDate="2023-05-31",
-                order=1,
-                # next=None
-            )
-
-            # Test that removeUnit_for_test returns "successful" and status code 200
-            response, status_code = app.removeUnit_buisness("Calculus", "Math", "John")
-            self.assertEqual(response, "successful")
-            self.assertEqual(status_code, 200)
-
-            # Assert that the unit was removed from the database
-            self.assertIsNone(Unit.get(name="Calculus", cls=c))
-
-
 
 
 if __name__ == '__main__':

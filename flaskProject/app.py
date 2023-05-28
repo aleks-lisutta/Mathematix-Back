@@ -127,7 +127,6 @@ def hello_world():  # put application's code here
 
 
 def isLogin(username):
-    return True
     if username not in activeControllers.keys():
         # print(username, activeControllers.keys())
         return False
@@ -212,7 +211,7 @@ def checkType(username):
     except Exception:
         return 0
 
-#
+
 def loadController(username):
     type = checkType(username)
     if type == 1:
@@ -486,6 +485,8 @@ def getAllClassesNotIn():
         return str(e), 400
 
 
+
+
 def getAllClassesNotIn_Buisness(student):
     ret = []
     if not isLogin(student):
@@ -584,6 +585,13 @@ def getUnapprovedStudents():
     teacher = request.args.get('teacher')
     if not isLogin(teacher):
         return "user " + teacher + "not logged in.", 400
+    try:
+        return getUnapprovedStudents_buisness(teacher)
+    except Exception as e:
+        return str(e), 400
+
+
+def getUnapprovedStudents_buisness(teacher):
     ret = []
     id = 0
     try:
@@ -785,6 +793,12 @@ def getClassesStudent():
     if not isLogin(student):
         return "user " + student + "not logged in.", 400
     try:
+        return getClassesStudent_buisness(student)
+    except Exception as e:
+        return str(e), 400
+
+def getClassesStudent_buisness(student):
+    try:
         with db_session:
             ret = []
             id = 0
@@ -806,6 +820,13 @@ def getClassesTeacher():
     teacher = request.args.get('teacher')
     if not isLogin(teacher):
         return "user " + teacher + "not logged in.", 400
+    try:
+        return getClassesTeacher_buisness(teacher)
+    except Exception as e:
+        print(e)
+        return str(e), 400
+
+def getClassesTeacher_buisness(teacher):
     try:
         with db_session:
             ret = []
@@ -1214,7 +1235,7 @@ def get_max_unit(unit, user):
     return maxAttempt
 
 
-def addQuestions(className, unitName, username):
+def addQuestions_buisness(className, unitName, username):
     try:
         with db_session:
             unit = Unit[unitName, Cls[className]]
@@ -1308,11 +1329,11 @@ def startUnit():
     username = request.args.get('username')
     if not isLogin(username):
         return "user " + username + "not logged in.", 400
-    return startUnit(className, unitName, username)
+    return startUnit_buisness(className, unitName, username)
 
-def startUnit(className, unitName, username):
+def startUnit_buisness(className, unitName, username):
 
-    return addQuestions(className, unitName, username)
+    return addQuestions_buisness(className, unitName, username)
 
 
 # now all this does is add 10 questions to the active unit
@@ -1324,6 +1345,13 @@ def individualStats():
     studentUsername = request.args.get('usernameS')
     if not isLogin(teacherUsername):
         return "user " + teacherUsername + "not logged in.", 400
+    try:
+        return individualStats_buisness(className, unitName, teacherUsername, studentUsername)
+    except Exception as e:
+        print(e)
+        return str(e), 400
+
+def individualStats_buisness(className, unitName, teacherUsername, studentUsername):
     try:
         with db_session:
             ret = dict()
@@ -1357,8 +1385,7 @@ def individualStats():
         print(e)
         return str(e), 400
 
-def getActiveUnits(className, unitName, username): #this is for dab
-
+def getActiveUnits_buisness(className, unitName, username): #this is for dab
     try:
         with db_session:
             active_units = ActiveUnit.select(lambda au: au.unit.cls.name == className and
@@ -1378,7 +1405,7 @@ def itemByName(lst, name):
     return None
 
 
-def getAllActiveUnits(className, unitName):
+def getAllActiveUnits_buisness(className, unitName):
     try:
         with db_session:
             active_units = ActiveUnit.select(lambda au: au.unit.cls.name == className and au.unit.name == unitName)[:]
@@ -1401,7 +1428,7 @@ def getAllActiveUnits(className, unitName):
         print(e)
         return str(e), 400
 
-
+#needs to be deleted
 def getAllActiveUnits_for_tests(className, unitName):
     try:
         with db_session:
@@ -1438,7 +1465,7 @@ def getStats():
     if not isLogin(username):
         return "user " + username + "not logged in.", 400
 
-    return getAllActiveUnits(className, unitName)
+    return getAllActiveUnits_buisness(className, unitName)
 
 
 @app.route('/getQuestion')
@@ -1450,7 +1477,7 @@ def getQuestion():
     if not isLogin(user):
         return "user " + user + "not logged in.", 400
     try:
-        getQuestion_buisness(user, unit_name, class_name, question_number)
+        return getQuestion_buisness(user, unit_name, class_name, question_number)
     except Exception as e:
         print(e)
         return str(e), 400
@@ -1514,7 +1541,7 @@ def submitQuestion_buisness(user, unit_name, class_name, question_number, ans_nu
             activeUnit.lastTimeAnswered = date_string
 
             if (not activeUnit.currentQuestion < activeUnit.quesAmount):
-                addQuestions(class_name, unit_name, user)
+                addQuestions_buisness(class_name, unit_name, user)
 
             if question.correct_ans == ans_number:
                 question.solved_correctly = True
@@ -1548,12 +1575,24 @@ def quitActiveUnit():
     user = request.args.get('username')
     unit_name = request.args.get('unitName')
     class_name = request.args.get('className')
-    with db_session:
-        unit = Unit[unit_name, Cls[class_name]]
-        attempt = get_max_unit(unit, user)
-        activeUnit = ActiveUnit[unit, user, attempt]
-        activeUnit.inProgress = False
-    return 'done'
+    try:
+        return quitActiveUnit_buisness(user, unit_name, class_name)
+    except Exception as e:
+        print(e)
+        return str(e), 400
+
+def quitActiveUnit_buisness(user, unit_name, class_name):
+    try:
+        with db_session:
+            unit = Unit[unit_name, Cls[class_name]]
+            attempt = get_max_unit(unit, user)
+            activeUnit = ActiveUnit[unit, user, attempt]
+            activeUnit.inProgress = False
+            return 'done'
+    except Exception as e:
+        print(e)
+        return str(e), 400
+
 
 
 def makePoly(p):
@@ -1789,7 +1828,7 @@ class studentCont(userCont):
     #     return "getUnit", Uname
 
     def startUnit(self, Uname):
-        return "startUnit", Uname
+        return "startUnit_buisness", Uname
 
     def getQuestion(self, Uname, Qnum):
         return "getQuestion", Uname, Qnum
