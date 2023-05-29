@@ -1771,7 +1771,7 @@ def intersections(f1: callable, f2: callable, a: float, b: float, maxerr=0.00001
     return arr
 
 
-def makeDomain(params, c):
+def makeDomain(params, c=0):
     if c == 0:
         return [(-100, 100)]
     elif c in [1, 3, 4]:
@@ -1810,8 +1810,22 @@ def makeDomain(params, c):
         r = []
         r.append((-100, zeroes[0]))
         for i in range(len(zeroes) - 1):
-            r.append((zeores[i], zeroesp[i + 1]))
+            r.append((zeroes[i], zeroes[i + 1]))
         r.append(((zeroes[-1]), 100))
+        return r
+    elif c == 8:
+        poly = makePoly(params[:-1])
+        zeroes = [x[0] for x in makeIntersections(poly)]
+        if len(zeroes) == 0:
+            return [(-100, 100)]
+        r = []
+        zeroes.append(-100)
+        zeroes.append(100)
+        zeroes = sorted(zeroes)
+        for i in range(len(zeroes) - 1):
+            z = (zeroes[i] + zeroes[i + 1]) / 2
+            if poly(z) >=0:
+                r.append((zeroes[i], zeroes[i + 1]))
         return r
 
 
@@ -1823,7 +1837,7 @@ def makeIntersections(poly, c=0, r=[(-100, 100)]):
             xs.append(x)
 
     points = [(float(round(i, 3)), 0.0) if abs(round(i, 3)) > 0.001 else (0.0, 0.0) for i in xs]
-    # print(points)
+    print("points: ",points)
     # if 0 not in [float(round(i, 3)) for i in xs]:
     #     points.append((0.0, float(round(poly(0), 3))))
     return points
@@ -1915,6 +1929,9 @@ def derive(params, c=0, b=math.e):
         poly1 = makePoly(p1)
         poly2 = makePoly(p2)
         return lambda x: (derive(p1)(x)*poly2(x)-poly1(x)*derive(p2)(x)) / (poly2(x)**2)
+    if c == 8:
+        poly = makePoly(p[:-1])
+        return lambda x: derive(p[:-1])(x)*(1/b)*math.pow(1/b-1, poly(x))
 
 
 def makeExtremes(params, c=0, b=math.e):
@@ -1938,6 +1955,7 @@ def makeExtremes(params, c=0, b=math.e):
     realDerive = derive(params, c, b)
     dom = makeDomain(params, c)
     extreme_points = makeIntersections(realDerive, c, dom)
+    print("EEEEEEEEEEEE")
     f = makeFunc(params, c, b)
 
     extremes = [(e[0], round(f(e[0]), 3)) for e in extreme_points]
@@ -2307,6 +2325,12 @@ def makeRational(p):
     p2 = p[int(len(p) / 2):]
     return lambda x: makePoly(p1)(x) / makePoly(p2)(x)
 
+def makeRoot(p, b):
+    if len(p) < 1:
+        return lambda x: 0
+    else:
+        return lambda x: math.pow(makePoly(p[:-1])(x), 1/b) + p[-1]
+
 
 def makeFunc(p, c=0, b=math.e):
     if c == 0:
@@ -2325,14 +2349,16 @@ def makeFunc(p, c=0, b=math.e):
         return makeCot(p)
     elif c == 7:
         return makeRational(p)
+    elif c == 8:
+        return makeRoot(p, b)
 
 
 # [random.randint(params[2*i], params[2*i+1]) for i in range(int(len(params)/2))]
 
-p = [1, 1, 1, 0]
-c = 7
-
-a = makeFunc(p, c=c)
+p = [1, 1, 0]
+c = 8
+b = 2
+a = makeFunc(p, c=c, b=b)
 print()
 print("f: " + str(a))
 print("f(2): " + str(a(2)))
@@ -2342,8 +2368,8 @@ print("Intersections: " + str(makeIntersections(a, c=c, r=dom)))
 print("Extremes: " + str(makeExtremes(p, c=c)))
 print("IncDec: " + str(makeIncDec(p, c=c)))
 print("funcString: " + str(funcString(p, c=c)))
-print("deriveString: " + str(deriveString(p, c=c, b=math.e)))
-print("PosNeg: " + str(makePosNeg(p, c=c, b=math.e)))
+print("deriveString: " + str(deriveString(p, c=c, b=b)))
+print("PosNeg: " + str(makePosNeg(p, c=c, b=b)))
 sym = getSymmetry(p, c)
 print("symmetry: " + ("f(x)=" + str(sym[0]) + "*f(-x+" + str(2 * sym[1]) + ")") if sym else sym)
 
