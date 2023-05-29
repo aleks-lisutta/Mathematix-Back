@@ -23,6 +23,8 @@ class MyTestCase(unittest.TestCase):
         cls.DB.disconnect()
 
     def tearDown(self) -> None:
+        with app.app.app_context():
+            app.activeControllers = {}
         with db_session:
             DB.execute('DELETE FROM ActiveUnit WHERE 1=1;')
             DB.execute('DELETE FROM Question WHERE 1=1;')
@@ -309,6 +311,184 @@ class MyTestCase(unittest.TestCase):
 
         self.assertEqual(response, 'successful')
         self.assertEqual(status_code, 200)
+
+    def test_getAllClassesNotIn_successful(self):
+        with app.app.app_context():
+            # Create teacher account and open a class
+            app.register_buisness('teacher1', 'password', 1)
+            app.login_buisness('teacher1', 'password')
+            app.openClass_buisness('teacher1', 'class1')
+            app.openClass_buisness('teacher1', 'class2')
+            # Create student account and register to class
+            app.register_buisness('student1', 'password', 2)
+            app.login_buisness('student1', 'password')
+            app.registerClass_buisness('student1', 'class1')
+            app.approveStudentToClass_buisness('teacher1', 'student1', 'class1', 'True')
+            # Check request
+            res = app.getAllClassesNotIn_Buisness('student1')
+            self.assertEqual(200, res.status_code, 'Request failed')
+            self.assertEqual(1, len(res.json), 'Not 1 class not in')
+            self.assertEqual('class2', res.json[0]['className'], 'Not class2')
+
+    def test_getAllClassesNotIn_no_student_failure(self):
+        with app.app.app_context():
+            # Create teacher account and open a class
+            app.register_buisness('teacher1', 'password', 1)
+            app.login_buisness('teacher1', 'password')
+            app.openClass_buisness('teacher1', 'class1')
+            app.openClass_buisness('teacher1', 'class2')
+            # Check request
+            res = app.getAllClassesNotIn_Buisness('student1')
+            self.assertEqual(2, len(res), 'Request failed')
+            self.assertEqual(400, res[1], 'Request failed')
+
+    def test_getAllClassesNotIn_student_in_all_classes_successful(self):
+        with app.app.app_context():
+            # Create teacher account and open a class
+            app.register_buisness('teacher1', 'password', 1)
+            app.login_buisness('teacher1', 'password')
+            app.openClass_buisness('teacher1', 'class1')
+            app.openClass_buisness('teacher1', 'class2')
+            # Create student account and register to class
+            app.register_buisness('student1', 'password', 2)
+            app.login_buisness('student1', 'password')
+            app.registerClass_buisness('student1', 'class1')
+            app.approveStudentToClass_buisness('teacher1', 'student1', 'class1', 'True')
+            app.registerClass_buisness('student1', 'class2')
+            app.approveStudentToClass_buisness('teacher1', 'student1', 'class2', 'True')
+            # Check request
+            res = app.getAllClassesNotIn_Buisness('student1')
+            self.assertEqual(200, res.status_code, 'Request failed')
+            self.assertEqual(0, len(res.json), 'Not 1 class not in')
+
+    def test_getUnapprovedStudents_successful(self):
+        with app.app.app_context():
+            # Create teacher account and open a class
+            app.register_buisness('teacher1', 'password', 1)
+            app.login_buisness('teacher1', 'password')
+            app.openClass_buisness('teacher1', 'class1')
+            app.openClass_buisness('teacher1', 'class2')
+            # Create student account and register to class
+            app.register_buisness('student1', 'password', 2)
+            app.login_buisness('student1', 'password')
+            app.registerClass_buisness('student1', 'class1')
+            app.register_buisness('student2', 'password', 2)
+            app.login_buisness('student2', 'password')
+            app.registerClass_buisness('student2', 'class1')
+            # Check request
+            res = app.getUnapprovedStudents_buisness('teacher1')
+            self.assertEqual(200, res.status_code, 'Request failed')
+            self.assertEqual(2, len(res.json), 'Not 1 class not in')
+            for item in res.json:
+                if item['primary'] != 'student1' and item['primary'] != 'student2':
+                    self.fail('students not in class')
+
+    def test_getUnapprovedStudents_no_teacher_fail_successful(self):
+        with app.app.app_context():
+            # Check request
+            res = app.getUnapprovedStudents_buisness('teacher1')
+            self.assertEqual(200, res.status_code, 'Request failed')
+            self.assertEqual(0, len(res.json), 'classes in list')
+
+    def test_getUnapprovedStudents_no_unapproved_students_successful(self):
+        with app.app.app_context():
+            # Create teacher account and open a class
+            app.register_buisness('teacher1', 'password', 1)
+            app.login_buisness('teacher1', 'password')
+            app.openClass_buisness('teacher1', 'class1')
+            app.openClass_buisness('teacher1', 'class2')
+            # Create student account and register to class
+            app.register_buisness('student1', 'password', 2)
+            app.login_buisness('student1', 'password')
+            app.registerClass_buisness('student1', 'class1')
+            app.approveStudentToClass_buisness('teacher1', 'student1', 'class1', 'True')
+            app.register_buisness('student2', 'password', 2)
+            app.login_buisness('student2', 'password')
+            app.registerClass_buisness('student2', 'class1')
+            app.approveStudentToClass_buisness('teacher1', 'student2', 'class1', 'True')
+            # Check request
+            res = app.getUnapprovedStudents_buisness('teacher1')
+            self.assertEqual(200, res.status_code, 'Request failed')
+            self.assertEqual(0, len(res.json), 'Not 1 class not in')
+
+    def test_getClassesTeacher_successful(self):
+        with app.app.app_context():
+            # Create teacher account and open 2 classes
+            app.register_buisness('teacher1', 'password', 1)
+            app.login_buisness('teacher1', 'password')
+            app.openClass_buisness('teacher1', 'class1')
+            app.openClass_buisness('teacher1', 'class2')
+            res = app.getClassesTeacher_buisness('teacher1')
+            self.assertEqual(200, res.status_code, 'Get classes teacher failed')
+            class_names = []
+            for elem in res.json:
+                class_names.append(elem['primary'])
+            self.assertTrue('class1' in class_names and 'class2' in class_names, 'wrong classes returned')
+
+    def test_getClassesTeacher_no_classes_successful(self):
+        with app.app.app_context():
+            # Create teacher account and open 2 classes
+            app.register_buisness('teacher1', 'password', 1)
+            app.login_buisness('teacher1', 'password')
+            res = app.getClassesTeacher_buisness('teacher1')
+            self.assertEqual(200, res.status_code, 'Get classes teacher failed')
+            self.assertEqual(0, len(res.json), 'wrong classes returned')
+
+    def test_getClassesTeacher_no_teacher_successful(self):
+        with app.app.app_context():
+            # Create teacher account and open 2 classes
+            app.register_buisness('teacher1', 'password', 1)
+            app.login_buisness('teacher1', 'password')
+            res = app.getClassesTeacher_buisness('teacher2')
+            self.assertEqual(200, res.status_code, 'Get classes teacher failed')
+            self.assertEqual(0, len(res.json), 'wrong classes returned')
+
+    def test_getClassesStudent_successful(self):
+        with app.app.app_context():
+            # Create teacher account and open 2 classes
+            app.register_buisness('teacher1', 'password', 1)
+            app.login_buisness('teacher1', 'password')
+            app.openClass_buisness('teacher1', 'class1')
+            app.openClass_buisness('teacher1', 'class2')
+            app.openClass_buisness('teacher1', 'class3')
+            # Create student account and register to class
+            app.register_buisness('student1', 'password', 2)
+            app.login_buisness('student1', 'password')
+            app.registerClass_buisness('student1', 'class1')
+            app.approveStudentToClass_buisness('teacher1', 'student1', 'class1', 'True')
+            app.registerClass_buisness('student1', 'class2')
+            app.approveStudentToClass_buisness('teacher1', 'student1', 'class2', 'True')
+            # get classes for student
+            res = app.getClassesStudent_buisness('student1')
+            self.assertEqual(200, res.status_code, 'Get classes teacher failed')
+            class_names = []
+            for elem in res.json:
+                class_names.append(elem['primary'])
+            self.assertTrue('class1' in class_names and 'class2' in class_names, 'wrong classes returned')
+
+    def test_getClassesStudent_no_classes_successful(self):
+        with app.app.app_context():
+            # Create teacher account and open 2 classes
+            app.register_buisness('teacher1', 'password', 1)
+            app.login_buisness('teacher1', 'password')
+            # Create student account
+            app.register_buisness('student1', 'password', 2)
+            app.login_buisness('student1', 'password')
+            res = app.getClassesStudent_buisness('student1')
+            self.assertEqual(200, res.status_code, 'Get classes teacher failed')
+            self.assertEqual(0, len(res.json), 'wrong classes returned')
+
+    def test_getClassesStudent_no_student_successful(self):
+        with app.app.app_context():
+            # Create teacher account and open 2 classes
+            app.register_buisness('teacher1', 'password', 1)
+            app.login_buisness('teacher1', 'password')
+            app.openClass_buisness('teacher1', 'class1')
+            app.openClass_buisness('teacher1', 'class2')
+            res = app.getClassesTeacher_buisness('student2')
+            self.assertEqual(200, res.status_code, 'Get classes teacher failed')
+            self.assertEqual(0, len(res.json), 'wrong classes returned')
+
 
 if __name__ == '__main__':
     unittest.main()

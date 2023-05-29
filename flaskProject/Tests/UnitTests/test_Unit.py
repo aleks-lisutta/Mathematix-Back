@@ -24,6 +24,8 @@ class MyTestCase(unittest.TestCase):
         cls.DB.disconnect()
 
     def tearDown(self) -> None:
+        with app.app.app_context():
+            app.activeControllers = {}
         with db_session:
             DB.execute('DELETE FROM ActiveUnit WHERE 1=1;')
             DB.execute('DELETE FROM Question WHERE 1=1;')
@@ -468,6 +470,87 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual(response, "Cls['Mathemathic']")
         self.assertEqual(status_code, 400)
 
+    @patch('flaskProject.app.isLogin')
+    def test_removeUnit_successful(self, mock_isLogin):
+        # Set up the mock
+        mock_isLogin.return_value = True
+
+        # Add test data
+        with db_session:
+            teacher = User(name="John", password="123", type=1)
+            c = Cls(name="Math", teacher=teacher)
+            u = Unit(
+                name="Calculus",
+                cls=c,
+                desc="Advanced calculus",
+                template="template1",
+                Qnum="10",
+                maxTime="60",
+                subDate="2023-05-31",
+                order=1,
+                # next=None
+            )
+
+            # Test that removeUnit_for_test returns "successful" and status code 200
+            response, status_code = app.removeUnit_buisness("Calculus", "Math", "John")
+            self.assertEqual(response, "successful")
+            self.assertEqual(status_code, 200)
+
+            # Assert that the unit was removed from the database
+            self.assertIsNone(Unit.get(name="Calculus", cls=c))
+
+    def test_getAllActiveUnits_successful(self):
+        with app.app.app_context():
+            # Create teacher account and open a class and a unit
+            app.register_buisness('teacher1', 'password', 1)
+            app.login_buisness('teacher1', 'password')
+            app.openClass_buisness('teacher1', 'class1')
+            app.teacherOpenUnit('unit1', 'teacher1', 'class1', 'intersection_linear_-10,0,1,6', '1', '60', '2023-07-01',
+                                'true', 'new', 'desc')
+            # Create 2 students and register to class
+            app.register_buisness('student1', 'password', 2)
+            app.login_buisness('student1', 'password')
+            app.registerClass_buisness('student1', 'class1')
+            app.approveStudentToClass_buisness('teacher1', 'student1', 'class1', 'True')
+            app.register_buisness('student2', 'password', 2)
+            app.login_buisness('student2', 'password')
+            app.registerClass_buisness('student2', 'class1')
+            app.approveStudentToClass_buisness('teacher1', 'student2', 'class1', 'True')
+            # Both students start unit
+            app.startUnit_buisness('class1', 'unit1', 'student1')
+            app.startUnit_buisness('class1', 'unit1', 'student2')
+            # Student1 answers correctly, Student2 fails
+            res = app.getQuestion_buisness('student1', 'unit1', 'class1', '1')
+            app.submitQuestion_buisness('student1', 'unit1', 'class1', '1', res.json[0]['correct_ans'])
+            app.getQuestion_buisness('student2', 'unit1', 'class1', '1')
+            app.submitQuestion_buisness('student2', 'unit1', 'class1', '1', '-1')
+            # Check function
+            res = app.getAllActiveUnits_buisness('class1', 'unit1')
+            self.assertEqual(2, len(res.json), 'JSON returned with less then 2 values.')
+            for dic in res.json:
+                if dic['name'] == 'student1':
+                    self.assertEqual(1, dic['correct'], 'Not 1 correct for student1')
+                    self.assertEqual(0, dic['bad'], 'Not 0 mistakes for student1')
+                else:
+                    self.assertEqual(1, dic['bad'], 'Not 1 mistakes for student1')
+                    self.assertEqual(0, dic['correct'], 'Not 0 correct for student1')
+
+    def test_getAllActiveUnits_no_class_failure(self):
+        with app.app.app_context():
+            # Create teacher account and open a class and a unit
+            app.register_buisness('teacher1', 'password', 1)
+            app.login_buisness('teacher1', 'password')
+            res = app.getAllActiveUnits_buisness('class1', 'unit1')
+            self.assertEqual(0, len(res.json), 'Retrieved a active units')
+
+    def test_getAllActiveUnits_no_unit_failure(self):
+        with app.app.app_context():
+            # Create teacher account and open a class and a unit
+            app.register_buisness('teacher1', 'password', 1)
+            app.login_buisness('teacher1', 'password')
+            app.openClass_buisness('teacher1', 'class1')
+            res = app.getAllActiveUnits_buisness('class1', 'unit1')
+            self.assertEqual(0, len(res.json), 'Retrieved a active units')
 
 
 if __name__ == '__main__':

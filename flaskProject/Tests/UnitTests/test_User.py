@@ -25,6 +25,8 @@ class MyTestCase(unittest.TestCase):
         cls.DB.disconnect()
 
     def tearDown(self) -> None:
+        with app.app.app_context():
+            app.activeControllers = {}
         with db_session:
             DB.execute('DELETE FROM ActiveUnit WHERE 1=1;')
             DB.execute('DELETE FROM Question WHERE 1=1;')
@@ -72,8 +74,7 @@ class MyTestCase(unittest.TestCase):
             self.assertIsNotNone(User.get(name="johndoe"))
         self.assertEqual(status_code, 200)
 
-
-    def test_invalid_username(self):
+    def test_invalid_username_2(self):
         # existing teacher with same username
         app.makeUser("existing_teacher", "123", 1)
         response, status_code = app.register_buisness("existing_teacher", "secret123", 1)
@@ -83,6 +84,13 @@ class MyTestCase(unittest.TestCase):
         response, status_code = app.register_buisness("existing_student", "secret123", 2)
         self.assertEqual(status_code, 400, f"Registration failed with response {response}")
 
+    def test_invalid_password_2(self):
+        # invalid password for teacher
+        response, status_code = app.register_buisness("teacher_1", " ", 1)
+        self.assertEqual(status_code, 400, f"Registration failed with response {response}")
+        # invalid password for student
+        response, status_code = app.register_buisness("student_1", " ", 2)
+        self.assertEqual(status_code, 400, f"Registration failed with response {response}")
 
     @mock.patch('flaskProject.app.User')
     def test_checkUserPass(self, mock_db):
