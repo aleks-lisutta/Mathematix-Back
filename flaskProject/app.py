@@ -1165,7 +1165,7 @@ def integrate(f: callable, a: float, b: float, n: int) -> np.float32:
 
 def get_questions(unit):
     intMap = {'linear': 0, 'quadratic': 0, 'polynomial': 0, '2exp': 1, '3exp': 1, 'eexp': 1, 'log': 2, 'sin': 3,
-              'cos': 4, 'tan': 5, 'cot': 6, 'rational': 7}
+              'cos': 4, 'tan': 5, 'cot': 6, 'rational': 7, 'root': 8}
     questions = list()
     for i in range(QUESTIONS_TO_GENERATE):
         question_type = []
@@ -1179,7 +1179,7 @@ def get_questions(unit):
             question_type, function_types, params = parse_template(unit.template)
         question = random.choice(question_type)
         if function_types in ['linear', 'quadratic', 'polynomial', '2exp', '3exp', 'eexp', 'log', 'sin', 'cos', 'tan',
-                              'cot', 'rational']:
+                              'cot', 'rational', 'root']:
             c = intMap[function_types]
             b = 2 if function_types == '2exp' else (3 if function_types == '3exp' else math.e)
             p = [random.randint(int(params[2 * i]), int(params[2 * i + 1])) for i in range(int(len(params) / 2))]
