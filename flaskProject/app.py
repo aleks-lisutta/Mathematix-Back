@@ -1163,6 +1163,35 @@ def integrate(f: callable, a: float, b: float, n: int) -> np.float32:
     return np.float32(result)
 
 
+def func_value_question(domain, f, fString):
+    preamble = "חשב מה ערך הפונקציה בנקודה"
+    if (len(domain) == 0) or (len(domain) == 1 and len(domain[0]) == 0):
+        ans1 = "הפונקציה לא מוגדרת בנקודה"
+        ans2 = round(random.randint(-10000, 10000) / 1000, 3)
+        ans3 = round(random.randint(-20000, 20000) / 567, 3)
+        ans4 = round(random.randint(-500, 500) + random.uniform(0.0, 1.0), 3)
+        x = round(random.uniform(-20, 20), 3)
+        preamble = "x={} ".format(x) + preamble
+    else:
+        x = round(random.uniform(domain[0][0], domain[0][1]), 3)
+        preamble = "x={} ".format(x) + preamble
+        ans1 = round(f(x), 3)
+        to_put_no_solution = random.randint(1, 4)
+        ans2 = round(f(x) + random.randint(1, 5) + random.uniform(0.0, 0.99), 3)
+        if to_put_no_solution == 1:
+            ans2 = 'הפונקציה לא מוגדרת בנקודה'
+        ans3 = round(f(x) + random.randint(-5, -1) + random.uniform(-0.99, 0.0), 3)
+        ans4 = round(f(x) + random.randint(7, 20), 3)
+        if domain[0][0] < x + 1 < domain[0][1]:
+            if f(x + 1) != ans1:
+                ans4 = f(x + 1)
+    q = (
+        preamble, fString, ans1, ans2,
+        ans3,
+        ans4, 0)
+    return q
+
+
 def get_questions(unit):
     intMap = {'linear': 0, 'quadratic': 0, 'polynomial': 0, '2exp': 1, '3exp': 1, 'eexp': 1, 'log': 2, 'sin': 3,
               'cos': 4, 'tan': 5, 'cot': 6, 'rational': 7, 'root': 8}
@@ -1260,6 +1289,10 @@ def get_questions(unit):
                     preamble, funcString(p, c, b), ans1, ans2,
                     ans3,
                     ans4, 0)
+                questions.append(q)
+            elif ('funcValue' in question):
+                domain = makeDomain(p, c)
+                q = func_value_question(domain, f, funcString(p, c, b))
                 questions.append(q)
 
     return change_order(questions)
@@ -1866,18 +1899,55 @@ def makeDer(params):
     return [(len(params) - 1 - i) * params[i] for i in range(len(params) - 1)]
 
 
+def isParenthesisNeeded(s):
+    if (s.count("+") + s.count("-")) > 1:
+        return True
+    if (not s.startswith("-")) and (s.count("+") + s.count("-")) >= 1:
+        return True
+    return False
+
+
 def deriveString(p, c, b):
     if c == 0:
         return "y=" + polySrting(makeDer(p))
     elif c == 1:
-        return "y=(" + polySrting(makeDer(p[:-1])) + ") * " + ("e" if b == math.e else str(b)) + "^(" + polySrting(
-            p[:-1]) + ")"
+        innerDerive = polySrting(makeDer(p[:-1]))
+        exponent = polySrting(p[:-1])
+        if isParenthesisNeeded(innerDerive):
+            innerDerive = "(" + innerDerive + ")"
+        if isParenthesisNeeded(exponent):
+            exponent = "(" + exponent + ")"
+        if b != math.e:
+            if innerDerive.startswith("("):
+                innerDerive = "ln(" + str(b) + ")" + innerDerive + " * "
+            else:
+                innerDerive = innerDerive + "ln(" + str(b) + ") * "
+            return "y=" + innerDerive + str(b) + "^" + exponent
+        return "y=" + innerDerive + ("e" if b == math.e else str(b)) + "^" + exponent
+
     elif c == 2:
-        return "y=(" + polySrting(makeDer(p[:-1])) + " / " + polySrting(p[:-1]) + ")"
+        numerator = polySrting(makeDer(p[:-1]))
+        denominator = polySrting(p[:-1])
+        if isParenthesisNeeded(numerator):
+            numerator = "(" + numerator + ")"
+        if isParenthesisNeeded(denominator):
+            denominator = "(" + denominator + ")"
+        return "y=" + numerator + " / " + denominator
     elif c == 3:
-        return "y=" + polySrting(makeDer(p[:-1])) + " * cos(" + polySrting(p[:-1]) + ")"
+        innerDerive = polySrting(makeDer(p[:-1]))
+        isCompoundDerive = isParenthesisNeeded(innerDerive)
+        if isCompoundDerive:
+            return "y=cos(" + polySrting(p[:-1]) + ")" + "(" + innerDerive + ")"
+
+        return "y=" + innerDerive + " * cos(" + polySrting(p[:-1]) + ")"
     elif c == 4:
-        return "y=" + polySrting(makeDer(p[:-1])) + " * -sin(" + polySrting(p[:-1]) + ")"
+        innerDerive = polySrting(makeDer(p[:-1]))
+        isCompoundDerive = isParenthesisNeeded(innerDerive)
+        if isCompoundDerive:
+            return "y=-sin(" + polySrting(p[:-1]) + ")" + "(" + innerDerive + ")"
+        if innerDerive.startswith("-"):
+            return "y=" + innerDerive + "sin(" + polySrting(p[:-1]) + ")"
+        return "y=-" + innerDerive + "sin(" + polySrting(p[:-1]) + ")"
     elif c == 5:
         return "y=(1/cos^2(" + polySrting(p[:-1]) + ")"
     elif c == 6:
@@ -2377,8 +2447,10 @@ def makeFunc(p, c=0, b=math.e):
 
 p = [-2, 4, 1, 8]
 c = 7
+
 b = 2
 a = makeFunc(p, c=c, b=b)
+
 print()
 print("f: " + str(a))
 print("f(2): " + str(a(2)))
@@ -2394,6 +2466,7 @@ print("PosNeg: " + str(makePosNeg(p, c=c, b=b)))
 
 # sym = getSymmetry(p, c)
 # print("symmetry: " + ("f(x)=" + str(sym[0]) + "*f(-x+" + str(2 * sym[1]) + ")") if sym else sym)
+
 
 
 def getLessonGrade(user, unit_name, class_name):
