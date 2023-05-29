@@ -1165,7 +1165,7 @@ def integrate(f: callable, a: float, b: float, n: int) -> np.float32:
 
 def get_questions(unit):
     intMap = {'linear': 0, 'quadratic': 0, 'polynomial': 0, '2exp': 1, '3exp': 1, 'eexp': 1, 'log': 2, 'sin': 3,
-              'cos': 4}
+              'cos': 4, 'tan': 5, 'cot': 6, 'rational': 7}
     questions = list()
     for i in range(QUESTIONS_TO_GENERATE):
         question_type = []
@@ -1178,7 +1178,8 @@ def get_questions(unit):
         else:
             question_type, function_types, params = parse_template(unit.template)
         question = random.choice(question_type)
-        if function_types in ['linear', 'quadratic', 'polynomial', '2exp', '3exp', 'eexp', 'log', 'sin', 'cos']:
+        if function_types in ['linear', 'quadratic', 'polynomial', '2exp', '3exp', 'eexp', 'log', 'sin', 'cos', 'tan',
+                              'cot', 'rational']:
             c = intMap[function_types]
             b = 2 if function_types == '2exp' else (3 if function_types == '3exp' else math.e)
             p = [random.randint(int(params[2 * i]), int(params[2 * i + 1])) for i in range(int(len(params) / 2))]
@@ -1794,11 +1795,23 @@ def makeDomain(params, c):
         r = []
         coefficient = params[:-1] + [0]
         f = makeFunc(coefficient, 3 if c == 6 else 4)
-        inters = intersections(lambda x: 0, f, -3, 3)
+        inters = sorted(intersections(lambda x: 0, f, -3, 3))
         if len(inters) == 0:
             return [(-100, 100)]
         for i in range(len(inters) - 1):
             r.append((inters[i], inters[i + 1]))
+        return r
+    elif c == 7:
+        p2 = p[int(len(p) / 2):]
+        poly = makePoly(p2)
+        zeroes = sorted([x[0] for x in makeIntersections(poly)])
+        if len(zeroes) == 0:
+            return [(-100, 100)]
+        r = []
+        r.append((-100, zeroes[0]))
+        for i in range(len(zeroes) - 1):
+            r.append((zeores[i], zeroesp[i + 1]))
+        r.append(((zeroes[-1]), 100))
         return r
 
 
@@ -1839,8 +1852,6 @@ def makeDer(params):
 
 
 def deriveString(p, c, b):
-    intMap = {'linear': 0, 'quadratic': 0, 'polynomial': 0, '2exp': 1, '3exp': 1, 'eexp': 1, 'log': 2, 'sin': 3,
-              'cos': 4}
 
     if c == 0:
         return "y=" + polySrting(makeDer(p))
@@ -1857,11 +1868,12 @@ def deriveString(p, c, b):
         return "y=(1/cos^2(" + polySrting(p[:-1]) + ")"
     elif c == 6:
         return "y=(-1/sin^2(" + polySrting(p[:-1]) + ")"
+    elif c == 7:
+        l = int(len(p)/2)
+        return "y=((" + polySrting(makeDer(p[:l]))+ ") * (" + polySrting(p[l:]) + ")) / ((" + polySrting(makeDer(p[l:]))+ ") * (" + polySrting(p[:l]) + "))"
 
 
-def derive(params, c, b):
-    intMap = {'linear': 0, 'quadratic': 0, 'polynomial': 0, '2exp': 1, '3exp': 1, 'eexp': 1, 'log': 2, 'sin': 3,
-              'cos': 4}
+def derive(params, c=0, b=math.e):
     if c == 0:
         return makeFunc(makeDer(params))
     elif c == 1:
@@ -1897,6 +1909,12 @@ def derive(params, c, b):
         return lambda x: 1 / (makeFunc(params[:-1] + [0], 4)(x) ** 2)
     if c == 6:
         return lambda x: -1 / (makeFunc(params[:-1] + [0], 3)(x) ** 2)
+    if c == 7:
+        p1 = p[:int(len(p) / 2)]
+        p2 = p[int(len(p) / 2):]
+        poly1 = makePoly(p1)
+        poly2 = makePoly(p2)
+        return lambda x: (derive(p1)(x)*poly2(x)-poly1(x)*derive(p2)(x)) / (poly2(x)**2)
 
 
 def makeExtremes(params, c=0, b=math.e):
@@ -1953,16 +1971,19 @@ def getSymmetry2(p, c=0, b=math.e):
 
 def getSymmetry(p, c=0, b=math.e):
     f = makeFunc(p, c, b)
-    err = 0.0001
+    err = 0.001
     m = 10
     center = -m
     while center < m:
-        x = 0
+        x = 10 * err
         sign = None
-        while x < m:
+        while x < m / 10:
             if sign is None:
+
                 l = round(f(center + x) - f(center), 1)
                 r = round(f(center - x) - f(center), 1)
+                if abs(center) < err:
+                    print(l, r)
                 if abs(l - r) < err:
                     sign = 1
                 elif abs(l + r) < err:
@@ -1971,10 +1992,15 @@ def getSymmetry(p, c=0, b=math.e):
                     sign = None
                     break
             else:
-                if round(f(center + x) - f(center), 1) != sign * round(f(center - x) - f(center), 1):
+                center = round(center, 3)
+                x = round(x, 3)
+                if abs(round((f(center + x) - f(center)) - sign * (f(center - x) - f(center)), 1)) > 10 * err:
+                    if (abs(center) < err):
+                        print("BAD ", center, x,
+                              abs(round((f(center + x) - f(center)) - sign * (f(center - x) - f(center)), 1)))
                     sign = None
                     break
-            x += 10*err
+            x += 10 * err
         if sign is not None:
             return sign, round(center, 2)
         center += err
@@ -2043,6 +2069,7 @@ def makeIncDec(p, c=0, b=math.e):
 
     return inc_ranges, dec_ranges
 
+
 def makePosNeg(p, c=0, b=math.e):
     if not any(p[:-1]):
         return [], []
@@ -2106,6 +2133,7 @@ def makePosNeg(p, c=0, b=math.e):
         pos.append((sorted_points[-1][0], float('inf')))
 
     return pos, neg
+
 
 def makeIncDec2(p, c=0, b=math.e):
     if not any(p[:-1]):
@@ -2187,6 +2215,9 @@ def funcString(p, c=0, b=math.e):
         return "y=tan(" + polySrting(p[:-1]) + ")" + (("+" if p[-1] > 0 else "") + str(p[-1]) if p[-1] else "")
     elif c == 6:
         return "y=cot(" + polySrting(p[:-1]) + ")" + (("+" if p[-1] > 0 else "") + str(p[-1]) if p[-1] else "")
+    elif c == 7:
+        l = int(len(p)/2)
+        return "y=(" + polySrting(p[:l]) + ") / (" + polySrting(p[l:]) + ")"
 
 
 def polySrting(params):
@@ -2271,6 +2302,12 @@ def makeCot(p):
         return lambda x: 1 / math.tan(makePoly(p[:-1])(x)) + p[-1]
 
 
+def makeRational(p):
+    p1 = p[:int(len(p) / 2)]
+    p2 = p[int(len(p) / 2):]
+    return lambda x: makePoly(p1)(x) / makePoly(p2)(x)
+
+
 def makeFunc(p, c=0, b=math.e):
     if c == 0:
         return makePoly(p)
@@ -2286,12 +2323,14 @@ def makeFunc(p, c=0, b=math.e):
         return makeTan(p)
     elif c == 6:
         return makeCot(p)
+    elif c == 7:
+        return makeRational(p)
 
 
 # [random.randint(params[2*i], params[2*i+1]) for i in range(int(len(params)/2))]
 
-p = [1, 0, 0, 0]
-c = 0
+p = [1, 1, 1, 0]
+c = 7
 
 a = makeFunc(p, c=c)
 print()
@@ -2302,15 +2341,12 @@ print("Domain: " + str(dom))
 print("Intersections: " + str(makeIntersections(a, c=c, r=dom)))
 print("Extremes: " + str(makeExtremes(p, c=c)))
 print("IncDec: " + str(makeIncDec(p, c=c)))
-
 print("funcString: " + str(funcString(p, c=c)))
 print("deriveString: " + str(deriveString(p, c=c, b=math.e)))
-
 print("PosNeg: " + str(makePosNeg(p, c=c, b=math.e)))
-print("funcString: " + str(funcString(p, c=c)))
-print("deriveString: " + str(deriveString(p, c=c, b=math.e)))
 sym = getSymmetry(p, c)
 print("symmetry: " + ("f(x)=" + str(sym[0]) + "*f(-x+" + str(2 * sym[1]) + ")") if sym else sym)
+
 
 def getLessonGrade(user, unit_name, class_name):
     try:
