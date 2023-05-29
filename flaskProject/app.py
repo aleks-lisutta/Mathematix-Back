@@ -1885,6 +1885,8 @@ def deriveString(p, c, b):
     elif c == 7:
         l = int(len(p)/2)
         return "y=((" + polySrting(makeDer(p[:l]))+ ") * (" + polySrting(p[l:]) + ")) / ((" + polySrting(makeDer(p[l:]))+ ") * (" + polySrting(p[:l]) + "))"
+    elif c == 8:
+        return "y=("+ polySrting(makeDer(p[:-1])) +") * (" + polySrting(p[:-1]) + ")^("+str(1/b)+")"
 
 
 def derive(params, c=0, b=math.e):
@@ -2236,6 +2238,8 @@ def funcString(p, c=0, b=math.e):
     elif c == 7:
         l = int(len(p)/2)
         return "y=(" + polySrting(p[:l]) + ") / (" + polySrting(p[l:]) + ")"
+    elif c == 8:
+        return "y=(" + polySrting(p[:-1]) + ")^("+str(1/b)+")" + (("+" if p[-1] > 0 else "") + str(p[-1]) if p[-1] else "")
 
 
 def polySrting(params):
@@ -2365,9 +2369,9 @@ print("f(2): " + str(a(2)))
 dom = makeDomain(p, c)
 print("Domain: " + str(dom))
 print("Intersections: " + str(makeIntersections(a, c=c, r=dom)))
-print("Extremes: " + str(makeExtremes(p, c=c)))
-print("IncDec: " + str(makeIncDec(p, c=c)))
-print("funcString: " + str(funcString(p, c=c)))
+#print("Extremes: " + str(makeExtremes(p, c=c)))
+#print("IncDec: " + str(makeIncDec(p, c=c)))
+print("funcString: " + str(funcString(p, c=c,b=b)))
 print("deriveString: " + str(deriveString(p, c=c, b=b)))
 print("PosNeg: " + str(makePosNeg(p, c=c, b=b)))
 sym = getSymmetry(p, c)
