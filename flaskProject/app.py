@@ -1837,9 +1837,10 @@ def makeIntersections(poly, c=0, r=[(-100, 100)]):
             xs.append(x)
 
     points = [(float(round(i, 3)), 0.0) if abs(round(i, 3)) > 0.001 else (0.0, 0.0) for i in xs]
-    print("points: ",points)
+
     # if 0 not in [float(round(i, 3)) for i in xs]:
     #     points.append((0.0, float(round(poly(0), 3))))
+    print("points: ", points)
     return points
 
 
@@ -1957,7 +1958,7 @@ def makeExtremes(params, c=0, b=math.e):
     realDerive = derive(params, c, b)
     dom = makeDomain(params, c)
     extreme_points = makeIntersections(realDerive, c, dom)
-    print("EEEEEEEEEEEE")
+    print("extreme_points", extreme_points)
     f = makeFunc(params, c, b)
 
     extremes = [(e[0], round(f(e[0]), 3)) for e in extreme_points]
@@ -2122,16 +2123,18 @@ def makePosNeg(p, c=0, b=math.e):
             return [(float('-inf'), float('inf'))], []
         else:
             return [], [(float('-inf'), float('inf'))]
-    s = f(sorted_points[0][0] - 1)
 
     pos = []
     neg = []
+    if any([sorted_points[0][0] - 1 in d for d in dom]):
+        s = f(sorted_points[0][0] - 1)
 
-    # Add the initial range
-    if s < 0:
-        neg.append((float('-inf'), sorted_points[0][0]))
-    else:
-        pos.append((float('-inf'), sorted_points[0][0]))
+
+        # Add the initial range
+        if s < 0:
+            neg.append((float('-inf'), sorted_points[0][0]))
+        else:
+            pos.append((float('-inf'), sorted_points[0][0]))
 
     # Iterate over the sorted extreme points
     for i in range(len(sorted_points) - 1):
@@ -2369,13 +2372,13 @@ print("f(2): " + str(a(2)))
 dom = makeDomain(p, c)
 print("Domain: " + str(dom))
 print("Intersections: " + str(makeIntersections(a, c=c, r=dom)))
-#print("Extremes: " + str(makeExtremes(p, c=c)))
+print("Extremes: " + str(makeExtremes(p, c=c)))
 #print("IncDec: " + str(makeIncDec(p, c=c)))
 print("funcString: " + str(funcString(p, c=c,b=b)))
 print("deriveString: " + str(deriveString(p, c=c, b=b)))
 print("PosNeg: " + str(makePosNeg(p, c=c, b=b)))
-sym = getSymmetry(p, c)
-print("symmetry: " + ("f(x)=" + str(sym[0]) + "*f(-x+" + str(2 * sym[1]) + ")") if sym else sym)
+#sym = getSymmetry(p, c)
+#print("symmetry: " + ("f(x)=" + str(sym[0]) + "*f(-x+" + str(2 * sym[1]) + ")") if sym else sym)
 
 
 def getLessonGrade(user, unit_name, class_name):
