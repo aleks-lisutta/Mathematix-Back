@@ -1723,7 +1723,6 @@ def helper(f1: callable, f2: callable, a: float, b: float, maxerr=0.001) -> Iter
 
     delta = (b - a) / max_amount_of_points
     x2 = x1
-
     f_x1 = f1(x1) - f2(x1)
     f_x2 = f1(x2) - f2(x2)
     while x1 <= b + maxerr and x2 <= b + maxerr:
@@ -1756,14 +1755,15 @@ def helper(f1: callable, f2: callable, a: float, b: float, maxerr=0.001) -> Iter
             f_x2 = f1(x2) - f2(x2)
         elif x2 > b:
             # print(x2, b, b - 100 * maxerr)
-            f_x2 = f1(b - 100 * maxerr) - f2(b - 100 * maxerr)
+            f_x2 = f1(b - 0.01) - f2(b - 0.01)
         else:
             # print(x2, a, a+100*maxerr)
-            f_x2 = f1(a + 100 * maxerr) - f2(a + 100 * maxerr)
+            f_x2 = f1(a + 0.01) - f2(a + 0.01)
 
 
 def intersections(f1: callable, f2: callable, a: float, b: float, maxerr=0.00001) -> Iterable:
-    iterator = helper(f1, f2, a + 0.01, b - 0.01, maxerr)
+    # print("a, b: ",a,b)
+    iterator = helper(f1, f2, a + 0.05, b - 0.05, maxerr)
     arr = np.array([])
     for x in iterator:
         if len(arr) == 0 or abs(x - arr[len(arr) - 1]) > maxerr:
@@ -1824,7 +1824,7 @@ def makeDomain(params, c=0):
         zeroes = sorted(zeroes)
         for i in range(len(zeroes) - 1):
             z = (zeroes[i] + zeroes[i + 1]) / 2
-            if poly(z) >=0:
+            if poly(z) >= 0:
                 r.append((zeroes[i], zeroes[i + 1]))
         return r
 
@@ -1840,7 +1840,7 @@ def makeIntersections(poly, c=0, r=[(-100, 100)]):
 
     # if 0 not in [float(round(i, 3)) for i in xs]:
     #     points.append((0.0, float(round(poly(0), 3))))
-    print("points: ", points)
+    # print("points: ", points)
     return points
 
 
@@ -1867,7 +1867,6 @@ def makeDer(params):
 
 
 def deriveString(p, c, b):
-
     if c == 0:
         return "y=" + polySrting(makeDer(p))
     elif c == 1:
@@ -1884,10 +1883,11 @@ def deriveString(p, c, b):
     elif c == 6:
         return "y=(-1/sin^2(" + polySrting(p[:-1]) + ")"
     elif c == 7:
-        l = int(len(p)/2)
-        return "y=((" + polySrting(makeDer(p[:l]))+ ") * (" + polySrting(p[l:]) + ")) / ((" + polySrting(makeDer(p[l:]))+ ") * (" + polySrting(p[:l]) + "))"
+        l = int(len(p) / 2)
+        return "y=(((" + polySrting(makeDer(p[:l])) + ") * (" + polySrting(p[l:]) + ")) - ((" + polySrting(
+            makeDer(p[l:])) + ") * (" + polySrting(p[:l]) + "))) / ("+polySrting(p[l:])+")^2"
     elif c == 8:
-        return "y=("+ polySrting(makeDer(p[:-1])) +") * (" + polySrting(p[:-1]) + ")^("+str(1/b)+")"
+        return "y=(" + polySrting(makeDer(p[:-1])) + ") * "+str(1 / b)+" * (" + polySrting(p[:-1]) + ")^(" + str(1 / b-1) + ")"
 
 
 def derive(params, c=0, b=math.e):
@@ -1931,10 +1931,21 @@ def derive(params, c=0, b=math.e):
         p2 = p[int(len(p) / 2):]
         poly1 = makePoly(p1)
         poly2 = makePoly(p2)
-        return lambda x: (derive(p1)(x)*poly2(x)-poly1(x)*derive(p2)(x)) / (poly2(x)**2)
+        return lambda x: (derive(p1)(x) * poly2(x) - poly1(x) * derive(p2)(x)) / (poly2(x) ** 2)
     if c == 8:
         poly = makePoly(p[:-1])
-        return lambda x: derive(p[:-1])(x)*(1/b)*math.pow(1/b-1, poly(x))
+        der = derive(p[:-1])
+
+        def rootElement(x):
+            # print("ROOT")
+            # print(x)
+            # print(poly(x))
+            # print(der(x))
+            # print(math.pow(poly(x), 1/b-1))
+            # print(der(x)*(1/b)*math.pow(poly(x) ,1/b-1))
+            return der(x) * (1 / b) * math.pow(poly(x), 1 / b - 1)
+
+        return rootElement
 
 
 def makeExtremes(params, c=0, b=math.e):
@@ -2061,16 +2072,15 @@ def makeIncDec(p, c=0, b=math.e):
             return [(float('-inf'), float('inf'))], []
         else:
             return [], [(float('-inf'), float('inf'))]
-    s = f(sorted_extremes[0][0] - 1)
-
     inc_ranges = []
     dec_ranges = []
-
-    # Add the initial range
-    if s < 0:
-        dec_ranges.append((float('-inf'), sorted_extremes[0][0]))
-    else:
-        inc_ranges.append((float('-inf'), sorted_extremes[0][0]))
+    if any([(sorted_extremes[0][0] - 1) < d[1] and (sorted_extremes[0][0] - 1) > d[0] in d for d in dom]):
+        s = f(sorted_extremes[0][0] - 1)
+        # Add the initial range
+        if s < 0:
+            dec_ranges.append((float('-inf'), sorted_extremes[0][0]))
+        else:
+            inc_ranges.append((float('-inf'), sorted_extremes[0][0]))
 
     # Iterate over the sorted extreme points
     for i in range(len(sorted_extremes) - 1):
@@ -2081,12 +2091,13 @@ def makeIncDec(p, c=0, b=math.e):
             inc_ranges.append((x1, x2))
         elif y1 > y2:
             dec_ranges.append((x1, x2))
-    s = f(sorted_extremes[-1][0] + 1)
-    # Add the final range
-    if s < 0:
-        dec_ranges.append((sorted_extremes[-1][0], float('inf')))
-    else:
-        inc_ranges.append((sorted_extremes[-1][0], float('inf')))
+    # Add the final ranges
+    if any([(sorted_extremes[-1][0] + 1) < d[1] and (sorted_extremes[-1][0] + 1) > d[0] in d for d in dom]):
+        s = f(sorted_extremes[-1][0] + 1)
+        if s < 0:
+            dec_ranges.append((sorted_extremes[-1][0], float('inf')))
+        else:
+            inc_ranges.append((sorted_extremes[-1][0], float('inf')))
 
     return inc_ranges, dec_ranges
 
@@ -2126,9 +2137,8 @@ def makePosNeg(p, c=0, b=math.e):
 
     pos = []
     neg = []
-    if any([sorted_points[0][0] - 1 in d for d in dom]):
+    if any([(sorted_points[0][0] - 1) < d[1] and (sorted_points[0][0] - 1) > d[0] in d for d in dom]):
         s = f(sorted_points[0][0] - 1)
-
 
         # Add the initial range
         if s < 0:
@@ -2148,12 +2158,13 @@ def makePosNeg(p, c=0, b=math.e):
             pos.append((x1, x2))
         elif y < 0:
             neg.append((x1, x2))
-    s = f(sorted_points[-1][0] + 1)
-    # Add the final range
-    if s < 0:
-        neg.append((sorted_points[-1][0], float('inf')))
-    else:
-        pos.append((sorted_points[-1][0], float('inf')))
+    if any([(sorted_points[-1][0] + 1) < d[1] and (sorted_points[-1][0] + 1) > d[0] in d for d in dom]):
+        s = f(sorted_points[-1][0] + 1)
+        # Add the final range
+        if s < 0:
+            neg.append((sorted_points[-1][0], float('inf')))
+        else:
+            pos.append((sorted_points[-1][0], float('inf')))
 
     return pos, neg
 
@@ -2239,10 +2250,11 @@ def funcString(p, c=0, b=math.e):
     elif c == 6:
         return "y=cot(" + polySrting(p[:-1]) + ")" + (("+" if p[-1] > 0 else "") + str(p[-1]) if p[-1] else "")
     elif c == 7:
-        l = int(len(p)/2)
+        l = int(len(p) / 2)
         return "y=(" + polySrting(p[:l]) + ") / (" + polySrting(p[l:]) + ")"
     elif c == 8:
-        return "y=(" + polySrting(p[:-1]) + ")^("+str(1/b)+")" + (("+" if p[-1] > 0 else "") + str(p[-1]) if p[-1] else "")
+        return "y=(" + polySrting(p[:-1]) + ")^(" + str(1 / b) + ")" + (
+            ("+" if p[-1] > 0 else "") + str(p[-1]) if p[-1] else "")
 
 
 def polySrting(params):
@@ -2330,13 +2342,14 @@ def makeCot(p):
 def makeRational(p):
     p1 = p[:int(len(p) / 2)]
     p2 = p[int(len(p) / 2):]
-    return lambda x: makePoly(p1)(x) / makePoly(p2)(x)
+    return lambda x: None if makePoly(p2)(x) == 0 else makePoly(p1)(x) / makePoly(p2)(x)
+
 
 def makeRoot(p, b):
     if len(p) < 1:
         return lambda x: 0
     else:
-        return lambda x: math.pow(makePoly(p[:-1])(x), 1/b) + p[-1]
+        return lambda x: None if makePoly(p[:-1])(x) < 0 else math.pow(makePoly(p[:-1])(x), 1 / b) + p[-1]
 
 
 def makeFunc(p, c=0, b=math.e):
@@ -2362,8 +2375,8 @@ def makeFunc(p, c=0, b=math.e):
 
 # [random.randint(params[2*i], params[2*i+1]) for i in range(int(len(params)/2))]
 
-p = [1, 1, 0]
-c = 8
+p = [-2, 4, 1, 8]
+c = 7
 b = 2
 a = makeFunc(p, c=c, b=b)
 print()
@@ -2373,12 +2386,14 @@ dom = makeDomain(p, c)
 print("Domain: " + str(dom))
 print("Intersections: " + str(makeIntersections(a, c=c, r=dom)))
 print("Extremes: " + str(makeExtremes(p, c=c)))
-#print("IncDec: " + str(makeIncDec(p, c=c)))
-print("funcString: " + str(funcString(p, c=c,b=b)))
+print("IncDec: " + str(makeIncDec(p, c=c)))
+print("funcString: " + str(funcString(p, c=c, b=b)))
 print("deriveString: " + str(deriveString(p, c=c, b=b)))
 print("PosNeg: " + str(makePosNeg(p, c=c, b=b)))
-#sym = getSymmetry(p, c)
-#print("symmetry: " + ("f(x)=" + str(sym[0]) + "*f(-x+" + str(2 * sym[1]) + ")") if sym else sym)
+
+
+# sym = getSymmetry(p, c)
+# print("symmetry: " + ("f(x)=" + str(sym[0]) + "*f(-x+" + str(2 * sym[1]) + ")") if sym else sym)
 
 
 def getLessonGrade(user, unit_name, class_name):
