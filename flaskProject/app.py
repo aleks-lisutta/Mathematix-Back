@@ -1192,6 +1192,31 @@ def func_value_question(domain, f, fString):
     return q
 
 
+def find_real_domain(p, c):
+    # if c == 2:
+    #     r = []
+    #     coefficient = p[:-1]
+    #     f = makeFunc(coefficient)
+    #     inters = [x for x in intersections(f, lambda x: 0, -100, 100)]
+    #     # inters.append(-100)
+    #     # inters.append(100)
+    #     if len(inters) > 0:
+    #         inters = sorted([round(x, 3) for x in inters])
+    #
+    #     # print(inters)
+    #     for i in range(len(inters) - 1):
+    #         a = (inters[i] + inters[i + 1]) / 2
+    #         if f(a) > 0:
+    #             r.append((inters[i], inters[i + 1]))
+    #
+    #     if len(inters) > 0:
+    #         r.append((inters[-1], float('inf')))
+    #         r.insert(0, (float('-inf'), inters[0]))
+    #     return r
+    # else:
+    return makeDomain(p, c)
+
+
 def get_questions(unit):
     intMap = {'linear': 0, 'quadratic': 0, 'polynomial': 0, '2exp': 1, '3exp': 1, 'eexp': 1, 'log': 2, 'sin': 3,
               'cos': 4, 'tan': 5, 'cot': 6, 'rational': 7, 'root': 8}
@@ -1293,6 +1318,44 @@ def get_questions(unit):
             elif ('funcValue' in question):
                 domain = makeDomain(p, c)
                 q = func_value_question(domain, f, funcString(p, c, b))
+                questions.append(q)
+            elif ('domain' in question):
+                preamble = "מצא מה תחום ההגדרה של הפונקציה"
+                ans1 = "הפונקציה מוגדרת לכל x"
+
+                x1 = random.randint(-100, 0)
+                x2 = -x1
+                ans2 = [(x1, x2)]
+
+                if c in [2, 5, 6, 7, 8]:
+                    ans1 = find_real_domain(p, c)
+                    if len(ans1) == 0:
+                        ans1 = "הפונקציה לא מוגדרת עבור אף x".format('x')
+                    p2 = [x + 1 for x in p]
+                    ans2 = find_real_domain(p2, c)
+                    if len(ans2) == 0 and ans1 == "הפונקציה לא מוגדרת עבור אף x":
+                        x1 = round(random.randint(-10000, 0) / 1000, 3)
+                        x2 = -x1
+                        ans2 = [(x1, x2), (x2, x2 + 2)]
+
+                    to_put_define_for_all = random.randint(1, 4)
+                    if to_put_define_for_all == 1:
+                        ans2 = 'הפונקציה מוגדרת לכל x'
+
+                    if len(ans2) == 0:
+                        ans2 = "הפונקציה לא מוגדרת עבור אף x"
+
+                x1 = round(random.randint(-10000, 0) / 1000, 3)
+                x2 = -x1
+                ans3 = [(float('-inf'), x1), (x1, x2), (x2, float('inf'))]
+                x1 = round(random.randint(-10000, 0) / 1000, 3)
+                x2 = -x1
+                ans4 = [(float('-inf'), x1), (x1, x2), (x2, float('inf'))]
+
+                q = (
+                    preamble, funcString(p, c, b), ans1, ans2,
+                    ans3,
+                    ans4, 0)
                 questions.append(q)
 
     return change_order(questions)
@@ -1454,9 +1517,9 @@ def individualStats():
             unit = Unit[unitName, Cls[className]]
             user = User[studentUsername]
 
-            #active = ActiveUnit[unit, user, 1]
+            # active = ActiveUnit[unit, user, 1]
             ans = list()
-            totalCorrect, totalIncorrect = getLessonCorrectIncorrect(user,unitName,className)
+            totalCorrect, totalIncorrect = getLessonCorrectIncorrect(user, unitName, className)
             ans.append(totalCorrect)
             ans.append(totalIncorrect)
             ret["correctIncorrect"] = ans
@@ -1590,7 +1653,7 @@ def getQuestion_buisness(user, unit_name, class_name, question_number):
             attempt = get_max_unit(unit, user)
             active = ActiveUnit[unit, user, attempt]
             question = Question[active, active.currentQuestion + 1]
-            currentUnit,totalUnits= getLessonIndex(user,unit_name,class_name)
+            currentUnit, totalUnits = getLessonIndex(user, unit_name, class_name)
             single_question = dict()
             single_question["id"] = question.id
             # single_question["question_preamble"] = question.question_preamble
@@ -1606,9 +1669,8 @@ def getQuestion_buisness(user, unit_name, class_name, question_number):
             single_question["currentUnit"] = currentUnit
             single_question["totalUnits"] = totalUnits
 
-
             ret.append(single_question)
-            #print("ret=", ret)
+            # print("ret=", ret)
         return jsonify(ret)
     except Exception as e:
         print(e)
@@ -1960,9 +2022,10 @@ def deriveString(p, c, b):
     elif c == 7:
         l = int(len(p) / 2)
         return "y=(((" + polySrting(makeDer(p[:l])) + ") * (" + polySrting(p[l:]) + ")) - ((" + polySrting(
-            makeDer(p[l:])) + ") * (" + polySrting(p[:l]) + "))) / ("+polySrting(p[l:])+")^2"
+            makeDer(p[l:])) + ") * (" + polySrting(p[:l]) + "))) / (" + polySrting(p[l:]) + ")^2"
     elif c == 8:
-        return "y=(" + polySrting(makeDer(p[:-1])) + ") * "+str(1 / b)+" * (" + polySrting(p[:-1]) + ")^(" + str(1 / b-1) + ")"
+        return "y=(" + polySrting(makeDer(p[:-1])) + ") * " + str(1 / b) + " * (" + polySrting(p[:-1]) + ")^(" + str(
+            1 / b - 1) + ")"
 
 
 def derive(params, c=0, b=math.e):
@@ -2468,6 +2531,7 @@ print("funcString: " + str(funcString(p, c=c, b=b)))
 print("deriveString: " + str(deriveString(p, c=c, b=b)))
 print("PosNeg: " + str(makePosNeg(p, c=c, b=b)))
 
+
 # sym = getSymmetry(p, c)
 # print("symmetry: " + ("f(x)=" + str(sym[0]) + "*f(-x+" + str(2 * sym[1]) + ")") if sym else sym)
 
@@ -2475,19 +2539,19 @@ print("PosNeg: " + str(makePosNeg(p, c=c, b=b)))
 def getLessonIndex(user, unit_name, class_name):
     try:
         with db_session:
-            unitsAbove =0
-            unitsBelow=0
+            unitsAbove = 0
+            unitsBelow = 0
             try:
                 unit_name_n = unit_name
                 unit_name_n += "n"
                 while (True):
                     unit = Unit[unit_name_n, Cls[class_name]]
                     activeUnit = ActiveUnit[unit, user, 1]
-                    unitsAbove+=1
+                    unitsAbove += 1
                     unit_name_n += "n"
             except Exception as e:
-                a=8
-                #print("does not exists " + str(e))
+                a = 8
+                # print("does not exists " + str(e))
 
             try:
                 unit_name_n = unit_name
@@ -2495,19 +2559,19 @@ def getLessonIndex(user, unit_name, class_name):
                 while (True):
                     unit = Unit[unit_name_n, Cls[class_name]]
                     activeUnit = ActiveUnit[unit, user, 1]
-                    unitsBelow+=1
+                    unitsBelow += 1
                     unit_name_n = unit_name_n[:-1]
 
             except Exception as e:
-                a=8
-                #print("does not exists " + str(e))
+                a = 8
+                # print("does not exists " + str(e))
 
-
-            return (1+unitsBelow,1+unitsAbove+unitsBelow)
+            return (1 + unitsBelow, 1 + unitsAbove + unitsBelow)
 
     except Exception as e:
         print(e)
         return str(e)
+
 
 def getLessonGrade(user, unit_name, class_name):
     try:
@@ -2524,8 +2588,8 @@ def getLessonGrade(user, unit_name, class_name):
 
                     unit_name_n += "n"
             except Exception as e:
-                a=8
-                #print("does not exists " + str(e))
+                a = 8
+                # print("does not exists " + str(e))
 
             grade = int(((total_correct / total_solved) * 100))
             return grade
@@ -2534,6 +2598,7 @@ def getLessonGrade(user, unit_name, class_name):
     except Exception as e:
         print(e)
         return str(e)
+
 
 def getLessonCorrectIncorrect(user, unit_name, class_name):
     try:
@@ -2550,15 +2615,16 @@ def getLessonCorrectIncorrect(user, unit_name, class_name):
 
                     unit_name_n += "n"
             except Exception as e:
-                a=8
-               #print("does not exists " + str(e))
+                a = 8
+            # print("does not exists " + str(e))
 
-            return (total_correct,total_solved-total_correct)
+            return (total_correct, total_solved - total_correct)
 
 
     except Exception as e:
         print(e)
         return str(e)
+
 
 @app.route('/getLessonCorrect')
 def getLessonCorrectIncorrectQuestions():
@@ -2567,7 +2633,7 @@ def getLessonCorrectIncorrectQuestions():
     class_name = request.args.get('className')
     correct = request.args.get('correct')
     if (correct == "Correct"):
-        correctBool=True
+        correctBool = True
     else:
         correctBool = False
 
@@ -2582,27 +2648,25 @@ def getLessonCorrectIncorrectQuestions():
                 while (True):
                     unit = Unit[unit_name_n, Cls[class_name]]
                     activeUnit = ActiveUnit[unit, user, 1]
-                    for question in Question.select(active_unit=activeUnit,solved_correctly=correctBool):
+                    for question in Question.select(active_unit=activeUnit, solved_correctly=correctBool):
                         singleQuestion = dict()
-                        singleQuestion["questionPreamble"]=question.question_preamble
+                        singleQuestion["questionPreamble"] = question.question_preamble
                         singleQuestion["question"] = question.question
-                        singleQuestion["id"]=id
-                        id+=1
+                        singleQuestion["id"] = id
+                        id += 1
                         ret.append(singleQuestion)
 
                     unit_name_n += "n"
             except Exception as e:
-                a=8
-                #print("does not exists " + str(e))
-            return jsonify(ret),200
+                a = 8
+                # print("does not exists " + str(e))
+            return jsonify(ret), 200
 
 
 
     except Exception as e:
         print(e)
-        return str(e),400
-
-
+        return str(e), 400
 
 
 class userCont:
