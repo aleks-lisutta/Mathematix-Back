@@ -38,7 +38,7 @@ CORS(app)
 DB = pony.Database()
 Pony(app)
 
-DB.bind(provider='sqlite', filename='dbtest', create_db=True)
+DB.bind(provider='sqlite', filename='dbtest.sqlite', create_db=True)
 
 DATATYPE_SIZE = 3
 QUESTIONTYPE_SIZE = 4
@@ -1937,9 +1937,9 @@ def derive(params, c=0, b=math.e):
         poly1 = makePoly(p1)
         poly2 = makePoly(p2)
         return lambda x: (derive(p1)(x)*poly2(x)-poly1(x)*derive(p2)(x)) / (poly2(x)**2)
-    # if c == 8:
-    #     poly = makePoly(p[:-1])
-    #     return lambda x: derive(p[:-1])(x)*(1/b)*math.pow(1/b-1, poly(x))
+    if c == 8:
+        poly = makePoly(p[:-1])
+        return lambda x: derive(p[:-1])(x)*(1/b)*math.pow(1/b-1, poly(x))
 
 
 def makeExtremes(params, c=0, b=math.e):
@@ -2367,23 +2367,23 @@ def makeFunc(p, c=0, b=math.e):
 
 # [random.randint(params[2*i], params[2*i+1]) for i in range(int(len(params)/2))]
 
-# p = [1, 1, 0]
-# c = 8
-# b = 2
-# a = makeFunc(p, c=c, b=b)
-# print()
-# print("f: " + str(a))
-# print("f(2): " + str(a(2)))
-# dom = makeDomain(p, c)
-# print("Domain: " + str(dom))
-# print("Intersections: " + str(makeIntersections(a, c=c, r=dom)))
-# print("Extremes: " + str(makeExtremes(p, c=c)))
-# #print("IncDec: " + str(makeIncDec(p, c=c)))
-# print("funcString: " + str(funcString(p, c=c,b=b)))
-# print("deriveString: " + str(deriveString(p, c=c, b=b)))
-# print("PosNeg: " + str(makePosNeg(p, c=c, b=b)))
-#sym = getSymmetry(p, c)
-#print("symmetry: " + ("f(x)=" + str(sym[0]) + "*f(-x+" + str(2 * sym[1]) + ")") if sym else sym)
+p = [1, 1, 0]
+c = 8
+b = 2
+a = makeFunc(p, c=c, b=b)
+print()
+print("f: " + str(a))
+print("f(2): " + str(a(2)))
+dom = makeDomain(p, c)
+print("Domain: " + str(dom))
+print("Intersections: " + str(makeIntersections(a, c=c, r=dom)))
+print("Extremes: " + str(makeExtremes(p, c=c)))
+#print("IncDec: " + str(makeIncDec(p, c=c)))
+print("funcString: " + str(funcString(p, c=c,b=b)))
+print("deriveString: " + str(deriveString(p, c=c, b=b)))
+print("PosNeg: " + str(makePosNeg(p, c=c, b=b)))
+sym = getSymmetry(p, c)
+print("symmetry: " + ("f(x)=" + str(sym[0]) + "*f(-x+" + str(2 * sym[1]) + ")") if sym else sym)
 
 def getLessonIndex(user, unit_name, class_name):
     try:
