@@ -1809,10 +1809,8 @@ def intersections(f1: callable, f2: callable, a: float, b: float, maxerr=0.00001
 
 
 def makeDomain(params, c=0):
-    if c == 0:
-        return [(-100, 100)]
-    elif c in [1, 3, 4]:
-        r = [(-math.pi, math.pi)]
+    if c in [0, 1, 3, 4]:
+        r = [(float('-inf'), float('inf'))]
         return r
     elif c == 2:
         r = []
@@ -1867,6 +1865,10 @@ def makeDomain(params, c=0):
 
 
 def makeIntersections(poly, c=0, r=[(-100, 100)]):
+    if c == 0:
+        r = [(-100, 100)]
+    if c in [1,3,4]:
+        r= [(-math.pi, math.pi)]
     xs = []
     for i in r:
         inters = (intersections(poly, lambda x: 0, i[0], i[1]))
@@ -2189,22 +2191,22 @@ def makePosNeg(p, c=0, b=math.e):
     for i in inters:
         points.add(i)
     for i in dom:
-        if i[0] not in [-100, 100, math.pi, -math.pi]:
+        if i[0] not in [float('-inf'), float('inf')]:
             if f(i[0] + 0.001):
                 points.add((i[0], float('-inf') if f(i[0] + 0.001) < 0 else float('inf')))
             else:
                 points.add((i[0], float('-inf') if f(i[0] - 0.001) < 0 else float('inf')))
-        if i[1] not in [-100, 100, math.pi, -math.pi]:
+        if i[1] not in [float('-inf'), float('inf')]:
             if f(i[1] + 0.001):
                 points.add((i[1], float('-inf') if f(i[1] + 0.001) < 0 else float('inf')))
             else:
                 points.add((i[1], float('-inf') if f(i[1] - 0.001) < 0 else float('inf')))
     # Sort the extreme points by their x-values
     sorted_points = sorted(list(points))
-    print("sorted", sorted_points)
     if len(sorted_points) == 0:
-        dom = makeDomain(p, c)
-        sample = random.randint(dom[0][0] * 1000, dom[0][1] * 1000) / 1000
+        if dom == [(float('-inf'), float('inf'))]:
+            dom =[(-100, 100)]
+        sample = random.randint(int(dom[0][0] * 1000), int(dom[0][1] * 1000)) / 1000
         if f(sample) > 0:
             return [(float('-inf'), float('inf'))], []
         else:
@@ -2315,12 +2317,12 @@ def makeAsym(p, c=0, b=math.e):
         dom = makeDomain(p, c)
         f = makeFunc(p, c, b)
         for i in dom:
-            if i[0] not in [-100, 100]:
+            if i[0] not in [float('-inf'), float('inf')]:
                 if f(i[0] + 0.001):
                     s.add((i[0], float('-inf') if f(i[0] + 0.001) < -1000 else float('inf')))
                 else:
                     s.add((i[0], float('-inf') if f(i[0] - 0.001) < 1000 else float('inf')))
-            if i[1] not in [-100, 100]:
+            if i[1] not in [float('-inf'), float('inf')]:
                 if f(i[1] + 0.001):
                     s.add((i[1], float('-inf') if f(i[1] + 0.001) < -1000 else float('inf')))
                 else:
@@ -2479,7 +2481,7 @@ def makeFunc(p, c=0, b=math.e):
 # [random.randint(params[2*i], params[2*i+1]) for i in range(int(len(params)/2))]
 
 p = [-2, 4, 1, 8]
-c = 2
+c = 1
 
 b = 2
 a = makeFunc(p, c=c, b=b)
