@@ -1895,7 +1895,7 @@ def makeDomain(params, c=0):
         f = makeFunc(coefficient, 3 if c == 6 else 4)
         inters = sorted(intersections(lambda x: 0, f, -3, 3))
         if len(inters) == 0:
-            return [(-100, 100)]
+            return [(float('-inf'), float('inf'))]
         for i in range(len(inters) - 1):
             r.append((inters[i], inters[i + 1]))
         return r
@@ -1904,18 +1904,18 @@ def makeDomain(params, c=0):
         poly = makePoly(p2)
         zeroes = sorted([x[0] for x in makeIntersections(poly)])
         if len(zeroes) == 0:
-            return [(-100, 100)]
+            return [(float('-inf'), float('inf'))]
         r = []
-        r.append((-100, zeroes[0]))
+        r.append((float('-inf'), zeroes[0]))
         for i in range(len(zeroes) - 1):
             r.append((zeroes[i], zeroes[i + 1]))
-        r.append(((zeroes[-1]), 100))
+        r.append(((zeroes[-1]), float('inf')))
         return r
     elif c == 8:
         poly = makePoly(params[:-1])
         zeroes = [x[0] for x in makeIntersections(poly)]
         if len(zeroes) == 0:
-            return [(-100, 100)]
+            return [(float('-inf'), float('inf'))]
         r = []
         zeroes.append(-100)
         zeroes.append(100)
@@ -1930,8 +1930,10 @@ def makeDomain(params, c=0):
 def makeIntersections(poly, c=0, r=[(-100, 100)]):
     if c == 0:
         r = [(-100, 100)]
-    if c in [1,3,4]:
-        r= [(-math.pi, math.pi)]
+    elif c in [1,3,4]:
+        r = [(-math.pi, math.pi)]
+    else:
+        r = [(d[0] if d[0] not in [float('-inf')] else -100, d[1] if d[1] not in [float('inf')] else 100) for d in r]
     xs = []
     for i in r:
         inters = (intersections(poly, lambda x: 0, i[0], i[1]))
@@ -2190,12 +2192,12 @@ def makeIncDec(p, c=0, b=math.e):
     for i in extremes:
         ext.add(i)
     for i in dom:
-        if i[0] not in [-100, 100, math.pi, -math.pi]:
+        if i[0] not in [float('-inf'),float('inf')]:
             if f(i[0] + 0.001):
                 ext.add((i[0], float('-inf') if f(i[0] + 0.001) < 0 else float('inf')))
             else:
                 ext.add((i[0], float('-inf') if f(i[0] - 0.001) < 0 else float('inf')))
-        if i[1] not in [-100, 100, math.pi, -math.pi]:
+        if i[1] not in [float('-inf'),float('inf')]:
             if f(i[1] + 0.001):
                 ext.add((i[1], float('-inf') if f(i[1] + 0.001) < 0 else float('inf')))
             else:
@@ -2544,7 +2546,7 @@ def makeFunc(p, c=0, b=math.e):
 # [random.randint(params[2*i], params[2*i+1]) for i in range(int(len(params)/2))]
 
 p = [-2, 4, 1, 8]
-c = 8
+c = 7
 
 b = 2
 a = makeFunc(p, c=c, b=b)
