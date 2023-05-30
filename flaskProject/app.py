@@ -1236,129 +1236,176 @@ def get_questions(unit):
                               'cot', 'rational', 'root']:
             c = intMap[function_types]
             b = 2 if function_types == '2exp' else (3 if function_types == '3exp' else math.e)
+            if 'root':
+                b=2
             p = [random.randint(int(params[2 * i]), int(params[2 * i + 1])) for i in range(int(len(params) / 2))]
             f = makeFunc(p, c, b)
+            q=""
             if ('definiteIntegral' in question):
-                min_range = int(integral_range[0])
-                max_range = int(integral_range[1])
-                ans = integrate(f, min_range, max_range, int((max_range - min_range) * 100))
-                string_range = str(max_range) + "," + str(min_range)
-                preamble = string_range + "מצא את האינטגרל בתחום: "
-                ans2 = ans + random.randint(1, 5)
-                ans3 = ans - random.randint(1, 5)
-                ans4 = ans + random.randint(7, 12)
-                q = (preamble, funcString(p, c, b), ans, ans2, ans3, ans4, 0)
+                q = definite_integral_question(b, c, f, integral_range, p)
                 questions.append(q)
-            if ('intersection' in question):
-                if not any(p):
-                    points = "כל הנקודות"
-                else:
-                    dom = makeDomain(p, c)
-                    points = makeIntersections(f, c, dom)
-                    if (not points is None):
-                        if (not f(0) is None) and abs(f(0)) >= 0.001:
-                            points.append((0.0, float(round(f(0), 3))))
-                preamble = "מצא את נקודות החיתוך עם הצירים:"
-                ans2 = [(random.randint(-10000, 10000) / 1000, 0.0) for i in range(len(p) - 1)]
-                ans2.append((0.0, (random.randint(-10000, 10000) / 1000)))
-                ans3 = [(random.randint(-10000, 10000) / 1000, 0.0) for i in range(len(p) - 1)]
-                ans3.append((0.0, (random.randint(-10000, 10000) / 1000)))
-                ans4 = [(random.randint(-10000, 10000) / 1000, 0.0) for i in range(len(p) - 1)]
-                ans4.append((0.0, (random.randint(-10000, 10000) / 1000)))
-                q = (preamble, funcString(p, c, b), points, ans2, ans3, ans4, 0)
-                questions.append(q)
-
+            elif ('intersection' in question):
+                q = make_intersection_question(b, c, f, p)
             elif ('minMaxPoints' in question):
-                points = makeExtremes(p, c, b)
-                if points == []:
-                    points = 'אין נקודות קיצון'
-                to_put_no_extreme_points = 0
-                if points != 'אין נקודות קיצון':
-                    to_put_no_extreme_points = random.randint(1, 4)
-                if to_put_no_extreme_points == 1:
-                    ans2 = 'אין נקודות קיצון'
-                else:
-                    ans2 = [(random.randint(-10000, 10000) / 1000, (random.randint(-10000, 10000) / 1000)) for i in
-                            range(max(len(p) - 2, 1))]
-                ans3 = [(random.randint(-10000, 10000) / 1000, (random.randint(-10000, 10000) / 1000)) for i in
-                        range(max(len(p) - 2, 1))]
-                ans4 = [(random.randint(-10000, 10000) / 1000, (random.randint(-10000, 10000) / 1000)) for i in
-                        range(max(len(p) - 2, 1))]
-                preamble = "מצא את נקודת הקיצון:"
-                q = (preamble, funcString(p, c, b), points, ans2, ans3, ans4, 0)
-                questions.append(q)
+                q = make_extreme_question(b, c, p)
             elif ('incDec' in question):
-                inc, dec = makeIncDec(p, c, b)
-                preamble = "מצא תחומי עלייה וירידה:"
-                i1, d1 = randFillPair(len(inc) + len(dec))
-                result2 = (" עלייה: " + str(i1) + " ירידה: " + str(d1) + " ")
-                i1, d1 = randFillPair(len(inc) + len(dec))
-                result3 = (" עלייה: " + str(i1) + " ירידה: " + str(d1) + " ")
-                i1, d1 = randFillPair(len(inc) + len(dec))
-                result4 = (" עלייה: " + str(i1) + " ירידה: " + str(d1) + " ")
-                q = (
-                    preamble, funcString(p, c, b), (" עלייה: " + str(dec) + " ירידה: " + str(inc) + " "), result2,
-                    result3,
-                    result4, 0)
-                questions.append(q)
+                q = make_incDec_question(b, c, p)
             elif ('deriveFunc' in question):
-                preamble = "מצא מהי הנגזרת של הפונקציה"
-                ans1 = deriveString(p, c, b)
-                p2 = makeDer(p)
-                ans2 = deriveString(p2, c, b)
-                p3 = [x + 1 if (x > 1 or x < -1) else x + 3 for x in p]
-                ans3 = deriveString(p3, c, b)
-                p4 = makeDer(p3)
-                ans4 = deriveString(p4, c, b)
-                q = (
-                    preamble, funcString(p, c, b), ans1, ans2,
-                    ans3,
-                    ans4, 0)
-                questions.append(q)
+                q = make_derive_question(b, c, p)
             elif ('funcValue' in question):
                 domain = makeDomain(p, c)
                 q = func_value_question(domain, f, funcString(p, c, b))
-                questions.append(q)
             elif ('domain' in question):
-                preamble = "מצא מה תחום ההגדרה של הפונקציה"
-                ans1 = "הפונקציה מוגדרת לכל x"
-
-                x1 = random.randint(-100, 0)
-                x2 = -x1
-                ans2 = [(x1, x2)]
-
-                if c in [2, 5, 6, 7, 8]:
-                    ans1 = find_real_domain(p, c)
-                    if len(ans1) == 0:
-                        ans1 = "הפונקציה לא מוגדרת עבור אף x".format('x')
-                    p2 = [x + 1 for x in p]
-                    ans2 = find_real_domain(p2, c)
-                    if len(ans2) == 0 and ans1 == "הפונקציה לא מוגדרת עבור אף x":
-                        x1 = round(random.randint(-10000, 0) / 1000, 3)
-                        x2 = -x1
-                        ans2 = [(x1, x2), (x2, x2 + 2)]
-
-                    to_put_define_for_all = random.randint(1, 4)
-                    if to_put_define_for_all == 1:
-                        ans2 = 'הפונקציה מוגדרת לכל x'
-
-                    if len(ans2) == 0:
-                        ans2 = "הפונקציה לא מוגדרת עבור אף x"
-
-                x1 = round(random.randint(-10000, 0) / 1000, 3)
-                x2 = -x1
-                ans3 = [(float('-inf'), x1), (x1, x2), (x2, float('inf'))]
-                x1 = round(random.randint(-10000, 0) / 1000, 3)
-                x2 = -x1
-                ans4 = [(float('-inf'), x1), (x1, x2), (x2, float('inf'))]
-
-                q = (
-                    preamble, funcString(p, c, b), ans1, ans2,
-                    ans3,
-                    ans4, 0)
-                questions.append(q)
+                q = make_domain_question(b, c, p)
+            elif ('posNeg' in question):
+                q = make_pos_neg_question(b, c, p)
+            questions.append(q)
 
     return change_order(questions)
+
+
+def make_pos_neg_question(b, c, p):
+    pos, neg = makePosNeg(p, c, b)
+    preamble = "מצא תחומי חיוביות שליליות"
+    p1, n1 = randFillPair(len(pos) + len(neg))
+    result2 = (" חיוביות: " + str(p1) + " שליליות: " + str(n1) + " ")
+    i1, d1 = randFillPair(len(pos) + len(neg))
+    result3 = (" חיוביות: " + str(i1) + " שליליות: " + str(d1) + " ")
+    i1, d1 = randFillPair(len(pos) + len(neg))
+    result4 = (" חיוביות: " + str(i1) + " שליליות: " + str(d1) + " ")
+    q = (
+        preamble, funcString(p, c, b), (" חיוביות: " + str(neg) + " שליליות: " + str(pos) + " "), result2,
+        result3,
+        result4, 0)
+    return q
+
+
+def definite_integral_question(b, c, f, integral_range, p):
+    min_range = int(integral_range[0])
+    max_range = int(integral_range[1])
+    ans = integrate(f, min_range, max_range, int((max_range - min_range) * 100))
+    string_range = str(max_range) + "," + str(min_range)
+    preamble = string_range + "מצא את האינטגרל בתחום: "
+    ans2 = ans + random.randint(1, 5)
+    ans3 = ans - random.randint(1, 5)
+    ans4 = ans + random.randint(7, 12)
+    q = (preamble, funcString(p, c, b), ans, ans2, ans3, ans4, 0)
+    return q
+
+
+def make_intersection_question(b, c, f, p):
+    if not any(p):
+        points = "כל הנקודות"
+    else:
+        dom = makeDomain(p, c)
+        points = makeIntersections(f, c, dom)
+        if (not points is None):
+            if (not f(0) is None) and abs(f(0)) >= 0.001:
+                points.append((0.0, float(round(f(0), 3))))
+    preamble = "מצא את נקודות החיתוך עם הצירים:"
+    ans2 = [(random.randint(-10000, 10000) / 1000, 0.0) for i in range(len(p) - 1)]
+    ans2.append((0.0, (random.randint(-10000, 10000) / 1000)))
+    ans3 = [(random.randint(-10000, 10000) / 1000, 0.0) for i in range(len(p) - 1)]
+    ans3.append((0.0, (random.randint(-10000, 10000) / 1000)))
+    ans4 = [(random.randint(-10000, 10000) / 1000, 0.0) for i in range(len(p) - 1)]
+    ans4.append((0.0, (random.randint(-10000, 10000) / 1000)))
+    q = (preamble, funcString(p, c, b), points, ans2, ans3, ans4, 0)
+    return q
+
+
+def make_derive_question(b, c, p):
+    preamble = "מצא מהי הנגזרת של הפונקציה"
+    ans1 = deriveString(p, c, b)
+    p2 = makeDer(p)
+    ans2 = deriveString(p2, c, b)
+    p3 = [x + 1 if (x > 1 or x < -1) else x + 3 for x in p]
+    ans3 = deriveString(p3, c, b)
+    p4 = makeDer(p3)
+    ans4 = deriveString(p4, c, b)
+    q = (
+        preamble, funcString(p, c, b), ans1, ans2,
+        ans3,
+        ans4, 0)
+    return q
+
+
+def make_incDec_question(b, c, p):
+    inc, dec = makeIncDec(p, c, b)
+    preamble = "מצא תחומי עלייה וירידה:"
+    i1, d1 = randFillPair(len(inc) + len(dec))
+    result2 = (" עלייה: " + str(i1) + " ירידה: " + str(d1) + " ")
+    i1, d1 = randFillPair(len(inc) + len(dec))
+    result3 = (" עלייה: " + str(i1) + " ירידה: " + str(d1) + " ")
+    i1, d1 = randFillPair(len(inc) + len(dec))
+    result4 = (" עלייה: " + str(i1) + " ירידה: " + str(d1) + " ")
+    q = (
+        preamble, funcString(p, c, b), (" עלייה: " + str(dec) + " ירידה: " + str(inc) + " "), result2,
+        result3,
+        result4, 0)
+    return q
+
+
+def make_extreme_question(b, c, p):
+    points = makeExtremes(p, c, b)
+    if points == []:
+        points = 'אין נקודות קיצון'
+    to_put_no_extreme_points = 0
+    if points != 'אין נקודות קיצון':
+        to_put_no_extreme_points = random.randint(1, 4)
+    if to_put_no_extreme_points == 1:
+        ans2 = 'אין נקודות קיצון'
+    else:
+        ans2 = [(random.randint(-10000, 10000) / 1000, (random.randint(-10000, 10000) / 1000)) for i in
+                range(max(len(p) - 2, 1))]
+    ans3 = [(random.randint(-10000, 10000) / 1000, (random.randint(-10000, 10000) / 1000)) for i in
+            range(max(len(p) - 2, 1))]
+    ans4 = [(random.randint(-10000, 10000) / 1000, (random.randint(-10000, 10000) / 1000)) for i in
+            range(max(len(p) - 2, 1))]
+    preamble = "מצא את נקודת הקיצון:"
+    q = (preamble, funcString(p, c, b), points, ans2, ans3, ans4, 0)
+    return q
+
+
+def make_domain_question(b, c, p):
+    preamble = "מצא מה תחום ההגדרה של הפונקציה"
+    ans1 = "הפונקציה מוגדרת לכל x"
+    x1 = random.randint(-100, 0)
+    x2 = -x1
+    ans2 = [(x1, x2)]
+    if c in [2, 5, 6, 7, 8]:
+        ans1 = find_real_domain(p, c)
+        if len(ans1) == 0:
+            ans1 = "הפונקציה לא מוגדרת עבור אף x".format('x')
+        flag = True
+
+        p2 = p
+        while flag or ans1 == ans2:
+            flag = False
+            p2 = [x - 1 for x in p2]
+            ans2 = find_real_domain(p2, c)
+
+        if len(ans2) == 0 and ans1 == "הפונקציה לא מוגדרת עבור אף x":
+            x1 = round(random.randint(-10000, 0) / 1000, 3)
+            x2 = -x1
+            ans2 = [(x1, x2), (x2, x2 + 2)]
+
+        to_put_define_for_all = random.randint(1, 4)
+        if to_put_define_for_all == 1:
+            ans2 = 'הפונקציה מוגדרת לכל x'
+
+        if len(ans2) == 0:
+            ans2 = "הפונקציה לא מוגדרת עבור אף x"
+    x1 = round(random.randint(-10000, 0) / 1000, 3)
+    x2 = -x1
+    ans3 = [(float('-inf'), x1), (x1, x2), (x2, float('inf'))]
+    x1 = round(random.randint(-10000, 0) / 1000, 3)
+    x2 = -x1
+    ans4 = [(float('-inf'), x1), (x1, x2), (x2, float('inf'))]
+    q = (
+        preamble, funcString(p, c, b), ans1, ans2,
+        ans3,
+        ans4, 0)
+    return q
 
 
 def randFillPair(n):
@@ -1880,12 +1927,24 @@ def makeDomain(params, c=0):
         coefficient = params[:-1]
         f = makeFunc(coefficient)
         inters = [x for x in intersections(f, lambda x: 0, -100, 100)]
-        inters.append(-100)
-        inters.append(100)
+        inters.append(float('-inf'))
+        inters.append(float('inf'))
         inters = sorted([round(x, 3) for x in inters])
         # print(inters)
         for i in range(len(inters) - 1):
-            a = (inters[i] + inters[i + 1]) / 2
+            it = inters[i]
+            it2 = inters[i + 1]
+            if it == float('inf'):
+                it = 100
+            if it == float('-inf'):
+                it = -100
+
+            if it2 == float('inf'):
+                it2 = 100
+            if it2 == float('-inf'):
+                it2 = -100
+
+            a = (it + it2) / 2
             if f(a) > 0:
                 r.append((inters[i], inters[i + 1]))
         return r
@@ -1917,11 +1976,24 @@ def makeDomain(params, c=0):
         if len(zeroes) == 0:
             return [(float('-inf'), float('inf'))]
         r = []
-        zeroes.append(-100)
-        zeroes.append(100)
+
+        zeroes.append(float('-inf'))
+        zeroes.append(float('inf'))
         zeroes = sorted(zeroes)
         for i in range(len(zeroes) - 1):
-            z = (zeroes[i] + zeroes[i + 1]) / 2
+            it = zeroes[i]
+            it2 = zeroes[i + 1]
+            if it == float('inf'):
+                it = 100
+            if it == float('-inf'):
+                it = -100
+
+            if it2 == float('inf'):
+                it2 = 100
+            if it2 == float('-inf'):
+                it2 = -100
+
+            z = (it + it2) / 2
             if poly(z) >= 0:
                 r.append((zeroes[i], zeroes[i + 1]))
         return r
@@ -1930,7 +2002,7 @@ def makeDomain(params, c=0):
 def makeIntersections(poly, c=0, r=[(-100, 100)]):
     if c == 0:
         r = [(-100, 100)]
-    elif c in [1,3,4]:
+    elif c in [1, 3, 4]:
         r = [(-math.pi, math.pi)]
     else:
         r = [(d[0] if d[0] not in [float('-inf')] else -100, d[1] if d[1] not in [float('inf')] else 100) for d in r]
@@ -2114,7 +2186,7 @@ def makeExtremes(params, c=0, b=math.e):
     print("extreme_points", extreme_points)
     f = makeFunc(params, c, b)
 
-    extremes = [(e[0], round(f(e[0]), 3)) for e in extreme_points]
+    extremes = [(e[0], round(f(e[0]), 3)) for e in extreme_points if f(e[0])]
     return extremes
 
 
@@ -2192,12 +2264,12 @@ def makeIncDec(p, c=0, b=math.e):
     for i in extremes:
         ext.add(i)
     for i in dom:
-        if i[0] not in [float('-inf'),float('inf')]:
+        if i[0] not in [float('-inf'), float('inf')]:
             if f(i[0] + 0.001):
                 ext.add((i[0], float('-inf') if f(i[0] + 0.001) < 0 else float('inf')))
             else:
                 ext.add((i[0], float('-inf') if f(i[0] - 0.001) < 0 else float('inf')))
-        if i[1] not in [float('-inf'),float('inf')]:
+        if i[1] not in [float('-inf'), float('inf')]:
             if f(i[1] + 0.001):
                 ext.add((i[1], float('-inf') if f(i[1] + 0.001) < 0 else float('inf')))
             else:
@@ -2270,7 +2342,7 @@ def makePosNeg(p, c=0, b=math.e):
     sorted_points = sorted(list(points))
     if len(sorted_points) == 0:
         if dom == [(float('-inf'), float('inf'))]:
-            dom =[(-100, 100)]
+            dom = [(-100, 100)]
         sample = random.randint(int(dom[0][0] * 1000), int(dom[0][1] * 1000)) / 1000
         if f(sample) > 0:
             return [(float('-inf'), float('inf'))], []
@@ -2384,21 +2456,25 @@ def makeAsym(p, c=0, b=math.e):
         for i in dom:
             if i[0] not in [float('-inf'), float('inf')]:
                 if f(i[0] + 0.0005):
-                    s.add((i[0], round(f(i[0] + 0.0005), 1)) if abs(f(i[0] + 0.0005)) < 1000 else ((i[0], float('-inf') if f(i[0] + 0.0005) < -1000 else float('inf'))))
+                    s.add((i[0], round(f(i[0] + 0.0005), 1)) if abs(f(i[0] + 0.0005)) < 1000 else (
+                        (i[0], float('-inf') if f(i[0] + 0.0005) < -1000 else float('inf'))))
                 else:
-                    s.add((i[0], round(f(i[0] - 0.0005), 1)) if abs(f(i[0] - 0.0005)) < 1000 else ((i[0], float('-inf') if f(i[0] - 0.0005) < 1000 else float('inf'))))
+                    s.add((i[0], round(f(i[0] - 0.0005), 1)) if abs(f(i[0] - 0.0005)) < 1000 else (
+                        (i[0], float('-inf') if f(i[0] - 0.0005) < 1000 else float('inf'))))
             if i[1] not in [float('-inf'), float('inf')]:
                 if f(i[1] + 0.0005):
-                    s.add((i[1], round(f(i[1] + 0.0005), 1)) if abs(f(i[1] + 0.0005)) < 1000 else ((i[1], float('-inf') if f(i[1] + 0.0005) < -1000 else float('inf'))))
+                    s.add((i[1], round(f(i[1] + 0.0005), 1)) if abs(f(i[1] + 0.0005)) < 1000 else (
+                        (i[1], float('-inf') if f(i[1] + 0.0005) < -1000 else float('inf'))))
                 else:
-                    s.add((i[1], round(f(i[1] - 0.0005), 1)) if abs(f(i[1] - 0.0005)) < 1000 else ((i[1], float('-inf') if f(i[1] - 0.0005) < 1000 else float('inf'))))
+                    s.add((i[1], round(f(i[1] - 0.0005), 1)) if abs(f(i[1] - 0.0005)) < 1000 else (
+                        (i[1], float('-inf') if f(i[1] - 0.0005) < 1000 else float('inf'))))
         l = set()
         if f(10000):
             l.add((float('inf'), round(f(10000), 2)) if abs(f(10000)) < 1000 else (
-            float('inf'), (float('inf')) if f(10000) > 0 else (float('inf'), float('-inf'))))
+                float('inf'), (float('inf')) if f(10000) > 0 else (float('inf'), float('-inf'))))
         if f(-10000):
             l.add((float('-inf'), round(f(-10000), 2)) if abs(f(-10000)) < 1000 else (
-            float('-inf'), (float('inf')) if f(-10000) > 0 else (float('-inf'), float('-inf'))))
+                float('-inf'), (float('inf')) if f(-10000) > 0 else (float('-inf'), float('-inf'))))
         return list(s), list(l)
 
 
@@ -2545,25 +2621,24 @@ def makeFunc(p, c=0, b=math.e):
 
 # [random.randint(params[2*i], params[2*i+1]) for i in range(int(len(params)/2))]
 
-p = [-2, 4, 1, 8]
-c = 7
+p = [-3, 7, -4, 1]
+c = 8
 
 b = 2
 a = makeFunc(p, c=c, b=b)
 
 print()
 print("f: " + str(a))
-print("f(2): " + str(a(2)))
+print("f(5): " + str(a(5)))
 dom = makeDomain(p, c)
 print("Domain: " + str(dom))
 print("Intersections: " + str(makeIntersections(a, c=c, r=dom)))
-print("Extremes: " + str(makeExtremes(p, c=c)))
+print("Extremes: " + str(makeExtremes(p, c=c,b=b)))
 print("IncDec: " + str(makeIncDec(p, c=c)))
 print("funcString: " + str(funcString(p, c=c, b=b)))
 print("deriveString: " + str(deriveString(p, c=c, b=b)))
 print("PosNeg: " + str(makePosNeg(p, c=c, b=b)))
 print("makeAsym: " + str(makeAsym(p, c, b)))
-
 
 
 # sym = getSymmetry(p, c)
