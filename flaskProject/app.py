@@ -1421,10 +1421,11 @@ def individualStats():
             unit = Unit[unitName, Cls[className]]
             user = User[studentUsername]
 
-            active = ActiveUnit[unit, user, 1]
+            #active = ActiveUnit[unit, user, 1]
             ans = list()
-            ans.append(active.totalCorrect)
-            ans.append((active.currentQuestion - active.totalCorrect))
+            totalCorrect, totalIncorrect = getLessonCorrectIncorrect(user,unitName,className)
+            ans.append(totalCorrect)
+            ans.append(totalIncorrect)
             ret["correctIncorrect"] = ans
 
             entity_count = ActiveUnit.select(student=user).count()
@@ -1556,6 +1557,7 @@ def getQuestion_buisness(user, unit_name, class_name, question_number):
             attempt = get_max_unit(unit, user)
             active = ActiveUnit[unit, user, attempt]
             question = Question[active, active.currentQuestion + 1]
+            currentUnit,totalUnits= getLessonIndex(user,unit_name,class_name)
             single_question = dict()
             single_question["id"] = question.id
             # single_question["question_preamble"] = question.question_preamble
@@ -1568,9 +1570,12 @@ def getQuestion_buisness(user, unit_name, class_name, question_number):
             single_question["preamble"] = question.question_preamble
             single_question["currentQuestion"] = active.consecQues
             single_question["questionsNeeded"] = unit.Qnum
+            single_question["currentUnit"] = currentUnit
+            single_question["totalUnits"] = totalUnits
+
 
             ret.append(single_question)
-            print("ret=", ret)
+            #print("ret=", ret)
         return jsonify(ret)
     except Exception as e:
         print(e)
@@ -2377,9 +2382,45 @@ print("Extremes: " + str(makeExtremes(p, c=c)))
 print("funcString: " + str(funcString(p, c=c,b=b)))
 print("deriveString: " + str(deriveString(p, c=c, b=b)))
 print("PosNeg: " + str(makePosNeg(p, c=c, b=b)))
-#sym = getSymmetry(p, c)
-#print("symmetry: " + ("f(x)=" + str(sym[0]) + "*f(-x+" + str(2 * sym[1]) + ")") if sym else sym)
+sym = getSymmetry(p, c)
+print("symmetry: " + ("f(x)=" + str(sym[0]) + "*f(-x+" + str(2 * sym[1]) + ")") if sym else sym)
 
+def getLessonIndex(user, unit_name, class_name):
+    try:
+        with db_session:
+            unitsAbove =0
+            unitsBelow=0
+            try:
+                unit_name_n = unit_name
+                unit_name_n += "n"
+                while (True):
+                    unit = Unit[unit_name_n, Cls[class_name]]
+                    activeUnit = ActiveUnit[unit, user, 1]
+                    unitsAbove+=1
+                    unit_name_n += "n"
+            except Exception as e:
+                a=8
+                #print("does not exists " + str(e))
+
+            try:
+                unit_name_n = unit_name
+                unit_name_n = unit_name_n[:-1]
+                while (True):
+                    unit = Unit[unit_name_n, Cls[class_name]]
+                    activeUnit = ActiveUnit[unit, user, 1]
+                    unitsBelow+=1
+                    unit_name_n = unit_name_n[:-1]
+
+            except Exception as e:
+                a=8
+                #print("does not exists " + str(e))
+
+
+            return (1+unitsBelow,1+unitsAbove+unitsBelow)
+
+    except Exception as e:
+        print(e)
+        return str(e)
 
 def getLessonGrade(user, unit_name, class_name):
     try:
@@ -2396,7 +2437,8 @@ def getLessonGrade(user, unit_name, class_name):
 
                     unit_name_n += "n"
             except Exception as e:
-                print("does not exists " + str(e))
+                a=8
+                #print("does not exists " + str(e))
 
             grade = int(((total_correct / total_solved) * 100))
             return grade
@@ -2404,7 +2446,76 @@ def getLessonGrade(user, unit_name, class_name):
 
     except Exception as e:
         print(e)
-        return str(e), 400
+        return str(e)
+
+def getLessonCorrectIncorrect(user, unit_name, class_name):
+    try:
+        with db_session:
+            unit_name_n = unit_name
+            total_correct = 0
+            total_solved = 0
+            try:
+                while (True):
+                    unit = Unit[unit_name_n, Cls[class_name]]
+                    activeUnit = ActiveUnit[unit, user, 1]
+                    total_correct += activeUnit.totalCorrect
+                    total_solved += activeUnit.currentQuestion
+
+                    unit_name_n += "n"
+            except Exception as e:
+                a=8
+               #print("does not exists " + str(e))
+
+            return (total_correct,total_solved-total_correct)
+
+
+    except Exception as e:
+        print(e)
+        return str(e)
+
+@app.route('/getLessonCorrect')
+def getLessonCorrectIncorrectQuestions():
+    user = request.args.get('usernameS')
+    unit_name = request.args.get('unitName')
+    class_name = request.args.get('className')
+    correct = request.args.get('correct')
+    if (correct == "Correct"):
+        correctBool=True
+    else:
+        correctBool = False
+
+    try:
+        with db_session:
+            unit_name_n = unit_name
+            total_correct = 0
+            total_solved = 0
+            ret = []
+            try:
+                id = 1
+                while (True):
+                    unit = Unit[unit_name_n, Cls[class_name]]
+                    activeUnit = ActiveUnit[unit, user, 1]
+                    for question in Question.select(active_unit=activeUnit,solved_correctly=correctBool):
+                        singleQuestion = dict()
+                        singleQuestion["questionPreamble"]=question.question_preamble
+                        singleQuestion["question"] = question.question
+                        singleQuestion["id"]=id
+                        id+=1
+                        ret.append(singleQuestion)
+
+                    unit_name_n += "n"
+            except Exception as e:
+                a=8
+                #print("does not exists " + str(e))
+            return jsonify(ret),200
+
+
+
+    except Exception as e:
+        print(e)
+        return str(e),400
+
+
 
 
 class userCont:
