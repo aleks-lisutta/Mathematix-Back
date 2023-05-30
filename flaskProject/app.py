@@ -1454,9 +1454,9 @@ def individualStats():
             unit = Unit[unitName, Cls[className]]
             user = User[studentUsername]
 
-            #active = ActiveUnit[unit, user, 1]
+            # active = ActiveUnit[unit, user, 1]
             ans = list()
-            totalCorrect, totalIncorrect = getLessonCorrectIncorrect(user,unitName,className)
+            totalCorrect, totalIncorrect = getLessonCorrectIncorrect(user, unitName, className)
             ans.append(totalCorrect)
             ans.append(totalIncorrect)
             ret["correctIncorrect"] = ans
@@ -1590,7 +1590,7 @@ def getQuestion_buisness(user, unit_name, class_name, question_number):
             attempt = get_max_unit(unit, user)
             active = ActiveUnit[unit, user, attempt]
             question = Question[active, active.currentQuestion + 1]
-            currentUnit,totalUnits= getLessonIndex(user,unit_name,class_name)
+            currentUnit, totalUnits = getLessonIndex(user, unit_name, class_name)
             single_question = dict()
             single_question["id"] = question.id
             # single_question["question_preamble"] = question.question_preamble
@@ -1606,9 +1606,8 @@ def getQuestion_buisness(user, unit_name, class_name, question_number):
             single_question["currentUnit"] = currentUnit
             single_question["totalUnits"] = totalUnits
 
-
             ret.append(single_question)
-            #print("ret=", ret)
+            # print("ret=", ret)
         return jsonify(ret)
     except Exception as e:
         print(e)
@@ -1960,9 +1959,10 @@ def deriveString(p, c, b):
     elif c == 7:
         l = int(len(p) / 2)
         return "y=(((" + polySrting(makeDer(p[:l])) + ") * (" + polySrting(p[l:]) + ")) - ((" + polySrting(
-            makeDer(p[l:])) + ") * (" + polySrting(p[:l]) + "))) / ("+polySrting(p[l:])+")^2"
+            makeDer(p[l:])) + ") * (" + polySrting(p[:l]) + "))) / (" + polySrting(p[l:]) + ")^2"
     elif c == 8:
-        return "y=(" + polySrting(makeDer(p[:-1])) + ") * "+str(1 / b)+" * (" + polySrting(p[:-1]) + ")^(" + str(1 / b-1) + ")"
+        return "y=(" + polySrting(makeDer(p[:-1])) + ") * " + str(1 / b) + " * (" + polySrting(p[:-1]) + ")^(" + str(
+            1 / b - 1) + ")"
 
 
 def derive(params, c=0, b=math.e):
@@ -2307,6 +2307,34 @@ def makeIncDec2(p, c=0, b=math.e):
     return inc_ranges, dec_ranges
 
 
+def makeAsym(p, c=0, b=math.e):
+    if c in [0, 3, 4]:
+        return [], []
+    else:
+        s = set()
+        dom = makeDomain(p, c)
+        f = makeFunc(p, c, b)
+        for i in dom:
+            if i[0] not in [-100, 100]:
+                if f(i[0] + 0.001):
+                    s.add((i[0], float('-inf') if f(i[0] + 0.001) < -1000 else float('inf')))
+                else:
+                    s.add((i[0], float('-inf') if f(i[0] - 0.001) < 1000 else float('inf')))
+            if i[1] not in [-100, 100]:
+                if f(i[1] + 0.001):
+                    s.add((i[1], float('-inf') if f(i[1] + 0.001) < -1000 else float('inf')))
+                else:
+                    s.add((i[1], float('-inf') if f(i[1] - 0.001) < 1000 else float('inf')))
+        l = set()
+        if f(10000):
+            l.add((float('inf'), round(f(10000), 2)) if abs(f(10000)) < 1000 else (
+            float('inf'), (float('inf')) if f(10000) > 0 else (float('inf'), float('-inf'))))
+        if f(-10000):
+            l.add((float('-inf'), round(f(-10000), 2)) if abs(f(-10000)) < 1000 else (
+            float('-inf'), (float('inf')) if f(-10000) > 0 else (float('-inf'), float('-inf'))))
+        return list(s), list(l)
+
+
 def funcString(p, c=0, b=math.e):
     if c == 0:
         return "y=" + polySrting(p)
@@ -2451,7 +2479,7 @@ def makeFunc(p, c=0, b=math.e):
 # [random.randint(params[2*i], params[2*i+1]) for i in range(int(len(params)/2))]
 
 p = [-2, 4, 1, 8]
-c = 7
+c = 2
 
 b = 2
 a = makeFunc(p, c=c, b=b)
@@ -2467,6 +2495,8 @@ print("IncDec: " + str(makeIncDec(p, c=c)))
 print("funcString: " + str(funcString(p, c=c, b=b)))
 print("deriveString: " + str(deriveString(p, c=c, b=b)))
 print("PosNeg: " + str(makePosNeg(p, c=c, b=b)))
+print("makeAsym: " + str(makeAsym(p, c, b)))
+
 
 # sym = getSymmetry(p, c)
 # print("symmetry: " + ("f(x)=" + str(sym[0]) + "*f(-x+" + str(2 * sym[1]) + ")") if sym else sym)
@@ -2475,19 +2505,19 @@ print("PosNeg: " + str(makePosNeg(p, c=c, b=b)))
 def getLessonIndex(user, unit_name, class_name):
     try:
         with db_session:
-            unitsAbove =0
-            unitsBelow=0
+            unitsAbove = 0
+            unitsBelow = 0
             try:
                 unit_name_n = unit_name
                 unit_name_n += "n"
                 while (True):
                     unit = Unit[unit_name_n, Cls[class_name]]
                     activeUnit = ActiveUnit[unit, user, 1]
-                    unitsAbove+=1
+                    unitsAbove += 1
                     unit_name_n += "n"
             except Exception as e:
-                a=8
-                #print("does not exists " + str(e))
+                a = 8
+                # print("does not exists " + str(e))
 
             try:
                 unit_name_n = unit_name
@@ -2495,19 +2525,19 @@ def getLessonIndex(user, unit_name, class_name):
                 while (True):
                     unit = Unit[unit_name_n, Cls[class_name]]
                     activeUnit = ActiveUnit[unit, user, 1]
-                    unitsBelow+=1
+                    unitsBelow += 1
                     unit_name_n = unit_name_n[:-1]
 
             except Exception as e:
-                a=8
-                #print("does not exists " + str(e))
+                a = 8
+                # print("does not exists " + str(e))
 
-
-            return (1+unitsBelow,1+unitsAbove+unitsBelow)
+            return (1 + unitsBelow, 1 + unitsAbove + unitsBelow)
 
     except Exception as e:
         print(e)
         return str(e)
+
 
 def getLessonGrade(user, unit_name, class_name):
     try:
@@ -2524,8 +2554,8 @@ def getLessonGrade(user, unit_name, class_name):
 
                     unit_name_n += "n"
             except Exception as e:
-                a=8
-                #print("does not exists " + str(e))
+                a = 8
+                # print("does not exists " + str(e))
 
             grade = int(((total_correct / total_solved) * 100))
             return grade
@@ -2534,6 +2564,7 @@ def getLessonGrade(user, unit_name, class_name):
     except Exception as e:
         print(e)
         return str(e)
+
 
 def getLessonCorrectIncorrect(user, unit_name, class_name):
     try:
@@ -2550,15 +2581,16 @@ def getLessonCorrectIncorrect(user, unit_name, class_name):
 
                     unit_name_n += "n"
             except Exception as e:
-                a=8
-               #print("does not exists " + str(e))
+                a = 8
+            # print("does not exists " + str(e))
 
-            return (total_correct,total_solved-total_correct)
+            return (total_correct, total_solved - total_correct)
 
 
     except Exception as e:
         print(e)
         return str(e)
+
 
 @app.route('/getLessonCorrect')
 def getLessonCorrectIncorrectQuestions():
@@ -2567,7 +2599,7 @@ def getLessonCorrectIncorrectQuestions():
     class_name = request.args.get('className')
     correct = request.args.get('correct')
     if (correct == "Correct"):
-        correctBool=True
+        correctBool = True
     else:
         correctBool = False
 
@@ -2582,27 +2614,25 @@ def getLessonCorrectIncorrectQuestions():
                 while (True):
                     unit = Unit[unit_name_n, Cls[class_name]]
                     activeUnit = ActiveUnit[unit, user, 1]
-                    for question in Question.select(active_unit=activeUnit,solved_correctly=correctBool):
+                    for question in Question.select(active_unit=activeUnit, solved_correctly=correctBool):
                         singleQuestion = dict()
-                        singleQuestion["questionPreamble"]=question.question_preamble
+                        singleQuestion["questionPreamble"] = question.question_preamble
                         singleQuestion["question"] = question.question
-                        singleQuestion["id"]=id
-                        id+=1
+                        singleQuestion["id"] = id
+                        id += 1
                         ret.append(singleQuestion)
 
                     unit_name_n += "n"
             except Exception as e:
-                a=8
-                #print("does not exists " + str(e))
-            return jsonify(ret),200
+                a = 8
+                # print("does not exists " + str(e))
+            return jsonify(ret), 200
 
 
 
     except Exception as e:
         print(e)
-        return str(e),400
-
-
+        return str(e), 400
 
 
 class userCont:
