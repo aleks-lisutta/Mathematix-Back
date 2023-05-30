@@ -1557,6 +1557,7 @@ def getQuestion_buisness(user, unit_name, class_name, question_number):
             attempt = get_max_unit(unit, user)
             active = ActiveUnit[unit, user, attempt]
             question = Question[active, active.currentQuestion + 1]
+            currentUnit,totalUnits= getLessonIndex(user,unit_name,class_name)
             single_question = dict()
             single_question["id"] = question.id
             # single_question["question_preamble"] = question.question_preamble
@@ -1569,9 +1570,12 @@ def getQuestion_buisness(user, unit_name, class_name, question_number):
             single_question["preamble"] = question.question_preamble
             single_question["currentQuestion"] = active.consecQues
             single_question["questionsNeeded"] = unit.Qnum
+            single_question["currentUnit"] = currentUnit
+            single_question["totalUnits"] = totalUnits
+
 
             ret.append(single_question)
-            print("ret=", ret)
+            #print("ret=", ret)
         return jsonify(ret)
     except Exception as e:
         print(e)
@@ -2381,6 +2385,42 @@ def makeFunc(p, c=0, b=math.e):
 #sym = getSymmetry(p, c)
 #print("symmetry: " + ("f(x)=" + str(sym[0]) + "*f(-x+" + str(2 * sym[1]) + ")") if sym else sym)
 
+def getLessonIndex(user, unit_name, class_name):
+    try:
+        with db_session:
+            unitsAbove =0
+            unitsBelow=0
+            try:
+                unit_name_n = unit_name
+                unit_name_n += "n"
+                while (True):
+                    unit = Unit[unit_name_n, Cls[class_name]]
+                    activeUnit = ActiveUnit[unit, user, 1]
+                    unitsAbove+=1
+                    unit_name_n += "n"
+            except Exception as e:
+                a=8
+                #print("does not exists " + str(e))
+
+            try:
+                unit_name_n = unit_name
+                unit_name_n = unit_name_n[:-1]
+                while (True):
+                    unit = Unit[unit_name_n, Cls[class_name]]
+                    activeUnit = ActiveUnit[unit, user, 1]
+                    unitsBelow+=1
+                    unit_name_n = unit_name_n[:-1]
+
+            except Exception as e:
+                a=8
+                #print("does not exists " + str(e))
+
+
+            return (1+unitsBelow,1+unitsAbove+unitsBelow)
+
+    except Exception as e:
+        print(e)
+        return str(e)
 
 def getLessonGrade(user, unit_name, class_name):
     try:
@@ -2397,7 +2437,8 @@ def getLessonGrade(user, unit_name, class_name):
 
                     unit_name_n += "n"
             except Exception as e:
-                print("does not exists " + str(e))
+                a=8
+                #print("does not exists " + str(e))
 
             grade = int(((total_correct / total_solved) * 100))
             return grade
@@ -2422,7 +2463,8 @@ def getLessonCorrectIncorrect(user, unit_name, class_name):
 
                     unit_name_n += "n"
             except Exception as e:
-                print("does not exists " + str(e))
+                a=8
+               #print("does not exists " + str(e))
 
             return (total_correct,total_solved-total_correct)
 
@@ -2441,7 +2483,6 @@ def getLessonCorrectIncorrectQuestions():
         correctBool=True
     else:
         correctBool = False
-
 
     try:
         with db_session:
@@ -2464,7 +2505,8 @@ def getLessonCorrectIncorrectQuestions():
 
                     unit_name_n += "n"
             except Exception as e:
-                print("does not exists " + str(e))
+                a=8
+                #print("does not exists " + str(e))
             return jsonify(ret),200
 
 
