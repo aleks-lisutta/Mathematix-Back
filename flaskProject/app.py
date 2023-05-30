@@ -2318,15 +2318,15 @@ def makeAsym(p, c=0, b=math.e):
         f = makeFunc(p, c, b)
         for i in dom:
             if i[0] not in [float('-inf'), float('inf')]:
-                if f(i[0] + 0.001):
-                    s.add((i[0], float('-inf') if f(i[0] + 0.001) < -1000 else float('inf')))
+                if f(i[0] + 0.0005):
+                    s.add((i[0], round(f(i[0] + 0.0005), 1)) if abs(f(i[0] + 0.0005)) < 1000 else ((i[0], float('-inf') if f(i[0] + 0.0005) < -1000 else float('inf'))))
                 else:
-                    s.add((i[0], float('-inf') if f(i[0] - 0.001) < 1000 else float('inf')))
+                    s.add((i[0], round(f(i[0] - 0.0005), 1)) if abs(f(i[0] - 0.0005)) < 1000 else ((i[0], float('-inf') if f(i[0] - 0.0005) < 1000 else float('inf'))))
             if i[1] not in [float('-inf'), float('inf')]:
-                if f(i[1] + 0.001):
-                    s.add((i[1], float('-inf') if f(i[1] + 0.001) < -1000 else float('inf')))
+                if f(i[1] + 0.0005):
+                    s.add((i[1], round(f(i[1] + 0.0005), 1)) if abs(f(i[1] + 0.0005)) < 1000 else ((i[1], float('-inf') if f(i[1] + 0.0005) < -1000 else float('inf'))))
                 else:
-                    s.add((i[1], float('-inf') if f(i[1] - 0.001) < 1000 else float('inf')))
+                    s.add((i[1], round(f(i[1] - 0.0005), 1)) if abs(f(i[1] - 0.0005)) < 1000 else ((i[1], float('-inf') if f(i[1] - 0.0005) < 1000 else float('inf'))))
         l = set()
         if f(10000):
             l.add((float('inf'), round(f(10000), 2)) if abs(f(10000)) < 1000 else (
@@ -2481,7 +2481,7 @@ def makeFunc(p, c=0, b=math.e):
 # [random.randint(params[2*i], params[2*i+1]) for i in range(int(len(params)/2))]
 
 p = [-2, 4, 1, 8]
-c = 1
+c = 8
 
 b = 2
 a = makeFunc(p, c=c, b=b)
