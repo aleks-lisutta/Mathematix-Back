@@ -1909,8 +1909,14 @@ def helper(f1: callable, f2: callable, a: float, b: float, maxerr=0.001) -> Iter
 
 
 def intersections(f1: callable, f2: callable, a: float, b: float, maxerr=0.00001) -> Iterable:
+    while (f1(a)==None or f2(a)==None) and a<b:
+        a+=100*maxerr
+    while (f1(b)==None or f2(b)==None) and a<b:
+        b-=100*maxerr
+    if a>=b:
+        return []
     # print("a, b: ",a,b)
-    iterator = helper(f1, f2, a + 0.05, b - 0.05, maxerr)
+    iterator = helper(f1, f2, a, b, maxerr)
     arr = np.array([])
     for x in iterator:
         if len(arr) == 0 or abs(x - arr[len(arr) - 1]) > maxerr:
@@ -2157,7 +2163,9 @@ def derive(params, c=0, b=math.e):
             # print(der(x))
             # print(math.pow(poly(x), 1/b-1))
             # print(der(x)*(1/b)*math.pow(poly(x) ,1/b-1))
-            return der(x) * (1 / b) * math.pow(poly(x), 1 / b - 1)
+            if poly(x)>0:
+                return der(x) * (1 / b) * math.pow(poly(x), 1 / b - 1)
+            return None
 
         return rootElement
 
