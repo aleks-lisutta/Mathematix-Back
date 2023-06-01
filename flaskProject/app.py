@@ -1175,13 +1175,13 @@ def func_value_question(domain, f, fString):
     else:
         x = round(random.uniform(domain[0][0], domain[0][1]), 3)
         preamble = "x={} ".format(x) + preamble
-        ans1 = round(f(x), 3)
+        ans1 = round(f(x), 3) if f(x) else "הפונקציה לא מוגדרת בנקודה"
         to_put_no_solution = random.randint(1, 4)
-        ans2 = round(f(x) + random.randint(1, 5) + random.uniform(0.0, 0.99), 3)
+        ans2 = round((f(x) if f(x) else random.randint(1, 5)) + random.randint(1, 5) + random.uniform(0.0, 0.99), 3)
         if to_put_no_solution == 1:
             ans2 = 'הפונקציה לא מוגדרת בנקודה'
-        ans3 = round(f(x) + random.randint(-5, -1) + random.uniform(-0.99, 0.0), 3)
-        ans4 = round(f(x) + random.randint(7, 20), 3)
+        ans3 = round((f(x) if f(x) else random.randint(1, 5)) + random.randint(-5, -1) + random.uniform(-0.99, 0.0), 3)
+        ans4 = round((f(x) if f(x) else random.randint(1, 5)) + random.randint(7, 20), 3)
         if domain[0][0] < x + 1 < domain[0][1]:
             if f(x + 1) != ans1:
                 ans4 = f(x + 1)
@@ -2258,6 +2258,8 @@ def makeIncDec(p, c=0, b=math.e):
         return [], []
     extremes = makeExtremes(p, c, b)
     dom = makeDomain(p, c)
+    if dom == []:
+        return [], []
     # print("dom, ext",dom, extremes)
     ext = set()
     f = makeFunc(p, c, b)
@@ -2280,6 +2282,8 @@ def makeIncDec(p, c=0, b=math.e):
     print("sorted", sorted_extremes)
     f = derive(p, c, b)
     if len(sorted_extremes) == 0:
+        if dom == [(float('-inf'), float('inf'))]:
+            dom = [(-100, 100)]
         dom = makeDomain(p, c)
         sample = random.randint(dom[0][0] * 1000, dom[0][1] * 1000) / 1000
         if f(sample) > 0:
@@ -2320,7 +2324,8 @@ def makePosNeg(p, c=0, b=math.e):
     if not any(p[:-1]):
         return [], []
     dom = makeDomain(p, c)
-
+    if dom == []:
+        return [], []
     # print("dom, ext",dom, extremes)
     f = makeFunc(p, c, b)
     inters = makeIntersections(f, c, dom)
