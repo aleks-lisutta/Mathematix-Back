@@ -453,7 +453,14 @@ def removeUnit_buisness(unitName, className, teacherName):
     try:
         with db_session:
             u = Unit[unitName, Cls[className]]
+            print(u)
+            while u.next:
+                print(u.next)
+                t = Unit[u.next, Cls[className]]
+                u.delete()
+                u=t
             u.delete()
+            commit()
             return "successful", 200
     except Exception as e:
         print(e)
