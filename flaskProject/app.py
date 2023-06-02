@@ -2,6 +2,7 @@ import logging
 import math
 import random
 import traceback
+import time
 from datetime import datetime
 from unittest.mock import MagicMock
 
@@ -95,6 +96,7 @@ class Question(DB.Entity):
     correct_ans = Required(int)
     active_unit = Required('ActiveUnit', reverse='questions')
     solved_correctly = Optional(bool)
+    solve_time = Optional(str)
     PrimaryKey(active_unit, id)
 
 
@@ -458,7 +460,7 @@ def removeUnit_buisness(unitName, className, teacherName):
                 print(u.next)
                 t = Unit[u.next, Cls[className]]
                 u.delete()
-                u=t
+                u = t
             u.delete()
             commit()
             return "successful", 200
@@ -1244,10 +1246,10 @@ def get_questions(unit):
             c = intMap[function_types]
             b = 2 if function_types == '2exp' else (3 if function_types == '3exp' else math.e)
             if 'root':
-                b=2
+                b = 2
             p = [random.randint(int(params[2 * i]), int(params[2 * i + 1])) for i in range(int(len(params) / 2))]
             f = makeFunc(p, c, b)
-            q=""
+            q = ""
             if ('definiteIntegral' in question):
                 q = definite_integral_question(b, c, f, integral_range, p)
                 questions.append(q)
@@ -1763,6 +1765,10 @@ def submitQuestion_buisness(user, unit_name, class_name, question_number, ans_nu
             question = Question[activeUnit, question_number]
             activeUnit.currentQuestion += 1
             activeUnit.lastTimeAnswered = date_string
+            current_time = datetime.now()
+            current_time_millis = int(current_time.timestamp() * 1000)
+            current_time_millis_str = str(current_time_millis)
+            question.solve_time = current_time_millis_str
 
             if (not activeUnit.currentQuestion < activeUnit.quesAmount):
                 addQuestions(class_name, unit_name, user)
@@ -1916,11 +1922,11 @@ def helper(f1: callable, f2: callable, a: float, b: float, maxerr=0.001) -> Iter
 
 
 def intersections(f1: callable, f2: callable, a: float, b: float, maxerr=0.00001) -> Iterable:
-    while (f1(a)==None or f2(a)==None) and a<b:
-        a+=100*maxerr
-    while (f1(b)==None or f2(b)==None) and a<b:
-        b-=100*maxerr
-    if a>=b:
+    while (f1(a) == None or f2(a) == None) and a < b:
+        a += 100 * maxerr
+    while (f1(b) == None or f2(b) == None) and a < b:
+        b -= 100 * maxerr
+    if a >= b:
         return []
     # print("a, b: ",a,b)
     iterator = helper(f1, f2, a, b, maxerr)
@@ -2170,7 +2176,7 @@ def derive(params, c=0, b=math.e):
             # print(der(x))
             # print(math.pow(poly(x), 1/b-1))
             # print(der(x)*(1/b)*math.pow(poly(x) ,1/b-1))
-            if poly(x)>0:
+            if poly(x) > 0:
                 return der(x) * (1 / b) * math.pow(poly(x), 1 / b - 1)
             return None
 
@@ -2299,7 +2305,6 @@ def makeIncDec(p, c=0, b=math.e):
     if len(sorted_extremes) == 0:
         if dom == [(float('-inf'), float('inf'))]:
             dom = [(-100, 100)]
-        dom = makeDomain(p, c)
         sample = random.randint(dom[0][0] * 1000, dom[0][1] * 1000) / 1000
         if f(sample) > 0:
             return [(float('-inf'), float('inf'))], []
@@ -2639,6 +2644,57 @@ def makeFunc(p, c=0, b=math.e):
         return makeRoot(p, b)
 
 
+@app.route('/getStudentLessonQuestions')
+def getStudentLessonQuestions():
+    teacher = request.args.get('teacher')
+    student = request.args.get('student')
+    unitName = request.args.get('unitName')
+    className = request.args.get('className')
+
+    return getStudentLessonQuestionsB(className, student, unitName)
+
+
+def getStudentLessonQuestionsB(className, student, unitName):
+    try:
+        with db_session:
+            names = []
+            units = []
+            actives = []
+            questions = []
+            u = Unit[unitName, className]
+            stop = False
+            while not stop:
+                names.append(u.name)
+                units.append(u)
+                instances = ActiveUnit.select(unit=u)
+                for i in instances:
+                    if i.student.name == student:
+                        actives.append(i)
+                        for q in Question.select(active_unit=i):
+                            question_data = {
+                                "id": q.id,
+                                "question_preamble": q.question_preamble,
+                                "question": q.question,
+                                "answer1": q.answer1,
+                                "answer2": q.answer2,
+                                "answer3": q.answer3,
+                                "answer4": q.answer4,
+                                "correct_ans": q.correct_ans,
+                                "active_unit": q.active_unit,
+                                "solved_correctly": q.solved_correctly,
+                                "solve_time": q.solve_time
+                            }
+                            questions.append(question_data)
+                if u.next:
+                    u = Unit[u.next, className]
+                else:
+                    stop = True
+            return questions, 200
+    except Exception as e:
+        print(e)
+        return str(e), 400
+
+
 # [random.randint(params[2*i], params[2*i+1]) for i in range(int(len(params)/2))]
 
 p = [-3, 7, -4, 1]
@@ -2653,12 +2709,13 @@ print("f(5): " + str(a(5)))
 dom = makeDomain(p, c)
 print("Domain: " + str(dom))
 print("Intersections: " + str(makeIntersections(a, c=c, r=dom)))
-print("Extremes: " + str(makeExtremes(p, c=c,b=b)))
+print("Extremes: " + str(makeExtremes(p, c=c, b=b)))
 print("IncDec: " + str(makeIncDec(p, c=c)))
 print("funcString: " + str(funcString(p, c=c, b=b)))
 print("deriveString: " + str(deriveString(p, c=c, b=b)))
 print("PosNeg: " + str(makePosNeg(p, c=c, b=b)))
 print("makeAsym: " + str(makeAsym(p, c, b)))
+print(getStudentLessonQuestionsB('c1', 'aleks1', 'asdad'))
 
 
 # sym = getSymmetry(p, c)
