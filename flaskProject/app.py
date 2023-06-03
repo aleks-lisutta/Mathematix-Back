@@ -1570,9 +1570,8 @@ def individualStats():
     try:
         with db_session:
             ret = dict()
-            unit = Unit[unitName, Cls[className]]
             user = User[studentUsername]
-
+            unit = Unit[unitName, Cls[className]]
             # active = ActiveUnit[unit, user, 1]
             ans = list()
             totalCorrect, totalIncorrect = getLessonCorrectIncorrect(user, unitName, className)
@@ -1623,7 +1622,7 @@ def itemByName(lst, name):
     return None
 
 
-def getAllActiveUnits(className, unitName):
+def getAllActiveUnits2(className, unitName):
     try:
         with db_session:
             active_units = ActiveUnit.select(lambda au: au.unit.cls.name == className and au.unit.name == unitName)[:]
@@ -1674,6 +1673,45 @@ def getAllActiveUnits_for_tests(className, unitName):
     except Exception as e:
         return f"Error: {str(e)}", 400
 
+def getAllActiveUnits(className, unitName, student = None):
+    try:
+        with db_session:
+            unames = []
+            names = []
+            units = []
+            actives = []
+            students = []
+            u = Unit[unitName, className]
+            stop = False
+            while not stop:
+                unames.append(u.name)
+                units.append(u)
+                if student:
+                    instances = ActiveUnit.select(unit=u, student=student)
+                else:
+                    instances = ActiveUnit.select(unit=u)
+                for i in instances:
+                    if i.student.name not in names:
+                        names.append(i.student.name)
+                        single_obj = dict()
+                        single_obj["name"] = i.student.name
+                        single_obj["correct"] = i.totalCorrect
+                        single_obj["bad"] = (i.currentQuestion - i.totalCorrect)
+                        students.append(single_obj)
+                    else:
+                        item = itemByName(students, i.student.name)
+                        item["correct"] += i.totalCorrect
+                        item["bad"] += (i.currentQuestion - i.totalCorrect)
+                if u.next:
+                    u = Unit[u.next, className]
+                else:
+                    stop = True
+            print(students)
+            return students
+    except Exception as e:
+        print(e)
+        return str(e), 400
+
 
 @app.route('/getStats')
 def getStats():
@@ -1683,8 +1721,18 @@ def getStats():
     if not isLogin(username):
         return "user " + username + "not logged in.", 400
 
-    return getAllActiveUnits(className, unitName)
+    return jsonify(getAllActiveUnits(className, unitName)), 200
 
+@app.route('/getStudentStats')
+def getStudentStats():
+    className = request.args.get('className')
+    unitName = request.args.get('unitName')
+    student = request.args.get('student')
+    username = request.args.get('username')
+    if not isLogin(username):
+        return "user " + username + "not logged in.", 400
+    t = getAllActiveUnits(className, unitName, student)
+    return jsonify(t[0]), 200
 
 @app.route('/getQuestion')
 def getQuestion():
