@@ -2042,7 +2042,10 @@ def makeDomain(params, c=0):
         poly = makePoly(params[:-1])
         zeroes = [x[0] for x in makeIntersections(poly)]
         if len(zeroes) == 0:
-            return [(float('-inf'), float('inf'))]
+            if poly(0)>0:
+                return [(float('-inf'), float('inf'))]
+            else:
+                return []
         r = []
 
         zeroes.append(float('-inf'))
@@ -2071,7 +2074,7 @@ def makeIntersections(poly, c=0, r=[(-100, 100)]):
     if c == 0:
         r = [(-100, 100)]
     elif c in [1, 3, 4]:
-        r = [(-math.pi, math.pi)]
+        r = [(-2, 2)]
     else:
         r = [(d[0] if d[0] not in [float('-inf')] else -100, d[1] if d[1] not in [float('inf')] else 100) for d in r]
     xs = []
@@ -2118,7 +2121,7 @@ def isParenthesisNeeded(s):
     return False
 
 
-def deriveString(p, c, b):
+def deriveString(p, c=0, b=math.e):
     if c == 0:
         return "y=" + polySrting(makeDer(p))
     elif c == 1:
@@ -2213,7 +2216,7 @@ def derive(params, c=0, b=math.e):
         p2 = p[int(len(p) / 2):]
         poly1 = makePoly(p1)
         poly2 = makePoly(p2)
-        return lambda x: (derive(p1)(x) * poly2(x) - poly1(x) * derive(p2)(x)) / (poly2(x) ** 2)
+        return lambda x: (derive(p1)(x) * poly2(x) - poly1(x) * derive(p2)(x)) / (poly2(x) ** 2) if poly2(x) != 0 else None
     if c == 8:
         poly = makePoly(p[:-1])
         der = derive(p[:-1])
@@ -2806,7 +2809,7 @@ def getStudentLessonQuestionsB(className, student, unitName):
 
 # [random.randint(params[2*i], params[2*i+1]) for i in range(int(len(params)/2))]
 
-p = [-3, 7, -4, 1]
+p = [-6, -3, -7, 6]
 c = 8
 
 b = 2
