@@ -2693,10 +2693,11 @@ def getAllLessonQuestionsB(className, unitName):
                 else:
                     stop = True
             for s,qs in questions.items():
-                questions[s] = sorted(qs, key=lambda x: x['solve_time'])
+                questions[s] = sorted(qs, key=lambda x: x['solve_time'], reverse=True)
             print(names)
             print(units)
             print(actives)
+            print(questions)
             return questions, 200
     except Exception as e:
         print(e)
