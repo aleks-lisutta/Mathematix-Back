@@ -293,12 +293,54 @@ class MyTestCase(unittest.TestCase):
             app.startUnit_buisness('class1', 'unit1', 'student1')
             # Check that student submitQuestion works
             res = app.getQuestion_buisness('student1', 'unit1', 'class1', '1')
+            prehamble_1 = res.json[0]["preamble"]
             res = app.submitQuestion_buisness('student1', 'unit1', 'class1', '1', res.json[0]['correct_ans'])
             self.assertEqual('correct', res, 'Wrong return value for submitQuestion')
             res = app.getQuestion_buisness('student1', 'unit1', 'class1', '2')
+            prehamble_2 = res.json[0]["preamble"]
             res = app.submitQuestion_buisness('student1', 'unit1', 'class1', '2', res.json[0]['correct_ans'])
+            self.assertEqual(prehamble_1,prehamble_2)
             self.assertEqual(2, len(res), 'Wrong return value for submitQuestion')
             self.assertEqual(205, res[1], 'Failed submitQuestion request')
+
+
+    def test_submitQuestion_one_wrong_two_correct_finish_successful(self):
+        with app.app.app_context():
+            # Create teacher account and open a class and a unit
+            app.register_buisness('teacher1', 'password', 1)
+            app.login_buisness('teacher1', 'password')
+            app.openClass_buisness('teacher1', 'class1')
+            app.teacherOpenUnit('unit1', 'teacher1', 'class1', 'intersection_linear_-10,0,1,6', '2', '60', '2023-07-01',
+                                'true', 'new', 'desc')
+            # Create student account and register to class
+            app.register_buisness('student1', 'password', 2)
+            app.login_buisness('student1', 'password')
+            app.registerClass_buisness('student1', 'class1')
+            app.approveStudentToClass_buisness('teacher1', 'student1', 'class1', 'True')
+            # Student starts unit
+            app.startUnit_buisness('class1', 'unit1', 'student1')
+            # Check that student submitQuestion works
+            res = app.getQuestion_buisness('student1', 'unit1', 'class1', '1')
+            prehamble_1 = res.json[0]["preamble"]
+            res = app.submitQuestion_buisness('student1', 'unit1', 'class1', '1', res.json[0]['correct_ans'])
+            self.assertEqual('correct', res, 'Wrong return value for submitQuestion')
+            res = app.getQuestion_buisness('student1', 'unit1', 'class1', '2')
+            prehamble_2 = res.json[0]["preamble"]
+            res = app.submitQuestion_buisness('student1', 'unit1', 'class1', '2', '-1')
+            self.assertEqual(prehamble_1,prehamble_2)
+            self.assertEqual(2, len(res), 'Wrong return value for submitQuestion')
+            #from the begining answerint 2 in a row
+            res = app.getQuestion_buisness('student1', 'unit1', 'class1', '3')
+            prehamble_3 = res.json[0]["preamble"]
+            self.assertEqual(prehamble_3, prehamble_2)
+            res = app.submitQuestion_buisness('student1', 'unit1', 'class1', '3', res.json[0]['correct_ans'])
+            self.assertEqual('correct', res, 'Wrong return value for submitQuestion')
+            res = app.getQuestion_buisness('student1', 'unit1', 'class1', '4')
+            prehamble_4 = res.json[0]["preamble"]
+            self.assertEqual(prehamble_3, prehamble_4)
+            res = app.submitQuestion_buisness('student1', 'unit1', 'class1', '4', res.json[0]['correct_ans'])
+            self.assertEqual(205, res[1], 'Failed submitQuestion request')
+
 
     def test_submitQuestion_wrong_answer_successful(self):
         with app.app.app_context():

@@ -33,42 +33,41 @@ class TestGetMaxUnit(unittest.TestCase):
             DB.execute('DELETE FROM Cls WHERE 1=1;')
             DB.execute('DELETE FROM User WHERE 1=1;')
 
-    def test_get_max_unit_sucess(self):
-        with db_session:
-            # Create a test User and Unit
-            student1 = User(name="student1", password="123", type=2)
-            student2 = User(name="student2", password="123", type=2)
-            teacher = User(name="teacher1", password="123", type=1)
-            c = Cls(name="Math", teacher=teacher)
-            unit = Unit(
-                name="Math",
-                cls=c,
-                desc="Basic algebra",
-                template="template1",
-                Qnum="10",
-                maxTime="60",
-                subDate="2023-05-31",
-                order=1,
-                # next=None
-            )
-            app.ActiveUnit(unit=unit, student=student2, attempt=1, inProgress=False, consecQues=2, quesAmount=1,
-                           currentQuestion=5, totalCorrect=2)
-            # Create multiple ActiveUnit instances for the given User and Unit
-            active_units = [
-                app.ActiveUnit(unit=unit, student=student1, attempt=1, inProgress=False, consecQues=2, quesAmount=1,
-                               currentQuestion=5, totalCorrect=2),
-                app.ActiveUnit(unit=unit, student=student1, attempt=2, inProgress=False, consecQues=2, quesAmount=1,
-                               currentQuestion=5, totalCorrect=2),
-                app.ActiveUnit(unit=unit, student=student1, attempt=3, inProgress=False, consecQues=2, quesAmount=1,
-                               currentQuestion=5, totalCorrect=2),
-                app.ActiveUnit(unit=unit, student=student1, attempt=4, inProgress=False, consecQues=2, quesAmount=1,
-                               currentQuestion=5, totalCorrect=2)
-            ]
-            # Call the function under test
-            max_attempt = app.get_max_unit(unit, student1)
+    def test_get_max_unit_success(self):
+        with app.app.app_context():
+            # Create teacher account and open a class and a unit
+            app.register_buisness('teacher1', 'password', 1)
+            app.login_buisness('teacher1', 'password')
+            app.openClass_buisness('teacher1', 'class1')
+            app.teacherOpenUnit('unit1', 'teacher1', 'class1', 'intersection_linear_-10,0,1,6', '1', '60', '2023-07-01',
+                                'true', 'new', 'desc')
+            # Create student account and register to class
+            app.register_buisness('student1', 'password', 2)
+            app.login_buisness('student1', 'password')
+            app.registerClass_buisness('student1', 'class1')
+            app.approveStudentToClass_buisness('teacher1', 'student1', 'class1', 'True')
+            # Student starts unit
+            app.startUnit_buisness('class1', 'unit1', 'student1')
+            res = app.getQuestion_buisness('student1', 'unit1', 'class1', '1')
+            res = app.submitQuestion_buisness('student1', 'unit1', 'class1', '1', res.json[0]['correct_ans'])
+            app.startUnit_buisness('class1', 'unit1', 'student1')
+            res = app.getQuestion_buisness('student1', 'unit1', 'class1', '1')
+            res = app.submitQuestion_buisness('student1', 'unit1', 'class1', '1', res.json[0]['correct_ans'])
+            app.startUnit_buisness('class1', 'unit1', 'student1')
+            res = app.getQuestion_buisness('student1', 'unit1', 'class1', '1')
+            res = app.submitQuestion_buisness('student1', 'unit1', 'class1', '1', res.json[0]['correct_ans'])
+            app.startUnit_buisness('class1', 'unit1', 'student1')
+            res = app.getQuestion_buisness('student1', 'unit1', 'class1', '1')
+            res = app.submitQuestion_buisness('student1', 'unit1', 'class1', '1', res.json[0]['correct_ans'])
+            with db_session:
+                student1 = app.User.select(lambda au: au.name == 'student1')[:].to_list()[0]
+                unit = app.Unit.select(lambda au: au.name == 'unit1')[:].to_list()[0]
+                # Call the function under test
+                max_attempt = app.get_max_unit(unit, student1)
 
             # Assert the expected result
             self.assertEqual(max_attempt, 4)
+
 
     def test_addQuestions_successful(self):
         with db_session:

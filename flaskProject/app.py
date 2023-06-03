@@ -231,10 +231,15 @@ def login():
 
 
 def login_buisness(username, password):
-    loadController(username)
-    if isinstance(activeControllers[username], teacherCont):
-        return str(1) + " " + username
-    return str(2) + " " + username
+    try:
+        loadController(username)
+        if isinstance(activeControllers[username], teacherCont):
+            return str(1) + " " + username
+        return str(2) + " " + username
+    except Exception as e:
+        return False
+
+
 
 
 @app.route('/changePassword')
@@ -270,6 +275,48 @@ def logout_buisness(username):
         # print(activeControllers)
     return username + " " + str(len(activeControllers))
 
+@app.route('/getOnlineStudentsOfTeacher')
+def getOnlineStudentsOfTeacher():
+    teacher = request.args.get('teacher')
+    if not isTeacher(teacher) or not isLogin(teacher):
+        return 'Error: Either user is not a teacher or is not logged in', 400
+    return getOnlineStudentsOfTeacher_business(teacher)
+
+
+# This function returns all online students from all of {teacher}'s classes.
+#
+# Return format:
+# Dictionary of - student names -> list of class names
+# For example: {'john': ['class1', 'class2'], 'doe': []}
+# (Both john and doe are online, and have been approved to the class)
+def getOnlineStudentsOfTeacher_business(teacher):
+    with db_session:
+        classes = Cls.select(lambda c: c.teacher.name == teacher)[:].to_list()
+        classes_users = []
+        for cls in classes:
+            cls_users = Cls_User.select(lambda cu: (cu.cls == cls) and cu.approved)[:].to_list()
+            classes_users.extend(cls_users)
+
+        ret_dic = {}
+        for cls_user in classes_users:
+            if cls_user.user.name not in ret_dic:
+                ret_dic[cls_user.user.name] = []
+            if cls_user.user.name in activeControllers:
+                ret_dic[cls_user.user.name].append(cls_user.cls.name)
+
+        ret = []
+        i = 0
+        for name in ret_dic:
+            single_obj = dict()
+            single_obj["id"] = i
+            single_obj["username"] = name
+            # single_obj["secondary"] = ret_dic[name]
+            single_obj["isLoggedIn"] = len(ret_dic[name]) > 0
+            ret.append(single_obj)
+            # ret.append({'id': i, 'primary': name, 'secondary': ret_dic[name], 'online': len(ret_dic[name]) > 0})
+            i += 1
+
+    return ret
 
 @app.route('/openClass')
 def openClass():
@@ -598,6 +645,7 @@ def getUnapprovedStudents_buisness(teacher):
     id = 0
     try:
         with db_session:
+
             for singleClass in Cls.select(teacher=teacher):
                 for unapproveRequest in Cls_User.select(cls=singleClass):
                     if (unapproveRequest.approved == False):
@@ -811,7 +859,7 @@ def getClassesStudent_buisness(student):
                 id += 1
                 single_obj["id"] = id
                 single_obj["primary"] = aUnit.cls.name
-                single_obj["secondary"] = "la la la"
+                single_obj["secondary"] = ""
                 ret.append(single_obj)
 
             return jsonify(ret)
@@ -840,7 +888,7 @@ def getClassesTeacher_buisness(teacher):
                 id += 1
                 single_obj["id"] = id
                 single_obj["primary"] = aUnit.name
-                single_obj["secondary"] = "la la la"
+                single_obj["secondary"] = ""
                 ret.append(single_obj)
 
             return jsonify(ret)
