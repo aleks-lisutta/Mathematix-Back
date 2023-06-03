@@ -1768,6 +1768,7 @@ def submitQuestion_buisness(user, unit_name, class_name, question_number, ans_nu
             current_time = datetime.now()
             current_time_millis = int(current_time.timestamp() * 1000)
             current_time_millis_str = str(current_time_millis)
+            print(current_time_millis_str)
             question.solve_time = current_time_millis_str
 
             if (not activeUnit.currentQuestion < activeUnit.quesAmount):
@@ -2644,6 +2645,64 @@ def makeFunc(p, c=0, b=math.e):
         return makeRoot(p, b)
 
 
+@app.route('/getAllLessonQuestions')
+def getAllLessonQuestions():
+    teacher = request.args.get('teacher')
+    unitName = request.args.get('unitName')
+    className = request.args.get('className')
+
+    return getAllLessonQuestionsB(className, unitName)
+
+
+def getAllLessonQuestionsB(className, unitName):
+    try:
+        with db_session:
+            names = []
+            units = []
+            actives = []
+            questions = {}
+            u = Unit[unitName, className]
+            stop = False
+            while not stop:
+                names.append(u.name)
+                units.append(u)
+                instances = ActiveUnit.select(unit=u)
+                for i in instances:
+                    actives.append(i)
+                    for q in Question.select(active_unit=i):
+                        if q.solve_time:
+                            question_data = {
+                                "id": q.id,
+                                "question_preamble": q.question_preamble,
+                                "question": q.question,
+                                "answer1": q.answer1,
+                                "answer2": q.answer2,
+                                "answer3": q.answer3,
+                                "answer4": q.answer4,
+                                "correct_ans": q.correct_ans,
+                                "active_unit": q.active_unit.unit.name,
+                                "active_unit_attempt": q.active_unit.attempt,
+                                "solved_correctly": q.solved_correctly,
+                                "solve_time": q.solve_time
+                            }
+                            if i.student.name not in questions.keys():
+                                questions[i.student.name] = []
+                            questions[i.student.name].append(question_data)
+                if u.next:
+                    u = Unit[u.next, className]
+                else:
+                    stop = True
+            for s,qs in questions.items():
+                questions[s] = sorted(qs, key=lambda x: x['solve_time'])
+            print(names)
+            print(units)
+            print(actives)
+            return questions, 200
+    except Exception as e:
+        print(e)
+        return str(e), 400
+
+
 @app.route('/getStudentLessonQuestions')
 def getStudentLessonQuestions():
     teacher = request.args.get('teacher')
@@ -2671,20 +2730,21 @@ def getStudentLessonQuestionsB(className, student, unitName):
                     if i.student.name == student:
                         actives.append(i)
                         for q in Question.select(active_unit=i):
-                            question_data = {
-                                "id": q.id,
-                                "question_preamble": q.question_preamble,
-                                "question": q.question,
-                                "answer1": q.answer1,
-                                "answer2": q.answer2,
-                                "answer3": q.answer3,
-                                "answer4": q.answer4,
-                                "correct_ans": q.correct_ans,
-                                "active_unit": q.active_unit,
-                                "solved_correctly": q.solved_correctly,
-                                "solve_time": q.solve_time
-                            }
-                            questions.append(question_data)
+                            if q.solve_time:
+                                question_data = {
+                                    "id": q.id,
+                                    "question_preamble": q.question_preamble,
+                                    "question": q.question,
+                                    "answer1": q.answer1,
+                                    "answer2": q.answer2,
+                                    "answer3": q.answer3,
+                                    "answer4": q.answer4,
+                                    "correct_ans": q.correct_ans,
+                                    "active_unit": q.active_unit.name,
+                                    "solved_correctly": q.solved_correctly,
+                                    "solve_time": q.solve_time
+                                }
+                                questions.append(question_data)
                 if u.next:
                     u = Unit[u.next, className]
                 else:
@@ -2715,7 +2775,7 @@ print("funcString: " + str(funcString(p, c=c, b=b)))
 print("deriveString: " + str(deriveString(p, c=c, b=b)))
 print("PosNeg: " + str(makePosNeg(p, c=c, b=b)))
 print("makeAsym: " + str(makeAsym(p, c, b)))
-print(getStudentLessonQuestionsB('c1', 'aleks1', 'asdad'))
+print(getAllLessonQuestionsB('c1', 'asdasd'))
 
 
 # sym = getSymmetry(p, c)
