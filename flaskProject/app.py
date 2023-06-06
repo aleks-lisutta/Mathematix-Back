@@ -2367,23 +2367,23 @@ def makeFunc(p, c=0, b=math.e):
 
 # [random.randint(params[2*i], params[2*i+1]) for i in range(int(len(params)/2))]
 
-p = [1, 1, 0]
-c = 8
-b = 2
-a = makeFunc(p, c=c, b=b)
-print()
-print("f: " + str(a))
-print("f(2): " + str(a(2)))
-dom = makeDomain(p, c)
-print("Domain: " + str(dom))
-print("Intersections: " + str(makeIntersections(a, c=c, r=dom)))
-print("Extremes: " + str(makeExtremes(p, c=c)))
-#print("IncDec: " + str(makeIncDec(p, c=c)))
-print("funcString: " + str(funcString(p, c=c,b=b)))
-print("deriveString: " + str(deriveString(p, c=c, b=b)))
-print("PosNeg: " + str(makePosNeg(p, c=c, b=b)))
-sym = getSymmetry(p, c)
-print("symmetry: " + ("f(x)=" + str(sym[0]) + "*f(-x+" + str(2 * sym[1]) + ")") if sym else sym)
+# p = [1, 1, 0]
+# c = 8
+# b = 2
+# a = makeFunc(p, c=c, b=b)
+# print()
+# print("f: " + str(a))
+# print("f(2): " + str(a(2)))
+# dom = makeDomain(p, c)
+# print("Domain: " + str(dom))
+# print("Intersections: " + str(makeIntersections(a, c=c, r=dom)))
+# print("Extremes: " + str(makeExtremes(p, c=c)))
+# #print("IncDec: " + str(makeIncDec(p, c=c)))
+# print("funcString: " + str(funcString(p, c=c,b=b)))
+# print("deriveString: " + str(deriveString(p, c=c, b=b)))
+# print("PosNeg: " + str(makePosNeg(p, c=c, b=b)))
+# sym = getSymmetry(p, c)
+# print("symmetry: " + ("f(x)=" + str(sym[0]) + "*f(-x+" + str(2 * sym[1]) + ")") if sym else sym)
 
 def getLessonIndex(user, unit_name, class_name):
     try:
