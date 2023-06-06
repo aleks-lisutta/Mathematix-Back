@@ -2,36 +2,16 @@ import logging
 import math
 import random
 import traceback
-import time
 from datetime import datetime
-from unittest.mock import MagicMock
-
 from flask import Flask, request, jsonify, make_response
 from collections.abc import Iterable
-
 from flask_pony import Pony
 from flask_cors import CORS
 from pony.orm import *
-from scipy.optimize import minimize_scalar
 import json
-
 import pony.orm as pony
-from flask import Response
-
-from urllib.parse import urlparse, parse_qs
 from flask import jsonify
-
 import numpy as np
-from pony_database_facade import DatabaseFacade
-
-# app = Flask(__name__)
-# app.logger.setLevel(logging.DEBUG)
-# CORS(app)
-# p = Pony(app)
-# print(p)
-# DB = p.db
-# print(DB)
-# DB.bind(provider='sqlite', filename='dbtest', create_db=True)
 
 app = Flask(__name__)
 app.logger.setLevel(logging.DEBUG)
@@ -128,7 +108,6 @@ def hello_world():  # put application's code here
 def isLogin(username):
     return True
     if username not in activeControllers.keys():
-        # print(username, activeControllers.keys())
         return False
     return True
 
@@ -199,8 +178,6 @@ def checkUserPass(username, password):
                 return result.password == password
             return False
     except Exception as e:
-        print("in excpetion and the user is")
-        print(e)
         return False
 
 
@@ -269,9 +246,7 @@ def logout():
 @app.route('/logout')
 def logout_buisness(username):
     if username in activeControllers.keys():
-        # print(activeControllers)
         activeControllers.pop(username)
-        # print(activeControllers)
     return username + " " + str(len(activeControllers))
 
 
@@ -455,9 +430,7 @@ def removeUnit_buisness(unitName, className, teacherName):
     try:
         with db_session:
             u = Unit[unitName, Cls[className]]
-            print(u)
             while u.next:
-                print(u.next)
                 t = Unit[u.next, Cls[className]]
                 u.delete()
                 u = t
@@ -869,241 +842,10 @@ def getUnitDetails_buisness(className, unitName, teacherName):
         else:
             return ""
 
-
-def get_random_result(zero, up_down):
-    if not up_down:
-        x_a = random.randint(0, 3)
-        x_b = random.randint(0, 3)
-        a = random.randint(-10, 10) + x_a / 4
-        b = random.randint(-10, 10) + x_b / 4
-        if zero:
-            return ((a, 0), (0, b))
-        else:
-            return (a, b)
-    else:
-        x_a = random.randint(0, 3)
-        a = random.randint(-10, 10) + x_a / 4
-        ans = dict()
-        ans["up"] = "x > " + str(a)
-        ans["down"] = "x < " + str(a)
-        up_down = random.randint(0, 1)
-        if (up_down):
-            return (ans["up"] + " :עלייה" + ans["down"] + " :ירידה")
-        else:
-            return (ans["up"] + " :עלייה" + ans["down"] + " :ירידה")
-
-
-def func_to_string(a, b, c):
-    if b == 0 and c == 0:
-        return "f(x) = {}*x^2".format(a)
-    elif b == 0:
-        return "f(x) = {}*x^2+{}".format(a, c)
-    elif c == 0:
-        return "f(x) = {}*x^2+{}*x".format(a, b)
-    else:
-        return "f(x) = {}*x^2+{}*x+{}".format(a, b, c)
-
-
-def getQuadratic(a_min, a_max, b_min, b_max, c_min, c_max):
-    a = 0
-    while a == 0:
-        a = random.randint(int(a_min), int(a_max))
-    b = random.randint(int(b_min), int(b_max))
-    c = random.randint(int(c_min), int(c_max))
-    return a, b, c
-
-
-def inc_dec(function_types, params):
-    params = [int(p) for p in params]
-    preamble = "מצא תחומי עלייה וירידה:"
-    if ("linear" in function_types):
-        m = 0
-        b = 0
-        while m == 0:
-            m = random.randint(params[0], params[1])
-        while b == 0:
-            b = random.randint(params[2], params[3])
-        if (b == 0):
-            question_string = "y=" + str(m) + "x"
-        else:
-            question_string = ("y=" + str(m) + "x" + ('+' if b > 0 else "") + str(b))
-        result2 = " " + get_random_result(False, True)
-        result3 = " " + get_random_result(False, True)
-        return (preamble, question_string, " תמיד עולה " if m > 0 else " תמיד יורד ", result2, result3,
-                " תמיד עולה " if m < 0 else " תמיד יורד ", 0)
-    if ("quadratic" in function_types):
-
-        a, b, c = getQuadratic(params[0], params[1], params[2], params[3], params[4], params[5])
-
-        ans = dict()
-        result = find_min_max(a, b, c)
-        if a < 0:
-            ans["down"] = "x > " + str(result["maximum"]["x"])
-            ans["up"] = "x < " + str(result["maximum"]["x"])
-        else:
-            ans["up"] = "x > " + str(result["minimum"]["x"])
-            ans["down"] = "x < " + str(result["minimum"]["x"])
-
-        question_string = funcString([a, b, c])
-
-        result2 = get_random_result(False, True)
-        result3 = get_random_result(False, True)
-        result4 = get_random_result(False, True)
-
-        up_down = random.randint(0, 1)
-        if (up_down):
-            return (
-                preamble, question_string, (ans["up"] + " :עלייה" + ans["down"] + " :ירידה"), result2, result3, result4,
-                1)
-        else:
-            return (
-                preamble, question_string, (ans["up"] + " :עלייה" + ans["down"] + " :ירידה"), result2, result3, result4,
-                1)
-
-
-def min_max_points(function_types, params):
-    minimum_range = MIN_RANGE
-    maximum_range = MAX_RANGE
-    if ("linear" in function_types):
-        preamble = "מצא את נקודת הקיצון:"
-        if ("linear" in function_types):
-            m = 0
-            b = 0
-            while m == 0:
-                m = random.randint(params[0], params[1])
-            while b == 0:
-                b = random.randint(params[2], params[3])
-            if (b == 0):
-                question_string = "y=" + str(m) + "x"
-            else:
-                question_string = ("y=" + str(m) + "x" + ('+' if b > 0 else "") + str(b))
-            result2 = get_random_result(False, False)
-            result3 = get_random_result(False, False)
-            result4 = get_random_result(False, False)
-            return (preamble, question_string, "אין נקודות קיצון", result2, result3, result4, 0)
-    if ("quadratic" in function_types):
-        preamble = "מצא את נקודת הקיצון:"
-        a, b, c = getQuadratic(params[0], params[1], params[2], params[3], params[4], params[5])
-        result = find_min_max(a, b, c)
-
-        result2 = get_random_result(False, False)
-        result3 = get_random_result(False, False)
-        result4 = get_random_result(False, False)
-        if a > 0:
-            result1 = result["minimum"]
-        else:
-            result1 = result["maximum"]
-
-        question_string = funcString([a, b, c])
-
-    return (preamble, question_string, (result1["x"], result1["y"]), result2, result3, result4, 0)
-
-
-def generate_cut_axis(function_types, params):
-    preamble = "מצא את נקודות החיתוך עם הצירים:"
-
-    minimum_range = MIN_RANGE
-    maximum_range = MAX_RANGE
-
-    # linear
-    if ("linear" in function_types):
-        m_minimum = int(params[0])
-        m_maximum = int(params[1])
-        b_minimum = int(params[2])
-        b_maximum = int(params[3])
-        m = 0
-        b = 0
-        while m == 0:
-            m = random.randint(m_minimum, m_maximum)
-        while b == 0:
-            b = random.randint(b_minimum, b_maximum)
-        """
-        else:
-            m = random.randint(minimum_range, maximum_range)
-            while m == 0:
-                m = random.randint(minimum_range, maximum_range)
-            b = random.randint(minimum_range, maximum_range)
-            """
-        ans_x = round(-b / m, 2)
-        if (ans_x == round(ans_x)):
-            ans_x = round(ans_x)
-        ans_xf = (ans_x, 0)
-        ans_y = (0, b)
-
-        if (b == 0):
-            questions_string = "y=" + str(m) + "x"
-        else:
-            questions_string = ("y=" + str(m) + "x" + ('+' if b > 0 else "") + str(b))
-
-        ans1 = (ans_xf, ans_y)
-        ans2 = get_random_result(True, False)
-        ans3 = get_random_result(True, False)
-        ans4 = get_random_result(True, False)
-
-    elif ("quadratic" in function_types):
-        a_minimum = int(params[0])
-        a_maximum = int(params[1])
-        b_minimum = int(params[2])
-        b_maximum = int(params[3])
-        c_minimum = int(params[4])
-        c_maximum = int(params[5])
-        a = random.randint(a_minimum, a_maximum)
-        while a == 0:
-            a = random.randint(a_minimum, a_maximum)
-        b = random.randint(b_minimum, b_maximum)
-        c = random.randint(c_minimum, c_maximum)
-
-        questions_string = "y=" + (((str(a) if a != 1 else "") + "x^2" + ("+" if b > 0 else "")) if a != 0 else "") + \
-                           (((str(b) if b != 1 else "") + "x" + ("+" if c > 0 else "")) if b != 0 else "") + \
-                           (str(c) if c != 0 else "")
-
-        ans1 = quadQuestion(a, b, c)
-        ans2 = quadQuestion(-a, b + random.randint(1, 5), c + random.randint(1, 5))
-        ans3 = quadQuestion(a + random.randint(1, 10) if a > 0 else a + random.randint(-10, -1),
-                            b + random.randint(1, 5), c)
-        ans4 = ((random.randint(1, 10), random.randint(1, 10)),
-                ((random.randint(1, 10), random.randint(1, 10)), (random.randint(1, 10), random.randint(1, 10))))
-
-    return (preamble, questions_string, ans1, ans2, ans3, ans4, 0)
-
-
-def quadQuestion(a, b, c):
-    ans_y = (0, c)
-    d = b ** 2 - 4 * a * c
-    if d > 0:
-        d = math.sqrt(d)
-        x1 = (-b + d) / (2 * a)
-        x2 = (-b - d) / (2 * a)
-        ans_xf = (round(x1, 2), 0), (round(x2, 2), 0)
-    elif d == 0:
-        x = (-b) / (2 * a)
-        ans_xf = (x, 0)
-    else:
-        ans_xf = ()
-    return ans_y, ans_xf
-
-
-def find_min_max(a, b, c):
-    # Define the function to find the minima and maxima of
-    def f(x):
-        return a * x ** 2 + b * x + c
-
-    if a > 0:
-        minimum = minimize_scalar(f)
-        minimum_x, minimum_y = round(minimum.x, 2), round(minimum.fun, 2)
-        return {"minimum": {"x": minimum_x, "y": minimum_y}}
-
-    else:
-        maximum = minimize_scalar(lambda x: -f(x))
-        maximum_x, maximum_y = round(maximum.x, 2), round(-maximum.fun, 2)
-        return {"maximum": {"x": maximum_x, "y": maximum_y}}
-
-
 def change_order(questions):
     questions_scrambled = list()
     for single_question in questions:
         ans_place = random.randint(2, 5)
-        print("single_question", single_question)
         if (ans_place == 2):
             new_single_question = (
                 single_question[0], single_question[1], single_question[2], single_question[3], single_question[4],
@@ -1123,16 +865,6 @@ def change_order(questions):
         questions_scrambled.append(new_single_question)
     return questions_scrambled
 
-
-# template - [0] = type of function
-#           [1] = type of question
-#           [2] = list of variable restrictions
-# template=intersection_linear_-10,10,10,20
-
-# question format - [0] = preamble
-#                - [1] = question string
-#                - [2] = ans (list?)
-
 def parse_template(template):
     parts = template.split('_')
     questions = parts[0].split(',')
@@ -1140,8 +872,6 @@ def parse_template(template):
     if len(parts) == 3:
         return questions, parts[1], params
     integral_range = parts[3].split(',')
-    print("integral format:")
-    print(questions, parts[1], params, integral_range)
     return questions, parts[1], params, integral_range
 
 
@@ -1177,21 +907,21 @@ def func_value_question(domain, f, fString):
     preamble = "חשב מה ערך הפונקציה בנקודה"
     if (len(domain) == 0) or (len(domain) == 1 and len(domain[0]) == 0):
         ans1 = "הפונקציה לא מוגדרת בנקודה"
-        ans2 = round(random.randint(-10000, 10000) / 1000, 3)
-        ans3 = round(random.randint(-20000, 20000) / 567, 3)
-        ans4 = round(random.randint(-500, 500) + random.uniform(0.0, 1.0), 3)
-        x = round(random.uniform(-20, 20), 3)
+        ans2 = round(random.randint(-10000, 10000) / 1000, 2)
+        ans3 = round(random.randint(-20000, 20000) / 567, 2)
+        ans4 = round(random.randint(-500, 500) + random.uniform(0.0, 1.0), 2)
+        x = round(random.uniform(-20, 20), 2)
         preamble = "x={} ".format(x) + preamble
     else:
-        x = round(random.uniform(domain[0][0], domain[0][1]), 3)
+        x = round(random.uniform(domain[0][0], domain[0][1]), 2)
         preamble = "x={} ".format(x) + preamble
-        ans1 = round(f(x), 3) if f(x) else "הפונקציה לא מוגדרת בנקודה"
+        ans1 = round(f(x), 2) if f(x) else "הפונקציה לא מוגדרת בנקודה"
         to_put_no_solution = random.randint(1, 4)
-        ans2 = round((f(x) if f(x) else random.randint(1, 5)) + random.randint(1, 5) + random.uniform(0.0, 0.99), 3)
+        ans2 = round((f(x) if f(x) else random.randint(1, 5)) + random.randint(1, 5) + random.uniform(0.0, 0.99), 2)
         if to_put_no_solution == 1:
             ans2 = 'הפונקציה לא מוגדרת בנקודה'
-        ans3 = round((f(x) if f(x) else random.randint(1, 5)) + random.randint(-5, -1) + random.uniform(-0.99, 0.0), 3)
-        ans4 = round((f(x) if f(x) else random.randint(1, 5)) + random.randint(7, 20), 3)
+        ans3 = round((f(x) if f(x) else random.randint(1, 5)) + random.randint(-5, -1) + random.uniform(-0.99, 0.0), 2)
+        ans4 = round((f(x) if f(x) else random.randint(1, 5)) + random.randint(7, 20), 2)
         if domain[0][0] < x + 1 < domain[0][1]:
             if f(x + 1) != ans1:
                 ans4 = f(x + 1)
@@ -1203,28 +933,7 @@ def func_value_question(domain, f, fString):
 
 
 def find_real_domain(p, c):
-    # if c == 2:
-    #     r = []
-    #     coefficient = p[:-1]
-    #     f = makeFunc(coefficient)
-    #     inters = [x for x in intersections(f, lambda x: 0, -100, 100)]
-    #     # inters.append(-100)
-    #     # inters.append(100)
-    #     if len(inters) > 0:
-    #         inters = sorted([round(x, 3) for x in inters])
-    #
-    #     # print(inters)
-    #     for i in range(len(inters) - 1):
-    #         a = (inters[i] + inters[i + 1]) / 2
-    #         if f(a) > 0:
-    #             r.append((inters[i], inters[i + 1]))
-    #
-    #     if len(inters) > 0:
-    #         r.append((inters[-1], float('inf')))
-    #         r.insert(0, (float('-inf'), inters[0]))
-    #     return r
-    # else:
-    return makeDomain(p, c)
+    return [(round(x,2),round(y,2)) for x,y in makeDomain(p,c)]
 
 
 def get_questions(unit):
@@ -1272,6 +981,10 @@ def get_questions(unit):
             elif ('asym' in question):
                 preamble = "חשב מה האסימפטוטות של הפונקציה"
                 result1 = makeAsym(p, c, b)
+                if not len(result1[0]):
+                    result1[0] = "אין אסימפטוטות אנכיות"
+                if not len(result1[1]):
+                    result1[1] = "אין אסימפטוטות אופקיות"
                 result2 = randFillPair(2)
                 result3 = randFillPair(2)
                 result4 = randFillPair(2)
@@ -1337,17 +1050,30 @@ def make_pos_neg_question(b, c, p):
     i1, d1 = randFillPair(len(pos) + len(neg))
     result4 = (" חיוביות: " + str(i1) + " שליליות: " + str(d1) + " ")
     q = (
-        preamble, funcString(p, c, b), (" חיוביות: " + str(neg) + " שליליות: " + str(pos) + " "), result2,
+        preamble, funcString(p, c, b), (" חיוביות: " + str(n1) if len(n1) else "אין תחומי שליליות" + " שליליות: " + str(p1) if len(p1) else "אין תחומי חיוביות" + " "), result2,
         result3,
         result4, 0)
     return q
 
 
 def definite_integral_question(b, c, f, integral_range, p):
-    min_range = int(integral_range[0])
-    max_range = int(integral_range[1])
-    ans = integrate(f, min_range, max_range, int((max_range - min_range) * 100))
-    string_range = str(max_range) + "," + str(min_range)
+    dom = makeDomain(p, c)
+    ranges = []
+    for d in dom:
+        if integral_range[1] < d[0] or integral_range[0] > d[1]:
+            continue
+        if integral_range[0] > d[0] and integral_range[1] < d[1]:
+            ranges = [integral_range]
+            break
+        if integral_range[0] > d[0] and integral_range[1] > d[1]:
+            ranges.append((integral_range[0], d[1]-0.001))
+        if integral_range[0] < d[0] and integral_range[1] < d[1]:
+            ranges.append((d[0]+0.001, integral_range[1]))
+
+    ans = 0
+    for r in ranges:
+        ans += integrate(f, r[0], r[1], int((r[1] - r[0]) * 100))
+    string_range = str(integral_range[0]) + "," + str(integral_range[1])
     preamble = string_range + "מצא את האינטגרל בתחום: "
     ans2 = ans + random.randint(1, 5)
     ans3 = ans - random.randint(1, 5)
@@ -1362,9 +1088,11 @@ def make_intersection_question(b, c, f, p):
     else:
         dom = makeDomain(p, c)
         points = makeIntersections(f, c, dom)
-        if (not points is None):
-            if (not f(0) is None) and abs(f(0)) >= 0.001:
-                points.append((0.0, float(round(f(0), 3))))
+        if (not f(0) is None) and abs(f(0)) >= 0.001:
+            points.append((0.0, float(round(f(0), 2))))
+        else:
+            points = "אין נקודות חיתוך"
+
     preamble = "מצא את נקודות החיתוך עם הצירים:"
     ans2 = [(random.randint(-10000, 10000) / 1000, 0.0) for i in range(len(p) - 1)]
     ans2.append((0.0, (random.randint(-10000, 10000) / 1000)))
@@ -1402,7 +1130,7 @@ def make_incDec_question(b, c, p):
     i1, d1 = randFillPair(len(inc) + len(dec))
     result4 = (" עלייה: " + str(i1) + " ירידה: " + str(d1) + " ")
     q = (
-        preamble, funcString(p, c, b), (" עלייה: " + str(dec) + " ירידה: " + str(inc) + " "), result2,
+        preamble, funcString(p, c, b), (" עלייה: " + str(dec) if len(dec) else "אין תחומי ירידה" + " ירידה: " + str(inc) if len(inc) else "אין תחומי עלייה" + " "), result2,
         result3,
         result4, 0)
     return q
@@ -1448,7 +1176,7 @@ def make_domain_question(b, c, p):
             ans2 = find_real_domain(p2, c)
 
         if len(ans2) == 0 and ans1 == "הפונקציה לא מוגדרת עבור אף x":
-            x1 = round(random.randint(-10000, 0) / 1000, 3)
+            x1 = round(random.randint(-10000, 0) / 1000, 2)
             x2 = -x1
             ans2 = [(x1, x2), (x2, x2 + 2)]
 
@@ -1458,10 +1186,10 @@ def make_domain_question(b, c, p):
 
         if len(ans2) == 0:
             ans2 = "הפונקציה לא מוגדרת עבור אף x"
-    x1 = round(random.randint(-10000, 0) / 1000, 3)
+    x1 = round(random.randint(-10000, 0) / 1000, 2)
     x2 = -x1
     ans3 = [(float('-inf'), x1), (x1, x2), (x2, float('inf'))]
-    x1 = round(random.randint(-10000, 0) / 1000, 3)
+    x1 = round(random.randint(-10000, 0) / 1000, 2)
     x2 = -x1
     ans4 = [(float('-inf'), x1), (x1, x2), (x2, float('inf'))]
     q = (
@@ -1484,24 +1212,7 @@ def randFillPair(n):
         else:
             dec.append((s, sort[i + 1]))
     inc.append((sort[-1], float('inf')))
-    # print("fake incdec ",n,inc, dec)
     return inc, dec
-
-
-def get_questions2(unit):
-    questions = list()
-    for i in range(QUESTIONS_TO_GENERATE):
-        question_type, function_types, params = parse_template(unit.template)
-        question = random.choice(question_type)
-        if ('intersection' in question):
-            q = generate_cut_axis(function_types, params)
-        elif ('minMaxPoints' in question):
-            q = min_max_points(function_types, params)
-        elif ('incDec' in question):
-            q = inc_dec(function_types, params)
-        questions.append(q)
-    return change_order(questions)
-
 
 def get_max_unit(unit, user):
     maxAttempt = 0
@@ -1533,14 +1244,6 @@ def addQuestions(className, unitName, username):
             id = active.quesAmount + 1
             active.quesAmount += 10
             for single_question in get_questions(unit):
-                # if (single_question[7] == 0):
-                #      print("==============================================================\n", single_question)
-                #     Question(id=id, question_preamble=single_question[0], question=single_question[1],
-                #              correct_ans=single_question[6], answer1=str(single_question[2])[1:-1],
-                #              answer2=str(single_question[3])[1:-1], answer3=str(single_question[4])[1:-1],
-                #              answer4=str(single_question[5])[1:-1],
-                #              active_unit=ActiveUnit[unit, user, maxAttempt])
-                # else:
                 Question(id=id, question_preamble=single_question[0], question=single_question[1],
                          correct_ans=single_question[6], answer1=str(single_question[2]),
                          answer2=str(single_question[3]), answer3=str(single_question[4]),
@@ -1551,7 +1254,6 @@ def addQuestions(className, unitName, username):
             commit()
             return jsonify(unit.maxTime)
     except Exception as e:
-        print(traceback.format_exc())
         print(e)
         return str(e), 400
 
@@ -1592,7 +1294,6 @@ def addQuestions_for_tests(className, unitName, username):
             commit()
             return str(unit.maxTime)
     except Exception as e:
-        print(traceback.format_exc())
         print(e)
         return str(e), 400
 
@@ -1640,7 +1341,6 @@ def individualStats():
 
             for entity in last_five_entities:
                 last5grades.append(entity.grade)
-                print(entity.lastTimeAnswered)
 
             last5grades.reverse()
             if (len(last_five_entities) < 5):
@@ -1760,7 +1460,6 @@ def getAllActiveUnits(className, unitName, student = None):
                     u = Unit[u.next, className]
                 else:
                     stop = True
-            print(students)
             return students
     except Exception as e:
         print(e)
@@ -1800,7 +1499,6 @@ def getAllActiveUnits(className, unitName, student=None):
                     u = Unit[u.next, className]
                 else:
                     stop = True
-            print(students)
             return students
     except Exception as e:
         print(e)
@@ -1868,7 +1566,6 @@ def getQuestion_buisness(user, unit_name, class_name, question_number):
             single_question["totalUnits"] = totalUnits
 
             ret.append(single_question)
-            # print("ret=", ret)
         return jsonify(ret)
     except Exception as e:
         print(e)
@@ -1910,7 +1607,6 @@ def submitQuestion_buisness(user, unit_name, class_name, question_number, ans_nu
             current_time = datetime.now()
             current_time_millis = int(current_time.timestamp() * 1000)
             current_time_millis_str = str(current_time_millis)
-            print(current_time_millis_str)
             question.solve_time = current_time_millis_str
 
             if (not activeUnit.currentQuestion < activeUnit.quesAmount):
@@ -1957,7 +1653,6 @@ def quitActiveUnit():
 
 
 def makePoly(p):
-    # print([str(p[i]) + '*(x**' + str(len(p) - i - 1) + ')' for i in range(len(p))])
     return (lambda x:
             float(sum([
                 p[i] * (x ** (len(p) - i - 1))
@@ -2045,13 +1740,9 @@ def helper(f1: callable, f2: callable, a: float, b: float, maxerr=0.001) -> Iter
             yield x2
             x1 = x2 + delta
             x2 = x1 + delta
-            # x2 = x2 + delta
-            # x1 = x2 + delta
             f_x1 = f1(x1) - f2(x1)
         elif f_x1 * f_x2 < 0 and f_x1 != f_x2:
             x = regulaFalsi(f1, f2, x1, x2, a, b, maxerr)
-            # print("here x="+str(x))
-            # print("f1(x)-f2(x)="+str(f1(x))+"-"+str(f2(x))+"="+str(f1(x)-f2(x)))
             if x is not None:
                 yield x
             x1 = x2 + delta
@@ -2065,10 +1756,8 @@ def helper(f1: callable, f2: callable, a: float, b: float, maxerr=0.001) -> Iter
         if x2 < b and x2 > a:
             f_x2 = f1(x2) - f2(x2)
         elif x2 > b:
-            # print(x2, b, b - 100 * maxerr)
             f_x2 = f1(b - 0.01) - f2(b - 0.01)
         else:
-            # print(x2, a, a+100*maxerr)
             f_x2 = f1(a + 0.01) - f2(a + 0.01)
 
 
@@ -2080,7 +1769,6 @@ def intersections(f1: callable, f2: callable, a: float, b: float, maxerr=0.00001
         b -= 100 * maxerr
     if a >= b:
         return []
-    # print("a, b: ",a,b)
     iterator = helper(f1, f2, a, b, maxerr)
     arr = np.array([])
     for x in iterator:
@@ -2101,7 +1789,6 @@ def makeDomain(params, c=0):
         inters.append(float('-inf'))
         inters.append(float('inf'))
         inters = sorted([round(x, 3) for x in inters])
-        # print(inters)
         for i in range(len(inters) - 1):
             it = inters[i]
             it2 = inters[i + 1]
@@ -2186,30 +1873,8 @@ def makeIntersections(poly, c=0, r=[(-100, 100)]):
         for x in inters:
             xs.append(x)
 
-    points = [(float(round(i, 3)), 0.0) if abs(round(i, 3)) > 0.001 else (0.0, 0.0) for i in xs]
-
-    # if 0 not in [float(round(i, 3)) for i in xs]:
-    #     points.append((0.0, float(round(poly(0), 3))))
-    # print("points: ", points)
+    points = [(float(round(i, 2)), 0.0) if abs(round(i, 2)) > 0.01 else (0.0, 0.0) for i in xs]
     return points
-
-
-def makeIntersections2(poly, error=1e-3, xmin=-20, xmax=20, step=0.0003):
-    intersections = []
-    x = xmin
-    unique_x_values = set()  # Set to store unique x-values
-    while x <= xmax:
-        fx = poly(x)
-        if abs(fx) < error:
-            if round(x, int(-math.log(error, 10) - 1)) not in unique_x_values:  # Check if x-value is unique
-                print(round(x, int(-math.log(error, 10) - 1)), unique_x_values)
-                intersections.append((round(x, int(-math.log(error, 10) - 1)), 0))
-                unique_x_values.add(round(x, int(-math.log(error, 10) - 1)))
-        x += step
-    # Add the intersection point at x = 0 if it is unique
-    if 0 not in unique_x_values:
-        intersections.append((0, poly(0)))
-    return intersections
 
 
 def makeDer(params):
@@ -2326,12 +1991,6 @@ def derive(params, c=0, b=math.e):
         der = derive(p[:-1])
 
         def rootElement(x):
-            # print("ROOT")
-            # print(x)
-            # print(poly(x))
-            # print(der(x))
-            # print(math.pow(poly(x), 1/b-1))
-            # print(der(x)*(1/b)*math.pow(poly(x) ,1/b-1))
             if poly(x) > 0:
                 return der(x) * (1 / b) * math.pow(poly(x), 1 / b - 1)
             return None
@@ -2343,24 +2002,11 @@ def makeExtremes(params, c=0, b=math.e):
     # Calculate the derivative of the polynomial
     if not any(params):
         return "אין נקודות קיצון"
-    # if c == 0:
-    #     f = makeFunc(params)
-    #     derivative = makeDer(params)
-    #     realDerive = derive(params, function_types)
-    #     poly = makeFunc(derivative)
-    #     extreme_points = makeIntersections(poly, c,function_types)
-    #
-    #     for i in range(len(extreme_points)):
-    #         tuple_value = extreme_points[i]
-    #         updated_tuple = (tuple_value[0], round(f(tuple_value[0]), 3))
-    #         extreme_points[i] = updated_tuple
-    #
-    #     return extreme_points
+
 
     realDerive = derive(params, c, b)
     dom = makeDomain(params, c)
     extreme_points = makeIntersections(realDerive, c, dom)
-    print("extreme_points", extreme_points)
     f = makeFunc(params, c, b)
 
     extremes = [(e[0], round(f(e[0]), 3)) for e in extreme_points if f(e[0])]
@@ -2406,7 +2052,7 @@ def getSymmetry(p, c=0, b=math.e):
                 l = round(f(center + x) - f(center), 1)
                 r = round(f(center - x) - f(center), 1)
                 if abs(center) < err:
-                    print(l, r)
+                    pass
                 if abs(l - r) < err:
                     sign = 1
                 elif abs(l + r) < err:
@@ -2437,7 +2083,6 @@ def makeIncDec(p, c=0, b=math.e):
     dom = makeDomain(p, c)
     if dom == []:
         return [], []
-    # print("dom, ext",dom, extremes)
     ext = set()
     f = makeFunc(p, c, b)
     for i in extremes:
@@ -2453,10 +2098,7 @@ def makeIncDec(p, c=0, b=math.e):
                 ext.add((i[1], float('-inf') if f(i[1] + 0.001) < 0 else float('inf')))
             else:
                 ext.add((i[1], float('-inf') if f(i[1] - 0.001) < 0 else float('inf')))
-    print(ext)
-    # Sort the extreme points by their x-values
     sorted_extremes = sorted(list(ext))
-    print("sorted", sorted_extremes)
     f = derive(p, c, b)
     if len(sorted_extremes) == 0:
         if dom == [(float('-inf'), float('inf'))]:
@@ -2502,7 +2144,6 @@ def makePosNeg(p, c=0, b=math.e):
     dom = makeDomain(p, c)
     if dom == []:
         return [], []
-    # print("dom, ext",dom, extremes)
     f = makeFunc(p, c, b)
     inters = makeIntersections(f, c, dom)
     points = set()
@@ -2569,7 +2210,6 @@ def makeIncDec2(p, c=0, b=math.e):
         return [], []
     extremes = makeExtremes(p, c, b)
     dom = makeDomain(p, c)
-    print("dom, ext", dom, extremes)
     ext = set()
     f = makeFunc(p, c, b)
     for i in extremes:
@@ -2585,10 +2225,9 @@ def makeIncDec2(p, c=0, b=math.e):
                 ext.add((i[1], float('-inf') if f(i[1] + 0.001) < 0 else float('inf')))
             else:
                 ext.add((i[1], float('-inf') if f(i[1] - 0.001) < 0 else float('inf')))
-    print(ext)
-    # Sort the extreme points by their x-values
+
     sorted_extremes = sorted(list(ext))
-    print("sorted", sorted_extremes)
+
     f = lambda x: makeFunc(makeDer(p))(x) * makeFunc(p[:-1] + [0], c, b)(x)
     if len(sorted_extremes) == 0:
         dom = makeDomain(p, c)
@@ -2850,10 +2489,6 @@ def getAllLessonQuestionsB(className, unitName):
 
             for s, qs in questions.items():
                 questions[s] = sorted(qs, key=lambda x: x['solve_time'], reverse=False)
-            print(names)
-            print(units)
-            print(actives)
-            print(questions)
             return questions, 200
     except Exception as e:
         print(e)
@@ -2915,12 +2550,13 @@ def getStudentLessonQuestionsB(className, student, unitName):
 # [random.randint(params[2*i], params[2*i+1]) for i in range(int(len(params)/2))]
 
 
-p = [-4, 10, -4, 6]
+p = [4, 10, -4, 6]
 c = 2
 
 b = 2
 a = makeFunc(p, c=c, b=b)
-
+r1 = -6
+r2 = 2
 print()
 print("f: " + str(a))
 print("f(5): " + str(a(5)))
@@ -2933,7 +2569,7 @@ print("funcString: " + str(funcString(p, c=c, b=b)))
 print("deriveString: " + str(deriveString(p, c=c, b=b)))
 print("PosNeg: " + str(makePosNeg(p, c=c, b=b)))
 print("makeAsym: " + str(makeAsym(p, c, b)))
-print(getAllLessonQuestionsB('c1', 'asdasd'))
+print("integral from",r1,"to",r2,": ",definite_integral_question(b,c,a,(r1,r2),p)[2])
 
 
 # sym = getSymmetry(p, c)
