@@ -126,7 +126,6 @@ def hello_world():  # put application's code here
 
 
 def isLogin(username):
-    return True
     if username not in activeControllers.keys():
         # print(username, activeControllers.keys())
         return False
@@ -187,7 +186,7 @@ def register():
 def register_buisness(username, password, typ):
     ans = makeUser(username, password, typ)
     if ans is None:
-        return username + " " + password + " " + typ, 200
+        return username + " " + password + " " + str(typ), 200
     return ans, 400
 
 
@@ -215,7 +214,6 @@ def checkType(username):
         return 0
 
 
-#
 def loadController(username):
     type = checkType(username)
     if type == 1:
@@ -235,10 +233,15 @@ def login():
 
 
 def login_buisness(username, password):
-    loadController(username)
-    if isinstance(activeControllers[username], teacherCont):
-        return str(1) + " " + username
-    return str(2) + " " + username
+    try:
+        loadController(username)
+        if isinstance(activeControllers[username], teacherCont):
+            return str(1) + " " + username
+        return str(2) + " " + username
+    except Exception as e:
+        return False
+
+
 
 
 @app.route('/changePassword')
@@ -274,6 +277,48 @@ def logout_buisness(username):
         # print(activeControllers)
     return username + " " + str(len(activeControllers))
 
+@app.route('/getOnlineStudentsOfTeacher')
+def getOnlineStudentsOfTeacher():
+    teacher = request.args.get('teacher')
+    if not isTeacher(teacher) or not isLogin(teacher):
+        return 'Error: Either user is not a teacher or is not logged in', 400
+    return getOnlineStudentsOfTeacher_business(teacher)
+
+
+# This function returns all online students from all of {teacher}'s classes.
+#
+# Return format:
+# Dictionary of - student names -> list of class names
+# For example: {'john': ['class1', 'class2'], 'doe': []}
+# (Both john and doe are online, and have been approved to the class)
+def getOnlineStudentsOfTeacher_business(teacher):
+    with db_session:
+        classes = Cls.select(lambda c: c.teacher.name == teacher)[:].to_list()
+        classes_users = []
+        for cls in classes:
+            cls_users = Cls_User.select(lambda cu: (cu.cls == cls) and cu.approved)[:].to_list()
+            classes_users.extend(cls_users)
+
+        ret_dic = {}
+        for cls_user in classes_users:
+            if cls_user.user.name not in ret_dic:
+                ret_dic[cls_user.user.name] = []
+            if cls_user.user.name in activeControllers:
+                ret_dic[cls_user.user.name].append(cls_user.cls.name)
+
+        ret = []
+        i = 0
+        for name in ret_dic:
+            single_obj = dict()
+            single_obj["id"] = i
+            single_obj["username"] = name
+            # single_obj["secondary"] = ret_dic[name]
+            single_obj["isLoggedIn"] = len(ret_dic[name]) > 0
+            ret.append(single_obj)
+            # ret.append({'id': i, 'primary': name, 'secondary': ret_dic[name], 'online': len(ret_dic[name]) > 0})
+            i += 1
+
+    return ret
 
 @app.route('/openClass')
 def openClass():
@@ -497,6 +542,8 @@ def getAllClassesNotIn():
         return str(e), 400
 
 
+
+
 def getAllClassesNotIn_Buisness(student):
     ret = []
     if not isLogin(student):
@@ -596,10 +643,18 @@ def getUnapprovedStudents():
     teacher = request.args.get('teacher')
     if not isLogin(teacher):
         return "user " + teacher + "not logged in.", 400
+    try:
+        return getUnapprovedStudents_buisness(teacher)
+    except Exception as e:
+        return str(e), 400
+
+
+def getUnapprovedStudents_buisness(teacher):
     ret = []
     id = 0
     try:
         with db_session:
+
             for singleClass in Cls.select(teacher=teacher):
                 for unapproveRequest in Cls_User.select(cls=singleClass):
                     if (unapproveRequest.approved == False):
@@ -799,6 +854,12 @@ def getClassesStudent():
     if not isLogin(student):
         return "user " + student + "not logged in.", 400
     try:
+        return getClassesStudent_buisness(student)
+    except Exception as e:
+        return str(e), 400
+
+def getClassesStudent_buisness(student):
+    try:
         with db_session:
             ret = []
             id = 0
@@ -807,7 +868,7 @@ def getClassesStudent():
                 id += 1
                 single_obj["id"] = id
                 single_obj["primary"] = aUnit.cls.name
-                single_obj["secondary"] = "la la la"
+                single_obj["secondary"] = ""
                 ret.append(single_obj)
 
             return jsonify(ret)
@@ -821,6 +882,13 @@ def getClassesTeacher():
     if not isLogin(teacher):
         return "user " + teacher + "not logged in.", 400
     try:
+        return getClassesTeacher_buisness(teacher)
+    except Exception as e:
+        print(e)
+        return str(e), 400
+
+def getClassesTeacher_buisness(teacher):
+    try:
         with db_session:
             ret = []
             id = 0
@@ -829,7 +897,7 @@ def getClassesTeacher():
                 id += 1
                 single_obj["id"] = id
                 single_obj["primary"] = aUnit.name
-                single_obj["secondary"] = "la la la"
+                single_obj["secondary"] = ""
                 ret.append(single_obj)
 
             return jsonify(ret)
@@ -1457,7 +1525,7 @@ def get_max_unit(unit, user):
     return maxAttempt
 
 
-def addQuestions(className, unitName, username):
+def addQuestions_buisness(className, unitName, username):
     try:
         with db_session:
             unit = Unit[unitName, Cls[className]]
@@ -1551,11 +1619,12 @@ def startUnit():
     username = request.args.get('username')
     if not isLogin(username):
         return "user " + username + "not logged in.", 400
-    return startUnit(className, unitName, username)
+    return startUnit_buisness(className, unitName, username)
 
+def startUnit_buisness(className, unitName, username):
 
-def startUnit(className, unitName, username):
-    return addQuestions(className, unitName, username)
+    return addQuestions_buisness(className, unitName, username)
+
 
 
 # now all this does is add 10 questions to the active unit
@@ -1567,6 +1636,13 @@ def individualStats():
     studentUsername = request.args.get('usernameS')
     if not isLogin(teacherUsername):
         return "user " + teacherUsername + "not logged in.", 400
+    try:
+        return individualStats_buisness(className, unitName, teacherUsername, studentUsername)
+    except Exception as e:
+        print(e)
+        return str(e), 400
+
+def individualStats_buisness(className, unitName, teacherUsername, studentUsername):
     try:
         with db_session:
             ret = dict()
@@ -1601,7 +1677,7 @@ def individualStats():
         return str(e), 400
 
 
-def getActiveUnits(className, unitName, username):  # this is for dab
+def getActiveUnits_buisness(className, unitName, username): #this is for dab
 
     try:
         with db_session:
@@ -1622,7 +1698,11 @@ def itemByName(lst, name):
     return None
 
 
+<<<<<<< HEAD
 def getAllActiveUnits2(className, unitName):
+=======
+def getAllActiveUnits_buisness(className, unitName):
+>>>>>>> 1a448a68b8f6f904bb6bd5752b994d050c5fb9a5
     try:
         with db_session:
             active_units = ActiveUnit.select(lambda au: au.unit.cls.name == className and au.unit.name == unitName)[:]
@@ -1645,7 +1725,7 @@ def getAllActiveUnits2(className, unitName):
         print(e)
         return str(e), 400
 
-
+#needs to be deleted
 def getAllActiveUnits_for_tests(className, unitName):
     try:
         with db_session:
@@ -1721,7 +1801,11 @@ def getStats():
     if not isLogin(username):
         return "user " + username + "not logged in.", 400
 
+<<<<<<< HEAD
     return jsonify(getAllActiveUnits(className, unitName)), 200
+=======
+    return getAllActiveUnits_buisness(className, unitName)
+>>>>>>> 1a448a68b8f6f904bb6bd5752b994d050c5fb9a5
 
 @app.route('/getStudentStats')
 def getStudentStats():
@@ -1820,7 +1904,7 @@ def submitQuestion_buisness(user, unit_name, class_name, question_number, ans_nu
             question.solve_time = current_time_millis_str
 
             if (not activeUnit.currentQuestion < activeUnit.quesAmount):
-                addQuestions(class_name, unit_name, user)
+                addQuestions_buisness(class_name, unit_name, user)
 
             if question.correct_ans == ans_number:
                 question.solved_correctly = True
@@ -1854,12 +1938,24 @@ def quitActiveUnit():
     user = request.args.get('username')
     unit_name = request.args.get('unitName')
     class_name = request.args.get('className')
-    with db_session:
-        unit = Unit[unit_name, Cls[class_name]]
-        attempt = get_max_unit(unit, user)
-        activeUnit = ActiveUnit[unit, user, attempt]
-        activeUnit.inProgress = False
-    return 'done'
+    try:
+        return quitActiveUnit_buisness(user, unit_name, class_name)
+    except Exception as e:
+        print(e)
+        return str(e), 400
+
+def quitActiveUnit_buisness(user, unit_name, class_name):
+    try:
+        with db_session:
+            unit = Unit[unit_name, Cls[class_name]]
+            attempt = get_max_unit(unit, user)
+            activeUnit = ActiveUnit[unit, user, attempt]
+            activeUnit.inProgress = False
+            return 'done'
+    except Exception as e:
+        print(e)
+        return str(e), 400
+
 
 
 def makePoly(p):
@@ -2696,6 +2792,7 @@ def makeFunc(p, c=0, b=math.e):
         return makeRoot(p, b)
 
 
+<<<<<<< HEAD
 @app.route('/getAllLessonQuestions')
 def getAllLessonQuestions():
     teacher = request.args.get('teacher')
@@ -2828,6 +2925,25 @@ print("deriveString: " + str(deriveString(p, c=c, b=b)))
 print("PosNeg: " + str(makePosNeg(p, c=c, b=b)))
 print("makeAsym: " + str(makeAsym(p, c, b)))
 print(getAllLessonQuestionsB('c1', 'asdasd'))
+=======
+# [random.randint(params[2*i], params[2*i+1]) for i in range(int(len(params)/2))]
+# p = [1, 0, 0, 0]
+# c = 0
+# a = makeFunc(p, c=c)
+# print()
+# print("f: " + str(a))
+# print("f(2): " + str(a(2)))
+# dom = makeDomain(p, c)
+# print("Domain: " + str(dom))
+# print("Intersections: " + str(makeIntersections(a, c=c, r=dom)))
+# print("Extremes: " + str(makeExtremes(p, c=c)))
+# print("IncDec: " + str(makeIncDec(p, c=c)))
+# print("PosNeg: " + str(makePosNeg(p, c=c, b=math.e)))
+# print("funcString: " + str(funcString(p, c=c)))
+# print("deriveString: " + str(deriveString(p, c=c, b=math.e)))
+# sym = getSymmetry(p, c)
+# print("symmetry: " + ("f(x)=" + str(sym[0]) + "*f(-x+" + str(2 * sym[1]) + ")") if sym else sym)
+>>>>>>> 1a448a68b8f6f904bb6bd5752b994d050c5fb9a5
 
 
 # sym = getSymmetry(p, c)
@@ -2990,7 +3106,7 @@ class studentCont(userCont):
     #     return "getUnit", Uname
 
     def startUnit(self, Uname):
-        return "startUnit", Uname
+        return "startUnit_buisness", Uname
 
     def getQuestion(self, Uname, Qnum):
         return "getQuestion", Uname, Qnum
