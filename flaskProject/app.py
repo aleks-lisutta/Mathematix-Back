@@ -1103,6 +1103,7 @@ def change_order(questions):
     questions_scrambled = list()
     for single_question in questions:
         ans_place = random.randint(2, 5)
+        print("single_question", single_question)
         if (ans_place == 2):
             new_single_question = (
                 single_question[0], single_question[1], single_question[2], single_question[3], single_question[4],
@@ -1268,11 +1269,64 @@ def get_questions(unit):
                 q = make_domain_question(b, c, p)
             elif ('posNeg' in question):
                 q = make_pos_neg_question(b, c, p)
+            elif ('asym' in question):
+                preamble = "חשב מה האסימפטוטות של הפונקציה"
+                result1 = makeAsym(p, c, b)
+                result2 = randFillPair(2)
+                result3 = randFillPair(2)
+                result4 = randFillPair(2)
+                q = (
+                    preamble, funcString(p, c, b), result1, result2,
+                    result3,
+                    result4, 0)
             questions.append(q)
 
     return change_order(questions)
 
 
+@app.route('/getOnlineStudentsOfTeacher')
+def getOnlineStudentsOfTeacher():
+    teacher = request.args.get('teacher')
+    if not isTeacher(teacher) or not isLogin(teacher):
+        return 'Error: Either user is not a teacher or is not logged in', 400
+    return getOnlineStudentsOfTeacher_business(teacher)
+
+
+# This function returns all online students from all of {teacher}'s classes.
+#
+# Return format:
+# Dictionary of - student names -> list of class names
+# For example: {'john': ['class1', 'class2'], 'doe': []}
+# (Both john and doe are online, and have been approved to the class)
+def getOnlineStudentsOfTeacher_business(teacher):
+    with db_session:
+        classes = Cls.select(lambda c: c.teacher.name == teacher)[:].to_list()
+        classes_users = []
+        for cls in classes:
+            cls_users = Cls_User.select(lambda cu: (cu.cls == cls) and cu.approved)[:].to_list()
+            classes_users.extend(cls_users)
+
+        ret_dic = {}
+        for cls_user in classes_users:
+            if cls_user.user.name not in ret_dic:
+                ret_dic[cls_user.user.name] = []
+            if cls_user.user.name in activeControllers:
+                ret_dic[cls_user.user.name].append(cls_user.cls.name)
+
+        ret = []
+        i = 0
+        for name in ret_dic:
+            single_obj = dict()
+            single_obj["id"] = i
+            single_obj["username"] = name
+            # single_obj["secondary"] = ret_dic[name]
+            single_obj["isLoggedIn"] = len(ret_dic[name]) > 0
+            ret.append(single_obj)
+            # ret.append({'id': i, 'primary': name, 'secondary': ret_dic[name], 'online': len(ret_dic[name]) > 0})
+            i += 1
+
+    return ret
+    
 def make_pos_neg_question(b, c, p):
     pos, neg = makePosNeg(p, c, b)
     preamble = "מצא תחומי חיוביות שליליות"
@@ -1713,6 +1767,46 @@ def getAllActiveUnits(className, unitName, student = None):
         return str(e), 400
 
 
+def getAllActiveUnits(className, unitName, student=None):
+    try:
+        with db_session:
+            unames = []
+            names = []
+            units = []
+            actives = []
+            students = []
+            u = Unit[unitName, className]
+            stop = False
+            while not stop:
+                unames.append(u.name)
+                units.append(u)
+                if student:
+                    instances = ActiveUnit.select(unit=u, student=student)
+                else:
+                    instances = ActiveUnit.select(unit=u)
+                for i in instances:
+                    if i.student.name not in names:
+                        names.append(i.student.name)
+                        single_obj = dict()
+                        single_obj["name"] = i.student.name
+                        single_obj["correct"] = i.totalCorrect
+                        single_obj["bad"] = (i.currentQuestion - i.totalCorrect)
+                        students.append(single_obj)
+                    else:
+                        item = itemByName(students, i.student.name)
+                        item["correct"] += i.totalCorrect
+                        item["bad"] += (i.currentQuestion - i.totalCorrect)
+                if u.next:
+                    u = Unit[u.next, className]
+                else:
+                    stop = True
+            print(students)
+            return students
+    except Exception as e:
+        print(e)
+        return str(e), 400
+
+
 @app.route('/getStats')
 def getStats():
     className = request.args.get('className')
@@ -1905,6 +1999,12 @@ def regulaFalsi(f1: callable, f2: callable, x1: float, x2: float, a: float, b: f
 
         x = (x1 * f_x2 - x2 * f_x1) / (f_x2 - f_x1)
 
+        if f1(x) is None or f2(x) is None:
+            if x < a:
+                x = a + maxerr
+            elif x > b:
+                x = b - maxerr
+
         if np.abs(f1(x) - f2(x)) <= maxerr:
             break
         elif f_x1 * (f1(x) - f2(x)) < 0:
@@ -1956,6 +2056,8 @@ def helper(f1: callable, f2: callable, a: float, b: float, maxerr=0.001) -> Iter
                 yield x
             x1 = x2 + delta
             x2 = x2 + delta
+            if f1(x1) is None or f2(x1) is None:
+                return
             f_x1 = f1(x1) - f2(x1)
         else:
             x1 = x2
@@ -1971,9 +2073,10 @@ def helper(f1: callable, f2: callable, a: float, b: float, maxerr=0.001) -> Iter
 
 
 def intersections(f1: callable, f2: callable, a: float, b: float, maxerr=0.00001) -> Iterable:
-    while (f1(a) == None or f2(a) == None) and a < b:
+
+    while (f1(a) is None or f2(a) is None) and a < b:
         a += 100 * maxerr
-    while (f1(b) == None or f2(b) == None) and a < b:
+    while (f1(b) is None or f2(b) is None) and a < b:
         b -= 100 * maxerr
     if a >= b:
         return []
@@ -2042,7 +2145,7 @@ def makeDomain(params, c=0):
         poly = makePoly(params[:-1])
         zeroes = [x[0] for x in makeIntersections(poly)]
         if len(zeroes) == 0:
-            if poly(0)>0:
+            if poly(0) > 0:
                 return [(float('-inf'), float('inf'))]
             else:
                 return []
@@ -2216,7 +2319,8 @@ def derive(params, c=0, b=math.e):
         p2 = p[int(len(p) / 2):]
         poly1 = makePoly(p1)
         poly2 = makePoly(p2)
-        return lambda x: (derive(p1)(x) * poly2(x) - poly1(x) * derive(p2)(x)) / (poly2(x) ** 2) if poly2(x) != 0 else None
+        return lambda x: (derive(p1)(x) * poly2(x) - poly1(x) * derive(p2)(x)) / (poly2(x) ** 2) if poly2(
+            x) != 0 else None
     if c == 8:
         poly = makePoly(p[:-1])
         der = derive(p[:-1])
@@ -2743,8 +2847,9 @@ def getAllLessonQuestionsB(className, unitName):
                     u = Unit[u.next, className]
                 else:
                     stop = True
-            for s,qs in questions.items():
-                questions[s] = sorted(qs, key=lambda x: x['solve_time'], reverse=True)
+
+            for s, qs in questions.items():
+                questions[s] = sorted(qs, key=lambda x: x['solve_time'], reverse=False)
             print(names)
             print(units)
             print(actives)
@@ -2809,8 +2914,9 @@ def getStudentLessonQuestionsB(className, student, unitName):
 
 # [random.randint(params[2*i], params[2*i+1]) for i in range(int(len(params)/2))]
 
-p = [-6, -3, -7, 6]
-c = 8
+
+p = [-4, 10, -4, 6]
+c = 2
 
 b = 2
 a = makeFunc(p, c=c, b=b)
