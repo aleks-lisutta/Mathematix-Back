@@ -166,7 +166,7 @@ def register():
 def register_buisness(username, password, typ):
     ans = makeUser(username, password, typ)
     if ans is None:
-        return username + " " + password + " " + typ, 200
+        return username + " " + str(password) + " " + str(typ), 200
     return ans, 400
 
 
@@ -2570,6 +2570,15 @@ print("deriveString: " + str(deriveString(p, c=c, b=b)))
 print("PosNeg: " + str(makePosNeg(p, c=c, b=b)))
 print("makeAsym: " + str(makeAsym(p, c, b)))
 print("integral from",r1,"to",r2,": ",definite_integral_question(b,c,a,(r1,r2),p)[2])
+
+
+#
+# print(register_buisness("aleks","123",1))
+# print(register_buisness("aleks1","123",2))
+# print(openClass_buisness("aleks","c1"))
+# registerClass_buisness("aleks1","c1")
+# approveStudentToClass_buisness("aleks","aleks1","c1","True")
+
 
 
 # sym = getSymmetry(p, c)
