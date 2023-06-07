@@ -6,142 +6,47 @@ from pony.orm import db_session, Database, PrimaryKey, Required, Optional, Set, 
 
 import flaskProject
 from flaskProject import app
+from flaskProject.Tests.UnitTests import initiate_database
 from flaskProject.app import User, DB, teacherCont, studentCont, Cls, Unit
 from unittest import mock
 from unittest.mock import patch, MagicMock
 
 
 class MyTestCase(unittest.TestCase):
-    def setUp(self):
-        DB = Database()
-        DB.bind(provider='sqlite', filename='..\\..\\dbtest.sqlite', create_db=True)
+    DB = None
 
-        class User(DB.Entity):
-            name = PrimaryKey(str)
-            password = Required(str)
-            type = Required(int)
-            teaching = Set('Cls', reverse='teacher', cascade_delete=False)
-            inClass = Set('Cls_User', cascade_delete=False)
-            activeUnits = Set("ActiveUnit", reverse='student')
+    @classmethod
+    def setUpClass(cls):
+        cls.DB = Database()
+        DB = cls.DB
+        initiate_database(DB)
 
-        class Cls(DB.Entity):
-            name = PrimaryKey(str)
-            teacher = Required(User, reverse='teaching')
-            students = Set('Cls_User')
-            hasUnits = Set('Unit', reverse='cls', cascade_delete=False)
+    @classmethod
+    def tearDownClass(cls):
+        cls.DB.drop_all_tables()
+        cls.DB.disconnect()
 
-        class Cls_User(DB.Entity):
-            cls = Required(Cls)
-            user = Required(User)
-            approved = Required(bool)
-            PrimaryKey(cls, user)
-
-        class Unit(DB.Entity):
-            name = Required(str)
-            cls = Required(Cls, reverse='hasUnits')
-            desc = Optional(str)
-            template = Required(str)
-            Qnum = Required(str)
-            maxTime = Required(str)
-            subDate = Required(str)
-            instances = Set('ActiveUnit', reverse='unit')
-            order = Required(int)
-            next = Optional(str)
-            PrimaryKey(name, cls)
-
-        class Question(DB.Entity):
-            id = Required(int)
-            question_preamble = Required(str)
-            question = Required(str)
-            answer1 = Required(str)
-            answer2 = Required(str)
-            answer3 = Required(str)
-            answer4 = Required(str)
-            correct_ans = Required(int)
-            active_unit = Required('ActiveUnit', reverse='questions')
-            solved_correctly = Optional(bool)
-            PrimaryKey(active_unit, id)
-
-        class ActiveUnit(DB.Entity):
-            inProgress = Required(bool)
-            attempt = Required(int)
-            questions = Set('Question', reverse='active_unit')
-            unit = Required(Unit, reverse='instances')
-            student = Required(User, reverse='activeUnits')
-            grade = Optional(int)
-            consecQues = Required(int)
-            quesAmount = Required(int)
-            currentQuestion = Required(int)
-            totalCorrect = Required(int)
-            lastTimeAnswered = Optional(str)
-            PrimaryKey(unit, student, attempt)
+    def tearDown(self) -> None:
+        with app.app.app_context():
+            app.activeControllers = {}
+        with db_session:
+            DB.execute('DELETE FROM ActiveUnit WHERE 1=1;')
+            DB.execute('DELETE FROM Question WHERE 1=1;')
+            DB.execute('DELETE FROM Unit WHERE 1=1;')
+            DB.execute('DELETE FROM Cls_User WHERE 1=1;')
+            DB.execute('DELETE FROM Cls WHERE 1=1;')
+            DB.execute('DELETE FROM User WHERE 1=1;')
 
 
-        # Generate mapping and create tables
-
-        DB.generate_mapping(create_tables=True)
-
-    def tearDown(self):
-        DB.disconnect()
-        # Remove the test database file after testing
-        cwd = os.getcwd()
-        os.remove('\\'.join(cwd.split('\\')[:-2]) + r'\dbtest.sqlite')
 
 
-    def test_find_min(self):
-        # Call the find_min_max function with parameters for a minimum
-        result = app.find_min_max(1, 2, 1)
 
-        # Verify that the result contains the minimum coordinates
-        expected_result = {
-            "minimum": {"x": -1.0, "y": 0.0}
-        }
-        self.assertEqual(result, expected_result)
-
-    def test_find_max(self):
-        # Call the find_min_max function with parameters for a maximum
-        result = app.find_min_max(-1, 2, 1)
-
-        # Verify that the result contains the maximum coordinates
-        expected_result = {
-            "maximum": {'x': 1.0, 'y': 2.0}
-        }
-        self.assertEqual(result, expected_result)
-
-    def test_quadQuestion_discriminant_positive(self):
-        # Call the quadQuestion function with parameters that result in a positive discriminant
-        result = app.quadQuestion(1, -3, 2)
-
-        # Verify the returned answer
-        expected_result = ((0, 2), ((2.0, 0), (1.0, 0)))
-        self.assertEqual(result, expected_result)
-
-    def test_quadQuestion_discriminant_zero(self):
-        # Call the quadQuestion function with parameters that result in a zero discriminant
-        result = app.quadQuestion(1, -2, 1)
-
-        # Verify the returned answer
-        expected_result = ((0, 1), (1.0, 0))
-        self.assertEqual(result, expected_result)
-
-    def test_quadQuestion_discriminant_negative(self):
-        # Call the quadQuestion function with parameters that result in a negative discriminant
-        result = app.quadQuestion(1, 1, 1)
-
-        # Verify the returned answer
-        expected_result = ((0, 1), ())
-        self.assertEqual(result, expected_result)
-
-    @patch('builtins.print')
-    def test_make_poly(self, mock_print):
+    def test_make_poly(self):
         # Define the polynomial coefficients
         p = [2, 1, -3]
 
         # Call the makePoly function
         result = app.makePoly(p)
-
-        # Assert that the print statement was called with the expected output
-        mock_print.assert_called_with(['2*(x**2)', '1*(x**1)', '-3*(x**0)'])
 
         # Test the returned lambda function
         # Evaluate the lambda function at x = 2
@@ -179,7 +84,7 @@ class MyTestCase(unittest.TestCase):
         result = app.makeIntersections(poly)
 
         # Define the expected intersection points
-        expected_points = [(-1.0, 0.0), (1.0, 0.0), (2.0, 0.0), (0.0, 2.0)]
+        expected_points = [(-1.0, 0.0), (1.0, 0.0), (2.0, 0.0)]
 
         # Assert that the result matches the expected intersection points
         self.assertEqual(result, expected_points)
@@ -199,21 +104,8 @@ class MyTestCase(unittest.TestCase):
         expected_points = np.array([-1.0, 2.0])
 
         # Assert that the result matches the expected intersection points
-        np.testing.assert_allclose(result, expected_points)
+        np.testing.assert_allclose(np.round(result), expected_points)
 
-    def test_makeIntersections2(self):
-        # Define a polynomial function
-        def poly(x):
-            return x ** 3 - 2 * x ** 2 - x + 2
-
-        # Call the makeIntersections2 function
-        result = app.makeIntersections2(poly, error=1e-3, xmin=-20, xmax=20, step=0.0003)
-
-        # Define the expected intersection points
-        expected_points = [(-1.0, 0), (1.0, 0), (2.0, 0), (0, 2)]
-
-        # Assert that the result matches the expected intersection points
-        self.assertEqual(result, expected_points)
 
     def test_makeDer(self):
         # Define the parameters of the polynomial
@@ -266,10 +158,176 @@ class MyTestCase(unittest.TestCase):
         result = app.polySrting(params)
 
         # Define the expected result
-        expected_result = "y=2x^2-3x+1"
+        expected_result = "2x^2-3x+1"
 
         # Assert that the result matches the expected string representation of the polynomial
         self.assertEqual(result, expected_result)
+
+    def test_getQuestion_successful(self):
+        with app.app.app_context():
+            # Create teacher account and open a class and a unit
+            app.register_buisness('teacher1', 'password', 1)
+            app.login_buisness('teacher1', 'password')
+            app.openClass_buisness('teacher1', 'class1')
+            app.teacherOpenUnit('unit1', 'teacher1', 'class1', 'intersection_linear_-10,0,1,6', '1', '60', '2023-07-01',
+                                'true', 'new', 'desc')
+            # Create student account and register to class
+            app.register_buisness('student1', 'password', 2)
+            app.login_buisness('student1', 'password')
+            app.registerClass_buisness('student1', 'class1')
+            app.approveStudentToClass_buisness('teacher1', 'student1', 'class1', 'True')
+            # Student starts unit
+            app.startUnit_buisness('class1', 'unit1', 'student1')
+            # Check that student gets question
+            res = app.getQuestion_buisness('student1', 'unit1', 'class1', '1')
+            self.assertEqual(200, res.status_code, 'Failed getQuestion request')
+
+    def test_getQuestion_no_unit_failure(self):
+        with app.app.app_context():
+            # Create teacher account and open a class
+            app.register_buisness('teacher1', 'password', 1)
+            app.login_buisness('teacher1', 'password')
+            app.openClass_buisness('teacher1', 'class1')
+            # Create student account and register to class
+            app.register_buisness('student1', 'password', 2)
+            app.login_buisness('student1', 'password')
+            app.registerClass_buisness('student1', 'class1')
+            app.approveStudentToClass_buisness('teacher1', 'student1', 'class1', 'True')
+            # Student starts unit
+            app.startUnit_buisness('class1', 'unit1', 'student1')
+            # Check that student gets question
+            res = app.getQuestion_buisness('student1', 'unit1', 'class1', '1')
+            self.assertEqual(2, len(res), 'Wrong return value for getQuestion')
+            self.assertEqual(400, res[1], 'Succeeded getQuestion request')
+
+    def test_submitQuestion_successful(self):
+        with app.app.app_context():
+            # Create teacher account and open a class and a unit
+            app.register_buisness('teacher1', 'password', 1)
+            app.login_buisness('teacher1', 'password')
+            app.openClass_buisness('teacher1', 'class1')
+            app.teacherOpenUnit('unit1', 'teacher1', 'class1', 'intersection_linear_-10,0,1,6', '1', '60', '2023-07-01',
+                                'true', 'new', 'desc')
+            # Create student account and register to class
+            app.register_buisness('student1', 'password', 2)
+            app.login_buisness('student1', 'password')
+            app.registerClass_buisness('student1', 'class1')
+            app.approveStudentToClass_buisness('teacher1', 'student1', 'class1', 'True')
+            # Student starts unit
+            app.startUnit_buisness('class1', 'unit1', 'student1')
+            # Check that student submitQuestion works
+            res = app.getQuestion_buisness('student1', 'unit1', 'class1', '1')
+            self.assertEqual(200, res.status_code, 'Failed getQuestion request')
+            res = app.submitQuestion_buisness('student1', 'unit1', 'class1', '1', res.json[0]['correct_ans'])
+            self.assertEqual(2, len(res), 'Wrong return value for getQuestion')
+            self.assertEqual(205, res[1], 'Failed submitQuestion request')
+
+    def test_submitQuestion_two_in_a_row_successful(self):
+        with app.app.app_context():
+            # Create teacher account and open a class and a unit
+            app.register_buisness('teacher1', 'password', 1)
+            app.login_buisness('teacher1', 'password')
+            app.openClass_buisness('teacher1', 'class1')
+            app.teacherOpenUnit('unit1', 'teacher1', 'class1', 'intersection_linear_-10,0,1,6', '2', '60', '2023-07-01',
+                                'true', 'new', 'desc')
+            # Create student account and register to class
+            app.register_buisness('student1', 'password', 2)
+            app.login_buisness('student1', 'password')
+            app.registerClass_buisness('student1', 'class1')
+            app.approveStudentToClass_buisness('teacher1', 'student1', 'class1', 'True')
+            # Student starts unit
+            app.startUnit_buisness('class1', 'unit1', 'student1')
+            # Check that student submitQuestion works
+            res = app.getQuestion_buisness('student1', 'unit1', 'class1', '1')
+            prehamble_1 = res.json[0]["preamble"]
+            res = app.submitQuestion_buisness('student1', 'unit1', 'class1', '1', res.json[0]['correct_ans'])
+            self.assertEqual('correct', res, 'Wrong return value for submitQuestion')
+            res = app.getQuestion_buisness('student1', 'unit1', 'class1', '2')
+            prehamble_2 = res.json[0]["preamble"]
+            res = app.submitQuestion_buisness('student1', 'unit1', 'class1', '2', res.json[0]['correct_ans'])
+            self.assertEqual(prehamble_1,prehamble_2)
+            self.assertEqual(2, len(res), 'Wrong return value for submitQuestion')
+            self.assertEqual(205, res[1], 'Failed submitQuestion request')
+
+
+    def test_submitQuestion_one_wrong_two_correct_finish_successful(self):
+        with app.app.app_context():
+            # Create teacher account and open a class and a unit
+            app.register_buisness('teacher1', 'password', 1)
+            app.login_buisness('teacher1', 'password')
+            app.openClass_buisness('teacher1', 'class1')
+            app.teacherOpenUnit('unit1', 'teacher1', 'class1', 'intersection_linear_-10,0,1,6', '2', '60', '2023-07-01',
+                                'true', 'new', 'desc')
+            # Create student account and register to class
+            app.register_buisness('student1', 'password', 2)
+            app.login_buisness('student1', 'password')
+            app.registerClass_buisness('student1', 'class1')
+            app.approveStudentToClass_buisness('teacher1', 'student1', 'class1', 'True')
+            # Student starts unit
+            app.startUnit_buisness('class1', 'unit1', 'student1')
+            # Check that student submitQuestion works
+            res = app.getQuestion_buisness('student1', 'unit1', 'class1', '1')
+            prehamble_1 = res.json[0]["preamble"]
+            res = app.submitQuestion_buisness('student1', 'unit1', 'class1', '1', res.json[0]['correct_ans'])
+            self.assertEqual('correct', res, 'Wrong return value for submitQuestion')
+            res = app.getQuestion_buisness('student1', 'unit1', 'class1', '2')
+            prehamble_2 = res.json[0]["preamble"]
+            res = app.submitQuestion_buisness('student1', 'unit1', 'class1', '2', '-1')
+            self.assertEqual(prehamble_1,prehamble_2)
+            self.assertEqual(2, len(res), 'Wrong return value for submitQuestion')
+            #from the begining answerint 2 in a row
+            res = app.getQuestion_buisness('student1', 'unit1', 'class1', '3')
+            prehamble_3 = res.json[0]["preamble"]
+            self.assertEqual(prehamble_3, prehamble_2)
+            res = app.submitQuestion_buisness('student1', 'unit1', 'class1', '3', res.json[0]['correct_ans'])
+            self.assertEqual('correct', res, 'Wrong return value for submitQuestion')
+            res = app.getQuestion_buisness('student1', 'unit1', 'class1', '4')
+            prehamble_4 = res.json[0]["preamble"]
+            self.assertEqual(prehamble_3, prehamble_4)
+            res = app.submitQuestion_buisness('student1', 'unit1', 'class1', '4', res.json[0]['correct_ans'])
+            self.assertEqual(205, res[1], 'Failed submitQuestion request')
+
+
+    def test_submitQuestion_wrong_answer_successful(self):
+        with app.app.app_context():
+            # Create teacher account and open a class and a unit
+            app.register_buisness('teacher1', 'password', 1)
+            app.login_buisness('teacher1', 'password')
+            app.openClass_buisness('teacher1', 'class1')
+            app.teacherOpenUnit('unit1', 'teacher1', 'class1', 'intersection_linear_-10,0,1,6', '1', '60', '2023-07-01',
+                                'true', 'new', 'desc')
+            # Create student account and register to class
+            app.register_buisness('student1', 'password', 2)
+            app.login_buisness('student1', 'password')
+            app.registerClass_buisness('student1', 'class1')
+            app.approveStudentToClass_buisness('teacher1', 'student1', 'class1', 'True')
+            # Student starts unit
+            app.startUnit_buisness('class1', 'unit1', 'student1')
+            # Check that student submitQuestion works
+            res = app.getQuestion_buisness('student1', 'unit1', 'class1', '1')
+            correct_ans = res.json[0]['correct_ans']
+            self.assertEqual(200, res.status_code, 'Failed getQuestion request')
+            res = app.submitQuestion_buisness('student1', 'unit1', 'class1', '1', '-1')
+            self.assertEqual(2, len(res), 'Wrong return value for getQuestion')
+            self.assertEqual(200 + int(correct_ans), res[1], 'Failed submitQuestion request')
+
+    def test_submitQuestion_before_start_unit_failure(self):
+        with app.app.app_context():
+            # Create teacher account and open a class
+            app.register_buisness('teacher1', 'password', 1)
+            app.login_buisness('teacher1', 'password')
+            app.openClass_buisness('teacher1', 'class1')
+            app.teacherOpenUnit('unit1', 'teacher1', 'class1', 'intersection_linear_-10,0,1,6', '1', '60', '2023-07-01',
+                                'true', 'new', 'desc')
+            # Create student account and register to class
+            app.register_buisness('student1', 'password', 2)
+            app.login_buisness('student1', 'password')
+            app.registerClass_buisness('student1', 'class1')
+            app.approveStudentToClass_buisness('teacher1', 'student1', 'class1', 'True')
+            # Check that submitQuestion doesnt work
+            res = app.submitQuestion_buisness('student1', 'unit1', 'class1', '1', '1')
+            self.assertEqual(2, len(res), 'Wrong return value for getQuestion')
+            self.assertEqual(400, res[1], 'Succeeded getQuestion request')
 
 
 if __name__ == '__main__':

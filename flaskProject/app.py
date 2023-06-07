@@ -13,6 +13,14 @@ import pony.orm as pony
 from flask import jsonify
 import numpy as np
 
+# import random
+from math import inf, e
+# import time
+#
+from sympy import symbols, Poly, Pow, ln, sin, cos, tan, cot, degree, diff, solve, log, N, pi, Add, Rational, Mul, sign, I,Union, Interval, root, S, sympify
+from sympy.calculus.util import continuous_domain
+
+
 app = Flask(__name__)
 app.logger.setLevel(logging.DEBUG)
 CORS(app)
@@ -106,7 +114,6 @@ def hello_world():  # put application's code here
 
 
 def isLogin(username):
-    return True
     if username not in activeControllers.keys():
         return False
     return True
@@ -192,7 +199,6 @@ def checkType(username):
         return 0
 
 
-#
 def loadController(username):
     type = checkType(username)
     if type == 1:
@@ -212,10 +218,15 @@ def login():
 
 
 def login_buisness(username, password):
-    loadController(username)
-    if isinstance(activeControllers[username], teacherCont):
-        return str(1) + " " + username
-    return str(2) + " " + username
+    try:
+        loadController(username)
+        if isinstance(activeControllers[username], teacherCont):
+            return str(1) + " " + username
+        return str(2) + " " + username
+    except Exception as e:
+        return False
+
+
 
 
 @app.route('/changePassword')
@@ -249,6 +260,48 @@ def logout_buisness(username):
         activeControllers.pop(username)
     return username + " " + str(len(activeControllers))
 
+@app.route('/getOnlineStudentsOfTeacher')
+def getOnlineStudentsOfTeacher():
+    teacher = request.args.get('teacher')
+    if not isTeacher(teacher) or not isLogin(teacher):
+        return 'Error: Either user is not a teacher or is not logged in', 400
+    return getOnlineStudentsOfTeacher_business(teacher)
+
+
+# This function returns all online students from all of {teacher}'s classes.
+#
+# Return format:
+# Dictionary of - student names -> list of class names
+# For example: {'john': ['class1', 'class2'], 'doe': []}
+# (Both john and doe are online, and have been approved to the class)
+def getOnlineStudentsOfTeacher_business(teacher):
+    with db_session:
+        classes = Cls.select(lambda c: c.teacher.name == teacher)[:].to_list()
+        classes_users = []
+        for cls in classes:
+            cls_users = Cls_User.select(lambda cu: (cu.cls == cls) and cu.approved)[:].to_list()
+            classes_users.extend(cls_users)
+
+        ret_dic = {}
+        for cls_user in classes_users:
+            if cls_user.user.name not in ret_dic:
+                ret_dic[cls_user.user.name] = []
+            if cls_user.user.name in activeControllers:
+                ret_dic[cls_user.user.name].append(cls_user.cls.name)
+
+        ret = []
+        i = 0
+        for name in ret_dic:
+            single_obj = dict()
+            single_obj["id"] = i
+            single_obj["username"] = name
+            # single_obj["secondary"] = ret_dic[name]
+            single_obj["isLoggedIn"] = len(ret_dic[name]) > 0
+            ret.append(single_obj)
+            # ret.append({'id': i, 'primary': name, 'secondary': ret_dic[name], 'online': len(ret_dic[name]) > 0})
+            i += 1
+
+    return ret
 
 @app.route('/openClass')
 def openClass():
@@ -470,6 +523,8 @@ def getAllClassesNotIn():
         return str(e), 400
 
 
+
+
 def getAllClassesNotIn_Buisness(student):
     ret = []
     if not isLogin(student):
@@ -569,10 +624,18 @@ def getUnapprovedStudents():
     teacher = request.args.get('teacher')
     if not isLogin(teacher):
         return "user " + teacher + "not logged in.", 400
+    try:
+        return getUnapprovedStudents_buisness(teacher)
+    except Exception as e:
+        return str(e), 400
+
+
+def getUnapprovedStudents_buisness(teacher):
     ret = []
     id = 0
     try:
         with db_session:
+
             for singleClass in Cls.select(teacher=teacher):
                 for unapproveRequest in Cls_User.select(cls=singleClass):
                     if (unapproveRequest.approved == False):
@@ -772,6 +835,12 @@ def getClassesStudent():
     if not isLogin(student):
         return "user " + student + "not logged in.", 400
     try:
+        return getClassesStudent_buisness(student)
+    except Exception as e:
+        return str(e), 400
+
+def getClassesStudent_buisness(student):
+    try:
         with db_session:
             ret = []
             id = 0
@@ -780,7 +849,7 @@ def getClassesStudent():
                 id += 1
                 single_obj["id"] = id
                 single_obj["primary"] = aUnit.cls.name
-                single_obj["secondary"] = "la la la"
+                single_obj["secondary"] = ""
                 ret.append(single_obj)
 
             return jsonify(ret)
@@ -794,6 +863,13 @@ def getClassesTeacher():
     if not isLogin(teacher):
         return "user " + teacher + "not logged in.", 400
     try:
+        return getClassesTeacher_buisness(teacher)
+    except Exception as e:
+        print(e)
+        return str(e), 400
+
+def getClassesTeacher_buisness(teacher):
+    try:
         with db_session:
             ret = []
             id = 0
@@ -802,7 +878,7 @@ def getClassesTeacher():
                 id += 1
                 single_obj["id"] = id
                 single_obj["primary"] = aUnit.name
-                single_obj["secondary"] = "la la la"
+                single_obj["secondary"] = ""
                 ret.append(single_obj)
 
             return jsonify(ret)
@@ -935,6 +1011,745 @@ def func_value_question(domain, f, fString):
 def find_real_domain(p, c):
     return [(round(x,2),round(y,2)) for x,y in makeDomain(p,c)]
 
+def make_sympy_poly(p):
+    x = symbols('x')
+    return Poly(p, x).as_expr(), x
+
+
+def make_sympy_function(p, c, b):
+    if c == 0:
+        return make_sympy_poly(p)
+    elif c == 1:
+        expr, x = make_sympy_poly(p[:-1])
+        return Pow(b, expr) + p[-1], x
+    elif c == 2:
+        expr, x = make_sympy_poly(p[:-1])
+        return ln(expr) + p[-1], x
+    elif c == 3:
+        expr, x = make_sympy_poly(p[:-1])
+        return sin(expr) + p[-1], x
+    elif c == 4:
+        expr, x = make_sympy_poly(p[:-1])
+        return cos(expr) + p[-1], x
+    elif c == 5:
+        expr, x = make_sympy_poly(p[:-1])
+        return tan(expr) + p[-1], x
+    elif c == 6:
+        expr, x = make_sympy_poly(p[:-1])
+        return cot(expr) + p[-1], x
+    elif c == 7:
+        numerator, x = make_sympy_poly(p[:len(p) // 2])
+        denominator, x = make_sympy_poly(p[len(p) // 2:])
+        return numerator / denominator, x
+    elif c == 8:
+        expr, x = make_sympy_poly(p[:-1])
+        return root(expr, b) + p[-1], x
+
+
+def filter_and_generate_correct_answers_for_sym(expr, sym_expr, ans, x, c, domains, sym):
+    MAX_CS_TO_ADD = 100
+
+    def check_in_range(val):
+        for dom in domains:
+            if dom[0] <= val <= dom[1]:
+                return True
+        return False
+
+    possible_cs = list(map(lambda elem: elem[c],
+                           list(filter(lambda elem: c in elem and not elem[c].has(I) and not elem[c].has(x),
+                                       ans))))
+    possible_xs = list(map(lambda elem: elem[x],
+                           list(filter(
+                               lambda elem: x in elem and elem[x] != 0 and not elem[x].has(I) and not elem[x].has(x),
+                               ans))))
+    possible_cs_in_range = list(filter(lambda elem: check_in_range(elem), possible_cs))
+    -6
+    x ^ 3 - 4
+    x ^ 2 + 9
+    x + 8
+    epsilon = 0.0001
+    all_possible_cs_in_range = set(possible_cs_in_range)
+    for possible_c in possible_cs_in_range:
+        for possible_x in possible_xs:
+            for i in range(1, MAX_CS_TO_ADD + 1):  # Add multiples of x to c
+                new_c = possible_c + possible_x * i
+                if check_in_range(new_c) and \
+                        (sym == 'symmetry' and expr.subs(x, new_c + epsilon) == expr.subs(x, new_c - epsilon) or
+                         sym == 'asymmetry' and expr.subs(x, new_c + epsilon) == -expr.subs(x, new_c - epsilon)):
+                    all_possible_cs_in_range.add(new_c)
+                else:
+                    break
+            for i in range(1, MAX_CS_TO_ADD + 1):  # Subtract multiples of x from c
+                new_c = possible_c - possible_x * i
+                if check_in_range(new_c) and \
+                        (sym == 'symmetry' and expr.subs(x, new_c + epsilon) == expr.subs(x, new_c - epsilon) or
+                         sym == 'asymmetry' and expr.subs(x, new_c + epsilon) == -expr.subs(x, new_c - epsilon)):
+                    all_possible_cs_in_range.add(new_c)
+                else:
+                    break
+    epsilon = 0.0001
+    for i in range(len(domains) - 1):
+        if domains[i][1] == domains[i + 1][0]:
+            left_of_asymptote = expr.subs(x, domains[i][1] - epsilon)
+            right_of_asymptote = expr.subs(x, domains[i][1] + epsilon)
+            if left_of_asymptote == right_of_asymptote or left_of_asymptote == -right_of_asymptote:
+                all_possible_cs_in_range.add(domains[i][1])
+
+    expr_domain = continuous_domain(expr, x, S.Reals)
+    for pos_c in possible_cs:
+        if not pos_c.has(x) and (-pos_c not in expr_domain or sym_expr.subs(c, -pos_c) == 0):
+            all_possible_cs_in_range.add(-pos_c)
+
+    return all_possible_cs_in_range
+
+
+def check_special_cases_symmetry(expr, x):
+    def filter_complex(arr):
+        return list(filter(lambda x: not x.has(I), arr))
+
+    if len(expr.args) == 2:
+        if x in expr.as_coefficients_dict() and 1 in expr.as_coefficients_dict():
+            val = solve(expr)
+            return [val[0]], 'אסימטריה'
+
+    if expr.has(log) or expr.has(ln):
+        if degree(expr.args[0]) == 2:  # Special log case. log(x^2...)
+            poly_tag = diff(expr.args[0])
+            val = solve(poly_tag, x)
+            val = filter_complex(val)
+            if len(val) == 0:
+                return [], 'אין סימטריה'
+            return [val[0]], 'סימטריה'
+        if degree(expr.args[0]) == 1:  # Special log case. log(x...)
+            return [], 'אין סימטריה'
+    if len(expr.args) > 1 and (expr.args[1].has(log) or expr.args[1].has(ln)):
+        if degree(expr.args[1].args[0]) == 2:  # Special log case. log(x^2...) + d
+            poly_tag = diff(expr.args[1].args[0])
+            val = solve(poly_tag, x)
+            val = filter_complex(val)
+            if len(val) == 0:
+                return [], 'אין סימטריה'
+            return [val[0]], 'סימטריה'
+        if degree(expr.args[1].args[0]) == 1:  # Special log case. log(x...) + d
+            return [], 'אין סימטריה'
+
+    if expr.is_Pow:
+        if degree(expr.args[1]) == 2:  # Special Pow case. Pow(x^2...)
+            poly_tag = diff(expr.args[1])
+            val = solve(poly_tag, x)
+            val = filter_complex(val)
+            if len(val) == 0:
+                return [], 'אין סימטריה'
+            return [val[0]], 'סימטריה'
+        if degree(expr.args[1]) == 1:  # Special Pow case. Pow(x...)
+            return [], 'אין סימטריה'
+        if expr.args[1].is_Rational:  # Special root case. root(x^2...)
+            if expr.args[1].denominator % 2 == 0 and degree(expr.args[0]) == 1:
+                return [], 'אין סימטריה'
+            poly_tag = diff(expr.args[0])
+            val = solve(poly_tag, x)
+            val = filter_complex(val)
+            if len(val) == 0:
+                return [], 'אין סימטריה'
+            return [val[0]], 'סימטריה'
+    if len(expr.args) > 1 and expr.args[1].is_Pow:
+        if degree(expr.args[1].args[1]) == 2:  # Special Pow case. Pow(x^2...) + d
+            poly_tag = diff(expr.args[1].args[1])
+            val = solve(poly_tag, x)
+            val = filter_complex(val)
+            if len(val) == 0:
+                return [], 'אין סימטריה'
+            return [val[0]], 'סימטריה'
+        if degree(expr.args[1].args[1]) == 1:  # Special Pow case. Pow(x...) + d
+            return [], 'אין סימטריה'
+        if expr.args[1].args[1].is_Rational:  # Special root case. root(x^2...) + d
+            if expr.args[1].args[1].denominator % 2 == 0 and degree(expr.args[1].args[0]) == 1:
+                return [], 'אין סימטריה'
+            poly_tag = diff(expr.args[1].args[0])
+            val = solve(poly_tag, x)
+            val = filter_complex(val)
+            if len(val) == 0:
+                return [], 'אין סימטריה'
+            return [val[0]], 'סימטריה'
+
+    if expr.has(sin) or expr.has(cos) or expr.has(tan) or expr.has(cot):
+        trig_func = None
+        if expr.is_Mul:
+            trig_func = expr.args[1].args[0]
+        elif expr.is_Add:
+            if expr.args[1].is_Mul:
+                trig_func = expr.args[1].args[1].args[0]
+            else:
+                trig_func = expr.args[1].args[0]
+        else:
+            trig_func = expr.args[0]
+        if degree(trig_func) == 2:  # Special trig case. trig(x^2...)
+            poly_tag = diff(trig_func)
+            val = solve(poly_tag, x)
+            val = filter_complex(val)
+            if len(val) == 0:
+                return [], 'אין סימטריה'
+            return [val[0]], 'סימטריה'
+        if degree(trig_func) == 1:  # Special trig case. trig(x...)
+            x_coeff = trig_func.coeff(x)
+            frequency = 2 * pi / x_coeff
+            val = solve(trig_func, x)
+            val = filter_complex(val)
+            if len(val) == 0:
+                return [], 'אין סימטריה'
+            if expr.has(cos):
+                return frequency, val[0], 'cos'
+            elif expr.has(sin):
+                return frequency, val[0], 'sin'
+            elif expr.has(tan):
+                return frequency, val[0], 'tan'
+            else:
+                return frequency, val[0], 'cot'
+
+    return None
+
+
+def generate_answers_symmetry_special_cases(frequency, point, jumps, check_in_range):
+    MAX_TO_ADD = 100
+    ans = []
+    for i in range(1, MAX_TO_ADD + 1):  # Subtract multiples of frequency from point
+        if not jumps(i):
+            continue
+        new_point = point - frequency * i
+        if check_in_range(new_point):
+            ans.append(new_point)
+        else:
+            break
+    for i in range(1, MAX_TO_ADD + 1):  # Add multiples of frequency from point
+        if not jumps(i):
+            continue
+        new_point = point + frequency * i
+        if check_in_range(new_point):
+            ans.append(new_point)
+        else:
+            break
+    return ans
+
+
+def get_answers_for_symmetry_asymmetry(expr, x, c, domains):
+    if len(domains) == 0:
+        return [], 'אין סימטריה'
+
+    if expr.is_number:
+        return [], 'סימטריה לכל x'
+
+    def check_in_range(val):
+        for dom in domains:
+            if dom[0] <= val <= dom[1]:
+                return True
+        return False
+
+    special_case = check_special_cases_symmetry(expr, x)
+    if special_case is not None:
+        if len(special_case) == 3:
+            MAX_TO_ADD = 100
+            ans = []
+            if special_case[2] == 'tan' or special_case[2] == 'cot':
+                ans = generate_answers_symmetry_special_cases(special_case[0] / 4, special_case[1],
+                                                              lambda x: True, check_in_range)
+                return ans, 'אסימטריה'
+            if special_case[2] == 'sin':
+                if random.choice([True, False]):
+                    # Symmetry
+                    ans = generate_answers_symmetry_special_cases(special_case[0] / 4, special_case[1],
+                                                                  lambda x: x % 2 == 1, check_in_range)
+                    return ans, 'סימטריה'
+                else:
+                    # Asymmetry
+                    ans = generate_answers_symmetry_special_cases(special_case[0] / 4, special_case[1],
+                                                                  lambda x: x % 2 == 0, check_in_range)
+                    return ans, 'אסימטריה'
+        else:
+            return special_case
+
+    expr_x = expr.subs(x, x + c)
+    expr_neg_x = expr.subs(x, -x + c)
+    neg_expr_neg_x = -expr.subs(x, -x + c)
+    ans = []
+    sym_expr = expr_x - expr_neg_x
+    try:
+        ans = solve(sym_expr)
+    except Exception as e:
+        pass
+    if ans != [{x: 0}] and len(ans) > 0 and (type(ans) == float or type(ans) == float):
+        symmetries = filter_and_generate_correct_answers_for_sym(expr, sym_expr, ans, x, c, domains, 'symmetry')
+        if len(symmetries) > 0 and ans != [{x: 0}]:
+            return list(map(lambda x: round(float(N(x)), 3), symmetries)), 'סימטריה'
+
+    sym_expr = expr_x - neg_expr_neg_x
+    try:
+        ans = solve(sym_expr)
+    except Exception as e:
+        pass
+    if ans != [{x: 0}] and len(ans) > 0 and (type(ans) == float or type(ans) == float):
+        asymmetries = filter_and_generate_correct_answers_for_sym(expr, sym_expr, ans, x, c, domains, 'asymmetry')
+        if len(asymmetries) > 0 and ans != [{x: 0}]:
+            return list(map(lambda x: round(float(N(x)), 3), asymmetries)), 'אסימטריה'
+
+    return [], 'אין סימטריה'
+
+
+def filter_and_generate_answers_for_inflection(ans, expr_tagtag, x, domains):
+    def check_in_range(val):
+        for dom in domains:
+            if dom[0] < val < dom[1]:
+                return True
+        return False
+
+    n = symbols('n')
+    MAX_TO_ADD = 100
+    is_trigonometric = False
+    new_ans = []
+    if expr_tagtag.has(sin):
+        for sub_expr in expr_tagtag.args:
+            if sub_expr.has(sin):
+                sin_expr = sub_expr
+                new_ans_1 = solve(sin_expr.args[0] - 0 - 2 * pi * n, x)
+                new_ans_2 = solve(sin_expr.args[0] - pi - 2 * pi * n, x)
+                new_ans += new_ans_1 + new_ans_2
+        is_trigonometric = True
+    elif expr_tagtag.has(cos):
+        for sub_expr in expr_tagtag.args:
+            if sub_expr.has(cos):
+                cos_expr = sub_expr
+                new_ans_1 = solve(cos_expr.args[0] - pi / 2 - 2 * pi * n, x)
+                new_ans_2 = solve(cos_expr.args[0] - 3 * pi / 2 - 2 * pi * n, x)
+                new_ans += new_ans_1 + new_ans_2
+        is_trigonometric = True
+    elif expr_tagtag.has(tan):
+        for sub_expr in expr_tagtag.args:
+            if sub_expr.has(tan):
+                tan_expr = sub_expr
+                new_ans += solve(tan_expr.args[0] - 0 - pi * n, x)
+        is_trigonometric = True
+    elif expr_tagtag.has(cot):
+        for sub_expr in expr_tagtag.args:
+            if sub_expr.has(cot):
+                cot_expr = sub_expr
+                new_ans += solve(cot_expr.args[0] - pi / 2 - pi * n, x)
+        is_trigonometric = True
+
+    if is_trigonometric:
+        for ans_template in new_ans:
+            check_2_deep = True
+            for sub_n in range(MAX_TO_ADD):
+                check_pos_sub_n = check_in_range(ans_template.subs(n, sub_n))
+                check_neg_sub_n = check_in_range(ans_template.subs(n, -sub_n))
+                if not check_pos_sub_n and not check_neg_sub_n:
+                    if check_2_deep:
+                        check_2_deep = False
+                    else:
+                        break
+                if check_pos_sub_n:
+                    ans.append(ans_template.subs(n, sub_n))
+                if check_neg_sub_n:
+                    ans.append(ans_template.subs(n, -sub_n))
+
+    ans = list(set(ans))
+
+    return list(filter(lambda elem: not sympify(elem).has(I) and check_in_range(elem), ans))
+
+
+def get_possible_inflection_points(expr_tagtag, x, domains):
+    ans = []
+    try:
+        ans = solve(expr_tagtag)
+    except Exception as e:
+        return ans
+
+    union = Union()
+    for (left, right) in domains:
+        union = Union(union, Interval.open(left, right))
+
+    for i in range(len(domains) - 1):
+        if domains[i][1] == domains[i + 1][0]:
+            ans.append(domains[i][1])
+
+    # try:
+    #     asymptotes = continuous_domain(expr_tagtag, x, union).boundary
+    #     ans.extend(asymptotes)
+    # except:
+    #     pass
+
+    return filter_and_generate_answers_for_inflection(ans, expr_tagtag, x, domains)
+
+
+def get_answers_for_inflection_points(possible_inflection_points, domains, expr_tagtag, x):
+    epsilon = 0.0001
+
+    for i in range(len(domains) - 1):
+        if domains[i][1] == domains[i + 1][0]:
+            left_of_asymptote = expr_tagtag.subs(x, domains[i][1] - epsilon)
+            right_of_asymptote = expr_tagtag.subs(x, domains[i][1] + epsilon)
+            if sign(left_of_asymptote) != sign(right_of_asymptote):
+                possible_inflection_points.append(domains[i][1])
+
+    sorted_possible_points = list(sorted(possible_inflection_points))
+    sorted_domains = list(sorted(domains, key=lambda x: x[0]))
+    inflection_points = []
+
+    for i in range(len(sorted_possible_points)):
+        possible_point = sorted_possible_points[i]
+        for domain in sorted_domains:
+            if domain[0] < possible_point < domain[1]:
+                prev_possible_point = sorted_possible_points[i - 1] + epsilon if i > 0 \
+                    else domain[0] + epsilon
+                next_possible_point = sorted_possible_points[i + 1] - epsilon if i < len(sorted_possible_points) - 1 \
+                    else domain[1] - epsilon
+                region_before = expr_tagtag.subs(x, prev_possible_point)
+                region_after = expr_tagtag.subs(x, next_possible_point)
+                if sign(region_before) != sign(region_after):
+                    inflection_points.append(N(possible_point))
+
+    return list(map(lambda x: round(float(N(x)), 3), inflection_points))
+
+
+# POSSIBLY REDUNDANT
+def merge_regions(regions):
+    if len(regions) == 0:
+        return []
+
+    regions.sort()
+    stack = [regions[0]]
+    for i in regions[1:]:
+        if stack[-1][0] <= i[0] <= stack[-1][-1]:
+            stack[-1][-1] = max(stack[-1][-1], i[-1])
+        else:
+            stack.append(i)
+    return list(map(lambda x: tuple(x), stack))
+
+
+def get_answers_for_concave_convex(possible_inflection_points, domains, expr_tagtag, x):
+    if expr_tagtag == 0 or len(domains) == 0:
+        return {'convex': [], 'concave': []}
+
+    asymptotes = set()
+    for i in range(len(domains) - 1):
+        if domains[i][1] == domains[i + 1][0]:
+            asymptotes.add(domains[i][1])
+    asymptotes = list(asymptotes)
+
+    convex_regions = set()
+    concave_regions = set()
+    if len(possible_inflection_points) == 0:
+        for domain in domains:
+            if expr_tagtag.subs(x, (domain[0] + domain[1]) / 2) > 0:
+                convex_regions.add(domain)
+            else:
+                concave_regions.add(domain)
+        return {'convex': list(map(lambda x: tuple(x), convex_regions)),
+                'concave': list(map(lambda x: tuple(x), concave_regions))}
+
+    possible_inflection_points.extend(asymptotes)
+
+    sorted_possible_points = list(sorted(possible_inflection_points))
+    sorted_domains = list(sorted(domains, key=lambda x: x[0]))
+
+    for i in range(len(sorted_possible_points)):
+        possible_point = sorted_possible_points[i]
+        for domain in sorted_domains:
+            if domain[0] < possible_point < domain[1]:
+                prev_possible_point = sorted_possible_points[i - 1] if i > 0 \
+                    else domain[0]
+                next_possible_point = sorted_possible_points[i + 1] if i < len(sorted_possible_points) - 1 \
+                    else domain[1]
+                region_before = expr_tagtag.subs(x, (possible_point + prev_possible_point) / 2)
+                region_before_calculated = rec_calc_evaluation(region_before)
+                region_after = expr_tagtag.subs(x, (possible_point + next_possible_point) / 2)
+                region_after_calculated = rec_calc_evaluation(region_after)
+                reg_1 = round(float(N(prev_possible_point)), 3)
+                reg_2 = round(float(N(possible_point)), 3)
+                reg_3 = round(float(N(next_possible_point)), 3)
+                if sign(region_before_calculated) == 1:
+                    convex_regions.add((reg_1, reg_2))
+                else:
+                    concave_regions.add((reg_1, reg_2))
+                if sign(region_after_calculated) == 1:
+                    convex_regions.add((reg_2, reg_3))
+                else:
+                    concave_regions.add((reg_2, reg_3))
+
+    return {'convex': list(map(lambda x: tuple(x), convex_regions)),
+            'concave': list(map(lambda x: tuple(x), concave_regions))}
+
+
+def odd_even_special_cases(expr, x):
+    if expr.has(sin) or expr.has(tan) or expr.has(cot) or expr.has(cos):
+        if expr.is_Mul:
+            trig_func = expr.args[1].args[0]
+        elif expr.is_Add:
+            if expr.args[1].is_Mul:
+                trig_func = expr.args[1].args[1].args[0]
+            else:
+                trig_func = expr.args[1].args[0]
+        else:
+            trig_func = expr.args[0]
+        if expr.has(sin) or expr.has(tan) or expr.has(cot):
+            if trig_func.coeff(x ** 2) == 0:  # tan/sin/cot(x...)
+                if 1 in trig_func.as_coefficients_dict():  # cos(x + d)
+                    return 'לא זוגית ולא אי זוגית'
+                else:
+                    return 'אי זוגית'
+            elif trig_func.coeff(x ** 2) != 0 and trig_func.coeff(x) != 0:  # tan/sin/cot(x^2+x...)
+                return 'לא זוגית ולא אי זוגית'
+            elif trig_func.coeff(x ** 2) != 0 and trig_func.coeff(x) == 0:  # tan/sin/cot(x^2...)
+                return 'זוגית'
+        else:
+            if trig_func.coeff(x ** 2) == 0:  # cos(x...)
+                if 1 in trig_func.as_coefficients_dict():  # cos(x + d)
+                    return 'לא זוגית ולא אי זוגית'
+                else:
+                    return 'אי זוגית'
+            elif trig_func.coeff(x ** 2) != 0 and trig_func.coeff(x) != 0:  # cos(x^2+x...)
+                return 'לא זוגית ולא אי זוגית'
+            elif trig_func.coeff(x ** 2) != 0 and trig_func.coeff(x) == 0:  # cos(x^2...)
+                return 'זוגית'
+    if expr.is_Pow:
+        if degree(expr.args[1]) == 2:  # Pow(x^2...)
+            if expr.args[1].coeff(x) == 0:
+                return 'זוגית'
+            else:
+                return 'לא זוגית ולא אי זוגית'
+        if degree(expr.args[1]) == 1:  # Pow(x...)
+            return 'לא זוגית ולא אי זוגית'
+        if expr.args[1].is_Rational:  # root(x^2...)
+            if expr.args[0].coeff(x ** 2) != 0 and expr.args[0].coeff(x) != 0:
+                return 'לא זוגית ולא אי זוגית'
+            elif expr.args[0].coeff(x ** 2) != 0 and expr.args[0].coeff(x) == 0:
+                return 'זוגית'
+            else:
+                if expr.args[1].denominator % 2 == 0:
+                    return 'לא זוגית ולא אי זוגית'
+                else:
+                    return 'אי זוגית'
+    if len(expr.args) > 1 and expr.args[1].is_Pow:
+        if degree(expr.args[1].args[1]) == 2:  # Pow(x^2...) + d
+            if expr.args[1].args[1].coeff(x) == 0:
+                return 'זוגית'
+            else:
+                return 'לא זוגית ולא אי זוגית'
+        if degree(expr.args[1].args[1]) == 1:  # Pow(x...) + d
+            return 'לא זוגית ולא אי זוגית'
+        if expr.args[1].args[1].is_Rational:  # root(x^2...) + d
+            if expr.args[1].args[0].coeff(x ** 2) != 0 and expr.args[1].args[0].coeff(x) != 0:
+                return 'לא זוגית ולא אי זוגית'
+            elif expr.args[1].args[0].coeff(x ** 2) != 0 and expr.args[1].args[0].coeff(x) == 0:
+                return 'זוגית'
+            else:
+                if expr.args[1].args[1].denominator % 2 == 0:
+                    return 'לא זוגית ולא אי זוגית'
+                else:
+                    return 'אי זוגית'
+    if expr.has(log) or expr.has(ln):
+        if degree(expr.args[0]) == 2:  # log(x^2...)
+            if expr.args[0].coeff(x) == 0:
+                return 'זוגית'
+            else:
+                return 'לא זוגית ולא אי זוגית'
+        if degree(expr.args[0]) == 1:  # log(x...)
+            return 'לא זוגית ולא אי זוגית'
+    if len(expr.args) > 1 and (expr.args[1].has(log) or expr.args[1].has(ln)):
+        if degree(expr.args[1].args[0]) == 2:  # log(x^2...) + d
+            if expr.args[1].args[0].coeff(x) == 0:
+                return 'זוגית'
+            else:
+                return 'לא זוגית ולא אי זוגית'
+        if degree(expr.args[1].args[0]) == 1:  # log(x...) + d
+            return 'לא זוגית ולא אי זוגית'
+
+    return None
+
+
+def get_answers_for_odd_even(expr, x, domains):
+    if len(domains) == 0:
+        return 'לא זוגית ולא אי זוגית'
+
+    special_cases = odd_even_special_cases(expr, x)
+    if special_cases is not None:
+        return special_cases
+
+    rand_value = (domains[0][0] + domains[0][1]) / 2
+    is_even = len(solve(expr - expr.subs(x, -x))) == 0 and \
+              expr.subs(x, rand_value) == expr.subs(x, -rand_value)
+    is_odd = len(solve(expr + expr.subs(x, -x))) == 0 and \
+             expr.subs(x, rand_value) == -expr.subs(x, -rand_value)
+    if is_even and is_odd:
+        return 'גם זוגית וגם אי זוגית'
+    elif is_even:
+        return 'זוגית'
+    elif is_odd:
+        return 'אי זוגית'
+    else:
+        return 'לא זוגית ולא אי זוגית'
+
+
+def rec_calc_evaluation(to_calc):
+    if type(to_calc) == Mul:
+        ret = '('
+        for arg in to_calc.args:
+            ret += rec_calc_evaluation(arg) + '*'
+        ret = ret[:-1]
+        return ret + ')'
+    elif type(to_calc) == Pow:
+        base = rec_calc_evaluation(to_calc.args[0])
+        expo = rec_calc_evaluation(to_calc.args[1])
+        return f'{base}**{expo}'
+    elif type(to_calc) == Add:
+        ret = '('
+        for arg in to_calc.args:
+            ret += rec_calc_evaluation(arg) + '+'
+        ret = ret[:-1]
+        return ret + ')'
+    elif type(to_calc) == Rational:
+        return f'{to_calc.p}/{to_calc.q}'
+    else:
+        return f'({to_calc})'
+
+
+def generate_random_answer_symmetry(options, expr, x):
+    fake_ans = random.choice(options)
+    too_long_trigger = 5
+    while fake_ans in options:
+        choice = random.choice(options)
+        fake_ans = choice + random.uniform(-3, 3)
+        if too_long_trigger == 0:
+            return round(fake_ans, 3), random.choice(['סימטריה', 'אסימטריה'])
+        too_long_trigger -= 1
+    return round(fake_ans, 3), random.choice(['סימטריה', 'אסימטריה'])
+
+
+def generate_fake_answers_symmetry(real_options, expr, x):
+    options, desc = real_options
+    real_ans = round(random.choice(options), 3) if len(options) > 0 else None, desc
+    if len(options) != 0:
+        answer_1 = None, 'אין סימטריה'
+        answer_2 = generate_random_answer_symmetry(options, expr, x)
+        answer_3 = generate_random_answer_symmetry(options, expr, x)
+        return real_ans, answer_1, answer_2, answer_3
+    else:
+        options = [round(random.uniform(-20, 20), 3) for _ in range(20)]
+        answer_1 = generate_random_answer_symmetry(options, expr, x)
+        answer_2 = generate_random_answer_symmetry(options, expr, x)
+        answer_3 = generate_random_answer_symmetry(options, expr, x)
+        return real_ans, answer_1, answer_2, answer_3
+
+
+def generate_random_answer_inflection(real_points, expr, x, domains):
+    def check_in_range(val):
+        for dom in domains:
+            if dom[0] < val < dom[1]:
+                return True
+        return False
+
+    fake_ans = -inf
+    too_long_trigger = 5
+    while fake_ans in real_points or not check_in_range(fake_ans):
+        choice = random.choice(real_points)
+        fake_ans = choice * random.randint(-2, 2)
+        if too_long_trigger == 0:
+            return round(fake_ans, 3), round(choice * fake_ans, 3)
+        too_long_trigger -= 1
+    try:
+        y_val = round(float(N(expr.subs(x, fake_ans))), 3)
+        return round(fake_ans, 3), y_val
+    except:
+        return round(fake_ans, 3), round(random.uniform(-2, 2) * fake_ans, 3)
+
+
+def generate_fake_answers_inflection(real_points, expr, x, domains):
+    real_ans = random.choice(real_points) if len(real_points) > 0 else None
+    if real_ans is not None:
+        real_ans = (real_ans, round(float(N(expr.subs(x, real_ans))), 3))
+    else:
+        real_ans = 'אין נקודות פיתול'
+    if len(real_points) != 0:
+        answer_1 = 'אין נקודות פיתול'
+        answer_2 = generate_random_answer_inflection(real_points, expr, x, domains)
+        answer_3 = generate_random_answer_inflection(real_points, expr, x, domains)
+        return real_ans, answer_1, answer_2, answer_3
+    else:
+        options = [round(random.uniform(-20, 20), 3) for _ in range(20)]
+        answer_1 = generate_random_answer_inflection(options, expr, x, domains)
+        answer_2 = generate_random_answer_inflection(options, expr, x, domains)
+        answer_3 = generate_random_answer_inflection(options, expr, x, domains)
+        return real_ans, answer_1, answer_2, answer_3
+
+
+def generate_random_answer_convex_concave(min_val, max_val, fake_min, fake_max):
+    temp_max_val = max_val
+    temp_min_val = min_val
+    if max_val == inf:
+        temp_max_val = fake_min
+    if min_val == -inf:
+        temp_min_val = fake_max
+    number_of_splits = random.choice([2, 3, 4])
+    all_splits = sorted([temp_min_val, temp_max_val] +
+                        [round(random.uniform(temp_min_val, temp_max_val), 3) for _ in range(number_of_splits)])
+    all_splits = list(map(lambda elem: max_val if elem == temp_max_val else (min_val if elem == temp_min_val else elem),
+                          all_splits))
+    fake_convex = []
+    fake_concave = []
+    for i in range(number_of_splits + 1):
+        if random.choice([True, False]):
+            fake_convex.append((all_splits[i], all_splits[i + 1]))
+        else:
+            fake_concave.append((all_splits[i], all_splits[i + 1]))
+    return '\u222A: {convex}\n\u2229: {concave}'.format(convex=fake_convex, concave=fake_concave)
+
+
+def return_domain_to_inf(domains, bottom_val, top_val, real_bottom, real_top):
+    new_domains = []
+    for dom in domains:
+        new_dom = list(dom)
+        if dom[0] == bottom_val:
+            new_dom[0] = real_bottom
+        if dom[1] == top_val:
+            new_dom[1] = real_top
+        new_domains.append(tuple(new_dom))
+    return new_domains
+
+
+def generate_fake_answers_convex_concave(real_regions, domains):
+    min_val = inf
+    max_val = -inf
+    for dom in domains:
+        if dom[0] < min_val:
+            min_val = dom[0]
+        if dom[1] > max_val:
+            max_val = dom[1]
+    convex, concave = real_regions['convex'], real_regions['concave']
+    convex = return_domain_to_inf(convex, -100, 100, min_val, max_val)
+    concave = return_domain_to_inf(concave, -100, 100, min_val, max_val)
+    if len(domains) != 1:
+        answer_1 = generate_random_answer_convex_concave(min_val, max_val, -100, 100)
+        answer_2 = generate_random_answer_convex_concave(min_val, max_val, -100, 100)
+        answer_3 = generate_random_answer_convex_concave(min_val, max_val, -100, 100)
+        return '\u222A: {convex}\n\u2229: {concave}'.format(convex=convex, concave=concave), \
+               answer_1, \
+               answer_2, \
+               answer_3
+    else:
+        answer_1 = generate_random_answer_convex_concave(min_val, max_val, -10, 10)
+        answer_2 = generate_random_answer_convex_concave(min_val, max_val, -10, 10)
+        answer_3 = generate_random_answer_convex_concave(min_val, max_val, -10, 10)
+        return '\u222A: {convex}\n\u2229: {concave}'.format(convex=convex, concave=concave), \
+               answer_1, \
+               answer_2, \
+               answer_3
+
+
+def generate_fake_answers_odd_even(ans):
+    all_options = {'גם זוגית וגם אי זוגית', 'זוגית', 'אי זוגית', 'לא זוגית ולא אי זוגית'}
+    fake_ans = []
+    for i in range(3):
+        fake_ans.append(random.choice(list(all_options - {ans} - set(fake_ans))))
+    return fake_ans
+
 
 def get_questions(unit):
     intMap = {'linear': 0, 'quadratic': 0, 'polynomial': 0, '2exp': 1, '3exp': 1, 'eexp': 1, 'log': 2, 'sin': 3,
@@ -992,53 +1807,145 @@ def get_questions(unit):
                     preamble, funcString(p, c, b), result1, result2,
                     result3,
                     result4, 0)
+            elif ('symmetry' in question):
+                if c == 2:
+                    b = e
+                q = make_symmetry_question(b, c, p)
+            elif ('inflection' in question):
+                if c == 3 or c == 4 or c == 5 or c == 6:
+                    p = [random.randint(int(params[2 * i]), int(params[2 * i + 1])) for i in range(3)]
+                if c == 2:
+                    b = e
+                q = make_inflection_question(b, c, p)
+            elif ('convexConcave' in question):
+                if c == 3 or c == 4 or c == 5 or c == 6:
+                    p = [random.randint(int(params[2 * i]), int(params[2 * i + 1])) for i in range(3)]
+                if c == 2:
+                    b = e
+                q = make_convex_concave_question(b, c, p)
+            elif ('oddEven' in question):
+                if c == 2:
+                    b = e
+                q = make_odd_even_question(b, c, p)
             questions.append(q)
 
     return change_order(questions)
 
+def make_odd_even_question(b, c, p):
+    domain = makeDomain(p, c)
+    domain_to_use = []
+    for dom in domain:
+        dom_to_add = list(dom)
+        if dom_to_add[0] == -inf:
+            dom_to_add[0] = -100
+        if dom_to_add[1] == inf:
+            dom_to_add[1] = 100
+        domain_to_use.append(tuple(dom_to_add))
 
-@app.route('/getOnlineStudentsOfTeacher')
-def getOnlineStudentsOfTeacher():
-    teacher = request.args.get('teacher')
-    if not isTeacher(teacher) or not isLogin(teacher):
-        return 'Error: Either user is not a teacher or is not logged in', 400
-    return getOnlineStudentsOfTeacher_business(teacher)
+    expr, x = make_sympy_function(p, c, b)
+    ans = get_answers_for_odd_even(expr, x, domain_to_use)
+    fake_ans = generate_fake_answers_odd_even(ans)
+    real = ans + ' ' + funcString(p, c, b) + 'הפונקציה '
+    answer_1 = fake_ans[0] + ' ' + funcString(p, c, b) + 'הפונקציה '
+    answer_2 = fake_ans[1] + ' ' + funcString(p, c, b) + 'הפונקציה '
+    answer_3 = fake_ans[2] + ' ' + funcString(p, c, b) + 'הפונקציה '
+    preamble = 'בחר את בטענה הנכונה בהקשר לזוגיות ואי זוגיות הפונקציה'
+
+    print(expr)
+
+    q = (preamble,
+         funcString(p, c, b),
+         real,
+         answer_1,
+         answer_2,
+         answer_3,
+         0)
+    return q
 
 
-# This function returns all online students from all of {teacher}'s classes.
-#
-# Return format:
-# Dictionary of - student names -> list of class names
-# For example: {'john': ['class1', 'class2'], 'doe': []}
-# (Both john and doe are online, and have been approved to the class)
-def getOnlineStudentsOfTeacher_business(teacher):
-    with db_session:
-        classes = Cls.select(lambda c: c.teacher.name == teacher)[:].to_list()
-        classes_users = []
-        for cls in classes:
-            cls_users = Cls_User.select(lambda cu: (cu.cls == cls) and cu.approved)[:].to_list()
-            classes_users.extend(cls_users)
+def make_convex_concave_question(b, c, p):
+    expr, x = make_sympy_function(p, c, b)
+    if c == 3 or c == 4:
+        domain = [(-pi, pi)]
+    else:
+        domain = makeDomain(p, c)
+    domain_to_use = []
+    for dom in domain:
+        dom_to_add = list(dom)
+        if dom_to_add[0] == -inf:
+            dom_to_add[0] = -100
+        if dom_to_add[1] == inf:
+            dom_to_add[1] = 100
+        domain_to_use.append(tuple(dom_to_add))
+    diff_1 = diff(expr, x)
+    diff_2 = diff(diff_1, x)
 
-        ret_dic = {}
-        for cls_user in classes_users:
-            if cls_user.user.name not in ret_dic:
-                ret_dic[cls_user.user.name] = []
-            if cls_user.user.name in activeControllers:
-                ret_dic[cls_user.user.name].append(cls_user.cls.name)
+    print(expr)
 
-        ret = []
-        i = 0
-        for name in ret_dic:
-            single_obj = dict()
-            single_obj["id"] = i
-            single_obj["username"] = name
-            # single_obj["secondary"] = ret_dic[name]
-            single_obj["isLoggedIn"] = len(ret_dic[name]) > 0
-            ret.append(single_obj)
-            # ret.append({'id': i, 'primary': name, 'secondary': ret_dic[name], 'online': len(ret_dic[name]) > 0})
-            i += 1
+    points = get_possible_inflection_points(diff_2, x, domain_to_use)
+    ans = get_answers_for_concave_convex(points, domain_to_use, diff_2, x)
+    real, answer_1, answer_2, answer_3 = generate_fake_answers_convex_concave(ans, domain)
 
-    return ret
+    preamble = 'בחר בתחומי הקמירות והקעירות של הפונקציה'
+    q = (preamble,
+         funcString(p, c, b),
+         real,
+         answer_1,
+         answer_2,
+         answer_3,
+         0)
+    return q
+
+
+def make_inflection_question(b, c, p):
+    expr, x = make_sympy_function(p, c, b)
+    if c == 3 or c == 4:
+        domain = [(-pi, pi)]
+    else:
+        domain = makeDomain(p, c)
+    diff_1 = diff(expr, x)
+    diff_2 = diff(diff_1, x)
+
+    print(expr)
+
+    points = get_possible_inflection_points(diff_2, x, domain)
+    ans = get_answers_for_inflection_points(points, domain, diff_2, x)
+    real, answer_1, answer_2, answer_3 = generate_fake_answers_inflection(ans, expr, x, domain)
+
+    preamble = 'בחר בנקודת פיתול אפשרית של הפונקציה'
+    q = (preamble,
+         funcString(p, c, b),
+         real if real is not None else 'אין נקודות פיתול',
+         answer_1,
+         answer_2,
+         answer_3,
+         0)
+    return q
+
+
+def make_symmetry_question(b, c, p):
+    expr, x = make_sympy_function(p, c, b)
+    if c == 3 or c == 4:
+        domain = [(-pi, pi)]
+    else:
+        domain = makeDomain(p, c)
+    c_symbol = symbols('c')
+
+    print(expr)
+
+    ans = get_answers_for_symmetry_asymmetry(expr, x, c_symbol, domain)
+    real, answer_1, answer_2, answer_3 = generate_fake_answers_symmetry(ans, expr, x)
+
+    preamble = 'בחר בציר סימטריה אנכי אפשרי של הפונקציה'
+    q = (preamble,
+         funcString(p, c, b),
+         real,
+         answer_1,
+         answer_2,
+         answer_3,
+         0)
+    return q
+
     
 def make_pos_neg_question(b, c, p):
     pos, neg = makePosNeg(p, c, b)
@@ -1222,7 +2129,7 @@ def get_max_unit(unit, user):
     return maxAttempt
 
 
-def addQuestions(className, unitName, username):
+def addQuestions_buisness(className, unitName, username):
     try:
         with db_session:
             unit = Unit[unitName, Cls[className]]
@@ -1306,11 +2213,12 @@ def startUnit():
     username = request.args.get('username')
     if not isLogin(username):
         return "user " + username + "not logged in.", 400
-    return startUnit(className, unitName, username)
+    return startUnit_buisness(className, unitName, username)
 
+def startUnit_buisness(className, unitName, username):
 
-def startUnit(className, unitName, username):
-    return addQuestions(className, unitName, username)
+    return addQuestions_buisness(className, unitName, username)
+
 
 
 # now all this does is add 10 questions to the active unit
@@ -1322,6 +2230,13 @@ def individualStats():
     studentUsername = request.args.get('usernameS')
     if not isLogin(teacherUsername):
         return "user " + teacherUsername + "not logged in.", 400
+    try:
+        return individualStats_buisness(className, unitName, teacherUsername, studentUsername)
+    except Exception as e:
+        print(e)
+        return str(e), 400
+
+def individualStats_buisness(className, unitName, teacherUsername, studentUsername):
     try:
         with db_session:
             ret = dict()
@@ -1355,7 +2270,7 @@ def individualStats():
         return str(e), 400
 
 
-def getActiveUnits(className, unitName, username):  # this is for dab
+def getActiveUnits_buisness(className, unitName, username): #this is for dab
 
     try:
         with db_session:
@@ -1399,8 +2314,8 @@ def getAllActiveUnits2(className, unitName):
         print(e)
         return str(e), 400
 
-
-def getAllActiveUnits_for_tests(className, unitName):
+#needs to be deleted
+def getAllActiveUnits_buisness(className, unitName):
     try:
         with db_session:
             active_units = ActiveUnit.select(lambda au: au.unit.cls.name == className and au.unit.name == unitName)[:]
@@ -1513,6 +2428,7 @@ def getStats():
     if not isLogin(username):
         return "user " + username + "not logged in.", 400
 
+
     return jsonify(getAllActiveUnits(className, unitName)), 200
 
 @app.route('/getStudentStats')
@@ -1610,7 +2526,7 @@ def submitQuestion_buisness(user, unit_name, class_name, question_number, ans_nu
             question.solve_time = current_time_millis_str
 
             if (not activeUnit.currentQuestion < activeUnit.quesAmount):
-                addQuestions(class_name, unit_name, user)
+                addQuestions_buisness(class_name, unit_name, user)
 
             if question.correct_ans == ans_number:
                 question.solved_correctly = True
@@ -1644,12 +2560,24 @@ def quitActiveUnit():
     user = request.args.get('username')
     unit_name = request.args.get('unitName')
     class_name = request.args.get('className')
-    with db_session:
-        unit = Unit[unit_name, Cls[class_name]]
-        attempt = get_max_unit(unit, user)
-        activeUnit = ActiveUnit[unit, user, attempt]
-        activeUnit.inProgress = False
-    return 'done'
+    try:
+        return quitActiveUnit_buisness(user, unit_name, class_name)
+    except Exception as e:
+        print(e)
+        return str(e), 400
+
+def quitActiveUnit_buisness(user, unit_name, class_name):
+    try:
+        with db_session:
+            unit = Unit[unit_name, Cls[class_name]]
+            attempt = get_max_unit(unit, user)
+            activeUnit = ActiveUnit[unit, user, attempt]
+            activeUnit.inProgress = False
+            return 'done'
+    except Exception as e:
+        print(e)
+        return str(e), 400
+
 
 
 def makePoly(p):
@@ -1817,9 +2745,10 @@ def makeDomain(params, c=0):
             r.append((inters[i], inters[i + 1]))
         return r
     elif c == 7:
-        p2 = p[int(len(p) / 2):]
+        p2 = params[int(len(params) / 2):]
         poly = makePoly(p2)
         zeroes = sorted([x[0] for x in makeIntersections(poly)])
+        print(params,p2, zeroes)
         if len(zeroes) == 0:
             return [(float('-inf'), float('inf'))]
         r = []
@@ -1980,19 +2909,20 @@ def derive(params, c=0, b=math.e):
     if c == 6:
         return lambda x: -1 / (makeFunc(params[:-1] + [0], 3)(x) ** 2)
     if c == 7:
-        p1 = p[:int(len(p) / 2)]
-        p2 = p[int(len(p) / 2):]
+        p1 = params[:int(len(params) / 2)]
+        p2 = params[int(len(params) / 2):]
         poly1 = makePoly(p1)
         poly2 = makePoly(p2)
         return lambda x: (derive(p1)(x) * poly2(x) - poly1(x) * derive(p2)(x)) / (poly2(x) ** 2) if poly2(
             x) != 0 else None
     if c == 8:
-        poly = makePoly(p[:-1])
-        der = derive(p[:-1])
+        poly = makePoly(params[:-1])
+        der = derive(params[:-1])
 
         def rootElement(x):
             if poly(x) > 0:
                 return der(x) * (1 / b) * math.pow(poly(x), 1 / b - 1)
+            print("ROOTNONE", funcString(p, 8, b), x)
             return None
 
         return rootElement
@@ -2134,6 +3064,8 @@ def makeIncDec(p, c=0, b=math.e):
             dec_ranges.append((sorted_extremes[-1][0], float('inf')))
         else:
             inc_ranges.append((sorted_extremes[-1][0], float('inf')))
+
+    print(inc_ranges, dec_ranges)
 
     return inc_ranges, dec_ranges
 
@@ -2295,6 +3227,7 @@ def makeAsym(p, c=0, b=math.e):
         if f(-10000):
             l.add((float('-inf'), round(f(-10000), 2)) if abs(f(-10000)) < 1000 else (
                 float('-inf'), (float('inf')) if f(-10000) > 0 else (float('-inf'), float('-inf'))))
+        print(s,l)
         return list(s), list(l)
 
 
@@ -2581,6 +3514,7 @@ print("integral from",r1,"to",r2,": ",definite_integral_question(b,c,a,(r1,r2),p
 
 
 
+
 # sym = getSymmetry(p, c)
 # print("symmetry: " + ("f(x)=" + str(sym[0]) + "*f(-x+" + str(2 * sym[1]) + ")") if sym else sym)
 
@@ -2741,7 +3675,7 @@ class studentCont(userCont):
     #     return "getUnit", Uname
 
     def startUnit(self, Uname):
-        return "startUnit", Uname
+        return "startUnit_buisness", Uname
 
     def getQuestion(self, Uname, Qnum):
         return "getQuestion", Uname, Qnum
