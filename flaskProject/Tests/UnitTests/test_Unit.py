@@ -439,7 +439,8 @@ class MyTestCase(unittest.TestCase):
             app.register_buisness('teacher1', 'password', 1)
             app.login_buisness('teacher1', 'password')
             res = app.getAllActiveUnits_buisness('class1', 'unit1')
-            self.assertEqual(0, len(res.json), 'Retrieved a active units')
+            print(res)
+            self.assertEqual(0, len(res), 'Retrieved a active units')
 
     def test_getAllActiveUnits_no_unit_failure(self):
         with app.app.app_context():
@@ -448,7 +449,7 @@ class MyTestCase(unittest.TestCase):
             app.login_buisness('teacher1', 'password')
             app.openClass_buisness('teacher1', 'class1')
             res = app.getAllActiveUnits_buisness('class1', 'unit1')
-            self.assertEqual(0, len(res.json), 'Retrieved a active units')
+            self.assertEqual(0, len(res), 'Retrieved a active units')
 
 
 if __name__ == '__main__':

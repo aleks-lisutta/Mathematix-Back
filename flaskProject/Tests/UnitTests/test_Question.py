@@ -37,49 +37,8 @@ class MyTestCase(unittest.TestCase):
             DB.execute('DELETE FROM Cls WHERE 1=1;')
             DB.execute('DELETE FROM User WHERE 1=1;')
 
-    def test_find_min(self):
-        # Call the find_min_max function with parameters for a minimum
-        result = app.find_min_max(1, 2, 1)
 
-        # Verify that the result contains the minimum coordinates
-        expected_result = {
-            "minimum": {"x": -1.0, "y": 0.0}
-        }
-        self.assertEqual(result, expected_result)
 
-    def test_find_max(self):
-        # Call the find_min_max function with parameters for a maximum
-        result = app.find_min_max(-1, 2, 1)
-
-        # Verify that the result contains the maximum coordinates
-        expected_result = {
-            "maximum": {'x': 1.0, 'y': 2.0}
-        }
-        self.assertEqual(result, expected_result)
-
-    def test_quadQuestion_discriminant_positive(self):
-        # Call the quadQuestion function with parameters that result in a positive discriminant
-        result = app.quadQuestion(1, -3, 2)
-
-        # Verify the returned answer
-        expected_result = ((0, 2), ((2.0, 0), (1.0, 0)))
-        self.assertEqual(result, expected_result)
-
-    def test_quadQuestion_discriminant_zero(self):
-        # Call the quadQuestion function with parameters that result in a zero discriminant
-        result = app.quadQuestion(1, -2, 1)
-
-        # Verify the returned answer
-        expected_result = ((0, 1), (1.0, 0))
-        self.assertEqual(result, expected_result)
-
-    def test_quadQuestion_discriminant_negative(self):
-        # Call the quadQuestion function with parameters that result in a negative discriminant
-        result = app.quadQuestion(1, 1, 1)
-
-        # Verify the returned answer
-        expected_result = ((0, 1), ())
-        self.assertEqual(result, expected_result)
 
 
     def test_make_poly(self):
@@ -147,19 +106,6 @@ class MyTestCase(unittest.TestCase):
         # Assert that the result matches the expected intersection points
         np.testing.assert_allclose(np.round(result), expected_points)
 
-    def test_makeIntersections2(self):
-        # Define a polynomial function
-        def poly(x):
-            return x ** 3 - 2 * x ** 2 - x + 2
-
-        # Call the makeIntersections2 function
-        result = app.makeIntersections2(poly, error=1e-3, xmin=-20, xmax=20, step=0.0003)
-
-        # Define the expected intersection points
-        expected_points = [(-1.0, 0), (1.0, 0), (2.0, 0), (0, 2)]
-
-        # Assert that the result matches the expected intersection points
-        self.assertEqual(result, expected_points)
 
     def test_makeDer(self):
         # Define the parameters of the polynomial

@@ -1064,49 +1064,6 @@ def get_questions(unit):
 
     return change_order(questions)
 
-
-@app.route('/getOnlineStudentsOfTeacher')
-def getOnlineStudentsOfTeacher():
-    teacher = request.args.get('teacher')
-    if not isTeacher(teacher) or not isLogin(teacher):
-        return 'Error: Either user is not a teacher or is not logged in', 400
-    return getOnlineStudentsOfTeacher_business(teacher)
-
-
-# This function returns all online students from all of {teacher}'s classes.
-#
-# Return format:
-# Dictionary of - student names -> list of class names
-# For example: {'john': ['class1', 'class2'], 'doe': []}
-# (Both john and doe are online, and have been approved to the class)
-def getOnlineStudentsOfTeacher_business(teacher):
-    with db_session:
-        classes = Cls.select(lambda c: c.teacher.name == teacher)[:].to_list()
-        classes_users = []
-        for cls in classes:
-            cls_users = Cls_User.select(lambda cu: (cu.cls == cls) and cu.approved)[:].to_list()
-            classes_users.extend(cls_users)
-
-        ret_dic = {}
-        for cls_user in classes_users:
-            if cls_user.user.name not in ret_dic:
-                ret_dic[cls_user.user.name] = []
-            if cls_user.user.name in activeControllers:
-                ret_dic[cls_user.user.name].append(cls_user.cls.name)
-
-        ret = []
-        i = 0
-        for name in ret_dic:
-            single_obj = dict()
-            single_obj["id"] = i
-            single_obj["username"] = name
-            # single_obj["secondary"] = ret_dic[name]
-            single_obj["isLoggedIn"] = len(ret_dic[name]) > 0
-            ret.append(single_obj)
-            # ret.append({'id': i, 'primary': name, 'secondary': ret_dic[name], 'online': len(ret_dic[name]) > 0})
-            i += 1
-
-    return ret
     
 def make_pos_neg_question(b, c, p):
     pos, neg = makePosNeg(p, c, b)
@@ -1476,7 +1433,7 @@ def getAllActiveUnits2(className, unitName):
         return str(e), 400
 
 #needs to be deleted
-def getAllActiveUnits_for_tests(className, unitName):
+def getAllActiveUnits_buisness(className, unitName):
     try:
         with db_session:
             active_units = ActiveUnit.select(lambda au: au.unit.cls.name == className and au.unit.name == unitName)[:]
@@ -1906,9 +1863,10 @@ def makeDomain(params, c=0):
             r.append((inters[i], inters[i + 1]))
         return r
     elif c == 7:
-        p2 = p[int(len(p) / 2):]
+        p2 = params[int(len(params) / 2):]
         poly = makePoly(p2)
         zeroes = sorted([x[0] for x in makeIntersections(poly)])
+        print(params,p2, zeroes)
         if len(zeroes) == 0:
             return [(float('-inf'), float('inf'))]
         r = []
@@ -2069,19 +2027,20 @@ def derive(params, c=0, b=math.e):
     if c == 6:
         return lambda x: -1 / (makeFunc(params[:-1] + [0], 3)(x) ** 2)
     if c == 7:
-        p1 = p[:int(len(p) / 2)]
-        p2 = p[int(len(p) / 2):]
+        p1 = params[:int(len(params) / 2)]
+        p2 = params[int(len(params) / 2):]
         poly1 = makePoly(p1)
         poly2 = makePoly(p2)
         return lambda x: (derive(p1)(x) * poly2(x) - poly1(x) * derive(p2)(x)) / (poly2(x) ** 2) if poly2(
             x) != 0 else None
     if c == 8:
-        poly = makePoly(p[:-1])
-        der = derive(p[:-1])
+        poly = makePoly(params[:-1])
+        der = derive(params[:-1])
 
         def rootElement(x):
             if poly(x) > 0:
                 return der(x) * (1 / b) * math.pow(poly(x), 1 / b - 1)
+            print("ROOTNONE", funcString(p, 8, b), x)
             return None
 
         return rootElement
@@ -2223,6 +2182,8 @@ def makeIncDec(p, c=0, b=math.e):
             dec_ranges.append((sorted_extremes[-1][0], float('inf')))
         else:
             inc_ranges.append((sorted_extremes[-1][0], float('inf')))
+
+    print(inc_ranges, dec_ranges)
 
     return inc_ranges, dec_ranges
 
@@ -2384,6 +2345,7 @@ def makeAsym(p, c=0, b=math.e):
         if f(-10000):
             l.add((float('-inf'), round(f(-10000), 2)) if abs(f(-10000)) < 1000 else (
                 float('-inf'), (float('inf')) if f(-10000) > 0 else (float('-inf'), float('-inf'))))
+        print(s,l)
         return list(s), list(l)
 
 

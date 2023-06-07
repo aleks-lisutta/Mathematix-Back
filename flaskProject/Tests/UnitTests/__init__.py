@@ -48,6 +48,7 @@ def initiate_database(db):
         correct_ans = Required(int)
         active_unit = Required('ActiveUnit', reverse='questions')
         solved_correctly = Optional(bool)
+        solve_time = Optional(str)
         PrimaryKey(active_unit, id)
 
     class ActiveUnit(db.Entity):
