@@ -112,6 +112,7 @@ activeControllers = {}
 def hello_world():  # put application's code here
     return 'Hello World!'
 
+flask run --host=0.0.0.0
 
 def isLogin(username):
     if username not in activeControllers.keys():
