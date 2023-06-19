@@ -2146,6 +2146,12 @@ def addQuestions_buisness(className, unitName, username):
     try:
         with db_session:
             unit = Unit[unitName, Cls[className]]
+            c = 1
+            print("AQB")
+            tu = unit
+            while tu.next:
+                c += 1
+                tu = Unit[tu.next, Cls[className]]
             user = User[username]
 
             maxAttempt = get_max_unit(unit, user)
@@ -2172,7 +2178,7 @@ def addQuestions_buisness(className, unitName, username):
                 id += 1
 
             commit()
-            return jsonify(unit.maxTime)
+            return jsonify(unit.maxTime, str(c))
     except Exception as e:
         print(e)
         return str(e), 400
@@ -2893,8 +2899,7 @@ def deriveString(p, c=0, b=math.e):
 
         # return f"y=\\sqrt[{b}]{{{polySrting(p[:-1])}}}"
         denominator = funcString(p, 8, b)
-        return f"y'=\\frac{{{innerDerive}}}{{{'2'+denominator[2:]}}}"
-
+        return f"y'=\\frac{{{innerDerive}}}{{{'2' + denominator[2:]}}}"
 
 
 def derive(params, c=0, b=math.e):
