@@ -2005,10 +2005,18 @@ def make_intersection_question(b, c, f, p):
     else:
         dom = makeDomain(p, c)
         points = makeIntersections(f, c, dom)
-        if (not f(0) is None) and abs(f(0)) >= 0.001:
-            points.append((0.0, float(round(f(0), 2))))
+
+        intersect_with_y_axis = False
+        for item in points:
+            if item[0] == 0:
+                intersect_with_y_axis = True
+        print("points:",points)
+        if (not f(0) is None):
+            if (abs(f(0)) >= 0.001) or (not intersect_with_y_axis):
+                points.append((0.0, float(round(f(0), 2))))
         else:
-            points = "אין נקודות חיתוך"
+            if len(points) == 0:
+                points = "אין נקודות חיתוך"
 
     preamble = "מצא את נקודות החיתוך עם הצירים:"
     ans2 = [(random.randint(-10000, 10000) / 1000, 0.0) for i in range(len(p) - 1)]
@@ -2154,19 +2162,22 @@ def addQuestions_buisness(className, unitName, username):
                 tu = Unit[tu.next, Cls[className]]
             user = User[username]
 
+            print("step1")
             maxAttempt = get_max_unit(unit, user)
             if (maxAttempt == 0):
                 ActiveUnit(inProgress=True, unit=unit, student=user, attempt=maxAttempt + 1, currentQuestion=0,
                            consecQues=0, quesAmount=0, totalCorrect=0, grade=0)
                 maxAttempt += 1
             active = ActiveUnit[unit, user, (maxAttempt)]
+            print("step2")
             if not active.inProgress:
                 active = ActiveUnit(inProgress=True, unit=unit, student=user, attempt=maxAttempt + 1, currentQuestion=0,
                                     consecQues=0, quesAmount=0, totalCorrect=0, grade=0)
                 maxAttempt += 1
+            print("step3")
 
             if (active.currentQuestion < active.quesAmount):
-                return jsonify(unit.maxTime)
+                return jsonify(unit.maxTime,str(c))
             id = active.quesAmount + 1
             active.quesAmount += 10
             for single_question in get_questions(unit):
@@ -2176,6 +2187,7 @@ def addQuestions_buisness(className, unitName, username):
                          answer4=str(single_question[5]),
                          active_unit=ActiveUnit[unit, user, maxAttempt])
                 id += 1
+            print("step4")
 
             commit()
             return jsonify(unit.maxTime, str(c))
@@ -2902,6 +2914,7 @@ def deriveString(p, c=0, b=math.e):
         return f"y'=\\frac{{{innerDerive}}}{{{'2' + denominator[2:]}}}"
 
 
+
 def derive(params, c=0, b=math.e):
     if c == 0:
         return makeFunc(makeDer(params))
@@ -3516,8 +3529,8 @@ def getStudentLessonQuestionsB(className, student, unitName):
 # [random.randint(params[2*i], params[2*i+1]) for i in range(int(len(params)/2))]
 
 
-p = [4, 10, -4, 6]
-c = 2
+p = [0, 0, -4, 0]
+c = 0
 
 b = 2
 a = makeFunc(p, c=c, b=b)
