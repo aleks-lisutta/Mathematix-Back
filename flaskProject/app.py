@@ -17,9 +17,9 @@ import numpy as np
 from math import inf, e
 # import time
 #
-from sympy import symbols, Poly, Pow, ln, sin, cos, tan, cot, degree, diff, solve, log, N, pi, Add, Rational, Mul, sign, I,Union, Interval, root, S, sympify
+from sympy import symbols, Poly, Pow, ln, sin, cos, tan, cot, degree, diff, solve, log, N, pi, Add, Rational, Mul, sign, \
+    I, Union, Interval, root, S, sympify
 from sympy.calculus.util import continuous_domain
-
 
 app = Flask(__name__)
 app.logger.setLevel(logging.DEBUG)
@@ -227,8 +227,6 @@ def login_buisness(username, password):
         return False
 
 
-
-
 @app.route('/changePassword')
 def change_password():
     username = request.args.get('username')
@@ -259,6 +257,7 @@ def logout_buisness(username):
     if username in activeControllers.keys():
         activeControllers.pop(username)
     return username + " " + str(len(activeControllers))
+
 
 @app.route('/getOnlineStudentsOfTeacher')
 def getOnlineStudentsOfTeacher():
@@ -302,6 +301,7 @@ def getOnlineStudentsOfTeacher_business(teacher):
             i += 1
 
     return ret
+
 
 @app.route('/openClass')
 def openClass():
@@ -521,8 +521,6 @@ def getAllClassesNotIn():
         return jsonify(ret)
     except Exception as e:
         return str(e), 400
-
-
 
 
 def getAllClassesNotIn_Buisness(student):
@@ -839,6 +837,7 @@ def getClassesStudent():
     except Exception as e:
         return str(e), 400
 
+
 def getClassesStudent_buisness(student):
     try:
         with db_session:
@@ -867,6 +866,7 @@ def getClassesTeacher():
     except Exception as e:
         print(e)
         return str(e), 400
+
 
 def getClassesTeacher_buisness(teacher):
     try:
@@ -918,6 +918,7 @@ def getUnitDetails_buisness(className, unitName, teacherName):
         else:
             return ""
 
+
 def change_order(questions):
     questions_scrambled = list()
     for single_question in questions:
@@ -940,6 +941,7 @@ def change_order(questions):
                 single_question[2], 4, single_question[6])
         questions_scrambled.append(new_single_question)
     return questions_scrambled
+
 
 def parse_template(template):
     parts = template.split('_')
@@ -1009,7 +1011,8 @@ def func_value_question(domain, f, fString):
 
 
 def find_real_domain(p, c):
-    return [(round(x,2),round(y,2)) for x,y in makeDomain(p,c)]
+    return [(round(x, 2), round(y, 2)) for x, y in makeDomain(p, c)]
+
 
 def make_sympy_poly(p):
     x = symbols('x')
@@ -1753,7 +1756,7 @@ def generate_fake_answers_odd_even(ans):
 
 def get_questions(unit):
     intMap = {'linear': 0, 'quadratic': 0, 'polynomial': 0, '2exp': 1, '3exp': 1, 'eexp': 1, 'log': 2, 'sin': 3,
-              'cos': 4, 'tan': 5, 'cot': 6, 'rational': 7, 'root': 8}
+              'cos': 4, 'tan': 5, 'cot': 6, 'rational': 7, 'root': 8, '3root': 8}
     questions = list()
     for i in range(QUESTIONS_TO_GENERATE):
         question_type = []
@@ -1767,11 +1770,15 @@ def get_questions(unit):
             question_type, function_types, params = parse_template(unit.template)
         question = random.choice(question_type)
         if function_types in ['linear', 'quadratic', 'polynomial', '2exp', '3exp', 'eexp', 'log', 'sin', 'cos', 'tan',
-                              'cot', 'rational', 'root']:
+                              'cot', 'rational', 'root', '3root']:
             c = intMap[function_types]
             b = 2 if function_types == '2exp' else (3 if function_types == '3exp' else math.e)
-            if 'root':
+            if function_types == 'root':
                 b = 2
+            elif function_types == '3root':
+                b = 3
+            elif function_types == 'log':
+                b = math.e
             p = [random.randint(int(params[2 * i]), int(params[2 * i + 1])) for i in range(int(len(params) / 2))]
             f = makeFunc(p, c, b)
             q = ""
@@ -1830,6 +1837,7 @@ def get_questions(unit):
             questions.append(q)
 
     return change_order(questions)
+
 
 def make_odd_even_question(b, c, p):
     domain = makeDomain(p, c)
@@ -1946,7 +1954,7 @@ def make_symmetry_question(b, c, p):
          0)
     return q
 
-    
+
 def make_pos_neg_question(b, c, p):
     pos, neg = makePosNeg(p, c, b)
     preamble = "מצא תחומי חיוביות שליליות"
@@ -1957,7 +1965,9 @@ def make_pos_neg_question(b, c, p):
     i1, d1 = randFillPair(len(pos) + len(neg))
     result4 = (" חיוביות: " + str(i1) + " שליליות: " + str(d1) + " ")
     q = (
-        preamble, funcString(p, c, b), (" חיוביות: " + str(n1) if len(n1) else "אין תחומי שליליות" + " שליליות: " + str(p1) if len(p1) else "אין תחומי חיוביות" + " "), result2,
+        preamble, funcString(p, c, b), (
+            " חיוביות: " + str(n1) if len(n1) else "אין תחומי שליליות" + " שליליות: " + str(p1) if len(
+                p1) else "אין תחומי חיוביות" + " "), result2,
         result3,
         result4, 0)
     return q
@@ -1973,9 +1983,9 @@ def definite_integral_question(b, c, f, integral_range, p):
             ranges = [integral_range]
             break
         if integral_range[0] > d[0] and integral_range[1] > d[1]:
-            ranges.append((integral_range[0], d[1]-0.001))
+            ranges.append((integral_range[0], d[1] - 0.001))
         if integral_range[0] < d[0] and integral_range[1] < d[1]:
-            ranges.append((d[0]+0.001, integral_range[1]))
+            ranges.append((d[0] + 0.001, integral_range[1]))
 
     ans = 0
     for r in ranges:
@@ -1995,10 +2005,18 @@ def make_intersection_question(b, c, f, p):
     else:
         dom = makeDomain(p, c)
         points = makeIntersections(f, c, dom)
-        if (not f(0) is None) and abs(f(0)) >= 0.001:
-            points.append((0.0, float(round(f(0), 2))))
+
+        intersect_with_y_axis = False
+        for item in points:
+            if item[0] == 0:
+                intersect_with_y_axis = True
+        print("points:",points)
+        if (not f(0) is None):
+            if (abs(f(0)) >= 0.001) or (not intersect_with_y_axis):
+                points.append((0.0, float(round(f(0), 2))))
         else:
-            points = "אין נקודות חיתוך"
+            if len(points) == 0:
+                points = "אין נקודות חיתוך"
 
     preamble = "מצא את נקודות החיתוך עם הצירים:"
     ans2 = [(random.randint(-10000, 10000) / 1000, 0.0) for i in range(len(p) - 1)]
@@ -2037,7 +2055,9 @@ def make_incDec_question(b, c, p):
     i1, d1 = randFillPair(len(inc) + len(dec))
     result4 = (" עלייה: " + str(i1) + " ירידה: " + str(d1) + " ")
     q = (
-        preamble, funcString(p, c, b), (" עלייה: " + str(dec) if len(dec) else "אין תחומי ירידה" + " ירידה: " + str(inc) if len(inc) else "אין תחומי עלייה" + " "), result2,
+        preamble, funcString(p, c, b), (
+            " עלייה: " + str(dec) if len(dec) else "אין תחומי ירידה" + " ירידה: " + str(inc) if len(
+                inc) else "אין תחומי עלייה" + " "), result2,
         result3,
         result4, 0)
     return q
@@ -2121,6 +2141,7 @@ def randFillPair(n):
     inc.append((sort[-1], float('inf')))
     return inc, dec
 
+
 def get_max_unit(unit, user):
     maxAttempt = 0
     for activeU in ActiveUnit.select(unit=unit, student=user):
@@ -2133,21 +2154,30 @@ def addQuestions_buisness(className, unitName, username):
     try:
         with db_session:
             unit = Unit[unitName, Cls[className]]
+            c = 1
+            print("AQB")
+            tu = unit
+            while tu.next:
+                c += 1
+                tu = Unit[tu.next, Cls[className]]
             user = User[username]
 
+            print("step1")
             maxAttempt = get_max_unit(unit, user)
             if (maxAttempt == 0):
                 ActiveUnit(inProgress=True, unit=unit, student=user, attempt=maxAttempt + 1, currentQuestion=0,
                            consecQues=0, quesAmount=0, totalCorrect=0, grade=0)
                 maxAttempt += 1
             active = ActiveUnit[unit, user, (maxAttempt)]
+            print("step2")
             if not active.inProgress:
                 active = ActiveUnit(inProgress=True, unit=unit, student=user, attempt=maxAttempt + 1, currentQuestion=0,
                                     consecQues=0, quesAmount=0, totalCorrect=0, grade=0)
                 maxAttempt += 1
+            print("step3")
 
             if (active.currentQuestion < active.quesAmount):
-                return jsonify(unit.maxTime)
+                return jsonify(unit.maxTime,str(c))
             id = active.quesAmount + 1
             active.quesAmount += 10
             for single_question in get_questions(unit):
@@ -2157,9 +2187,11 @@ def addQuestions_buisness(className, unitName, username):
                          answer4=str(single_question[5]),
                          active_unit=ActiveUnit[unit, user, maxAttempt])
                 id += 1
+            print("step4")
 
             commit()
-            return jsonify(unit.maxTime)
+            print(jsonify(unit.maxTime, str(c)))
+            return jsonify(unit.maxTime, str(c))
     except Exception as e:
         print(e)
         return str(e), 400
@@ -2215,10 +2247,9 @@ def startUnit():
         return "user " + username + "not logged in.", 400
     return startUnit_buisness(className, unitName, username)
 
+
 def startUnit_buisness(className, unitName, username):
-
     return addQuestions_buisness(className, unitName, username)
-
 
 
 # now all this does is add 10 questions to the active unit
@@ -2235,6 +2266,7 @@ def individualStats():
     except Exception as e:
         print(e)
         return str(e), 400
+
 
 def individualStats_buisness(className, unitName, teacherUsername, studentUsername):
     try:
@@ -2270,7 +2302,7 @@ def individualStats_buisness(className, unitName, teacherUsername, studentUserna
         return str(e), 400
 
 
-def getActiveUnits_buisness(className, unitName, username): #this is for dab
+def getActiveUnits_buisness(className, unitName, username):  # this is for dab
 
     try:
         with db_session:
@@ -2314,7 +2346,8 @@ def getAllActiveUnits2(className, unitName):
         print(e)
         return str(e), 400
 
-#needs to be deleted
+
+# needs to be deleted
 def getAllActiveUnits_buisness(className, unitName):
     try:
         with db_session:
@@ -2342,7 +2375,8 @@ def getAllActiveUnits_buisness(className, unitName):
     except Exception as e:
         return f"Error: {str(e)}", 400
 
-def getAllActiveUnits(className, unitName, student = None):
+
+def getAllActiveUnits(className, unitName, student=None):
     try:
         with db_session:
             unames = []
@@ -2428,8 +2462,8 @@ def getStats():
     if not isLogin(username):
         return "user " + username + "not logged in.", 400
 
-
     return jsonify(getAllActiveUnits(className, unitName)), 200
+
 
 @app.route('/getStudentStats')
 def getStudentStats():
@@ -2441,6 +2475,7 @@ def getStudentStats():
         return "user " + username + "not logged in.", 400
     t = getAllActiveUnits(className, unitName, student)
     return jsonify(t[0]), 200
+
 
 @app.route('/getQuestion')
 def getQuestion():
@@ -2566,6 +2601,7 @@ def quitActiveUnit():
         print(e)
         return str(e), 400
 
+
 def quitActiveUnit_buisness(user, unit_name, class_name):
     try:
         with db_session:
@@ -2577,7 +2613,6 @@ def quitActiveUnit_buisness(user, unit_name, class_name):
     except Exception as e:
         print(e)
         return str(e), 400
-
 
 
 def makePoly(p):
@@ -2690,7 +2725,6 @@ def helper(f1: callable, f2: callable, a: float, b: float, maxerr=0.001) -> Iter
 
 
 def intersections(f1: callable, f2: callable, a: float, b: float, maxerr=0.00001) -> Iterable:
-
     while (f1(a) is None or f2(a) is None) and a < b:
         a += 100 * maxerr
     while (f1(b) is None or f2(b) is None) and a < b:
@@ -2748,7 +2782,7 @@ def makeDomain(params, c=0):
         p2 = params[int(len(params) / 2):]
         poly = makePoly(p2)
         zeroes = sorted([x[0] for x in makeIntersections(poly)])
-        print(params,p2, zeroes)
+        print(params, p2, zeroes)
         if len(zeroes) == 0:
             return [(float('-inf'), float('inf'))]
         r = []
@@ -2820,56 +2854,66 @@ def isParenthesisNeeded(s):
 
 def deriveString(p, c=0, b=math.e):
     if c == 0:
-        return "y=" + polySrting(makeDer(p))
+        return "y'=" + polySrting(makeDer(p))
     elif c == 1:
         innerDerive = polySrting(makeDer(p[:-1]))
         exponent = polySrting(p[:-1])
         if isParenthesisNeeded(innerDerive):
             innerDerive = "(" + innerDerive + ")"
-        if isParenthesisNeeded(exponent):
-            exponent = "(" + exponent + ")"
+
         if b != math.e:
             if innerDerive.startswith("("):
                 innerDerive = "ln(" + str(b) + ")" + innerDerive + " * "
             else:
                 innerDerive = innerDerive + "ln(" + str(b) + ") * "
-            return "y=" + innerDerive + str(b) + "^" + exponent
-        return "y=" + innerDerive + ("e" if b == math.e else str(b)) + "^" + exponent
+            return "y'=" + innerDerive + str(b) + "^{" + exponent + "}"
+        return "y'=" + innerDerive + ("e" if b == math.e else str(b)) + "^{" + exponent + "}"
 
     elif c == 2:
         numerator = polySrting(makeDer(p[:-1]))
+        if numerator == "0":
+            return "y'=0"
         denominator = polySrting(p[:-1])
-        if isParenthesisNeeded(numerator):
-            numerator = "(" + numerator + ")"
-        if isParenthesisNeeded(denominator):
-            denominator = "(" + denominator + ")"
-        return "y=" + numerator + " / " + denominator
+        equation = f"y'=\\frac{{{numerator}}}{{{denominator}}}"
+        return equation
+
     elif c == 3:
         innerDerive = polySrting(makeDer(p[:-1]))
         isCompoundDerive = isParenthesisNeeded(innerDerive)
         if isCompoundDerive:
-            return "y=cos(" + polySrting(p[:-1]) + ")" + "(" + innerDerive + ")"
+            return "y'=cos(" + polySrting(p[:-1]) + ")" + "(" + innerDerive + ")"
 
-        return "y=" + innerDerive + " * cos(" + polySrting(p[:-1]) + ")"
+        return "y'=" + innerDerive + "cos(" + polySrting(p[:-1]) + ")"
     elif c == 4:
         innerDerive = polySrting(makeDer(p[:-1]))
         isCompoundDerive = isParenthesisNeeded(innerDerive)
         if isCompoundDerive:
-            return "y=-sin(" + polySrting(p[:-1]) + ")" + "(" + innerDerive + ")"
+            return "y'=-sin(" + polySrting(p[:-1]) + ")" + "(" + innerDerive + ")"
         if innerDerive.startswith("-"):
-            return "y=" + innerDerive + "sin(" + polySrting(p[:-1]) + ")"
-        return "y=-" + innerDerive + "sin(" + polySrting(p[:-1]) + ")"
+            return "y'=" + innerDerive + "sin(" + polySrting(p[:-1]) + ")"
+        return "y'=-" + innerDerive + "sin(" + polySrting(p[:-1]) + ")"
     elif c == 5:
-        return "y=(1/cos^2(" + polySrting(p[:-1]) + ")"
+        innerDerive = polySrting(makeDer(p[:-1]))
+        return f"y'=\\frac{{{innerDerive}}}{{{'cos^2(' + polySrting(p[:-1]) + ')'}}}"
     elif c == 6:
-        return "y=(-1/sin^2(" + polySrting(p[:-1]) + ")"
+        innerDerive = polySrting(makeDer(p[:-1]))
+        if innerDerive == "0":
+            return "y=0"
+        return f"y'=-\\frac{{{innerDerive}}}{{{'sin^2(' + polySrting(p[:-1]) + ')'}}}"
+        # return "y=(-1/sin^2(" + polySrting(p[:-1]) + ")"
     elif c == 7:
         l = int(len(p) / 2)
-        return "y=(((" + polySrting(makeDer(p[:l])) + ") * (" + polySrting(p[l:]) + ")) - ((" + polySrting(
+        return "y'=(((" + polySrting(makeDer(p[:l])) + ") * (" + polySrting(p[l:]) + ")) - ((" + polySrting(
             makeDer(p[l:])) + ") * (" + polySrting(p[:l]) + "))) / (" + polySrting(p[l:]) + ")^2"
     elif c == 8:
-        return "y=(" + polySrting(makeDer(p[:-1])) + ") * " + str(1 / b) + " * (" + polySrting(p[:-1]) + ")^(" + str(
-            1 / b - 1) + ")"
+        innerDerive = polySrting(makeDer(p[:-1]))
+        if innerDerive == "0":
+            return "y'=0"
+
+        # return f"y=\\sqrt[{b}]{{{polySrting(p[:-1])}}}"
+        denominator = funcString(p, 8, b)
+        return f"y'=\\frac{{{innerDerive}}}{{{'2'+denominator[2:]}}}"
+
 
 
 def derive(params, c=0, b=math.e):
@@ -2932,7 +2976,6 @@ def makeExtremes(params, c=0, b=math.e):
     # Calculate the derivative of the polynomial
     if not any(params):
         return "אין נקודות קיצון"
-
 
     realDerive = derive(params, c, b)
     dom = makeDomain(params, c)
@@ -3227,7 +3270,7 @@ def makeAsym(p, c=0, b=math.e):
         if f(-10000):
             l.add((float('-inf'), round(f(-10000), 2)) if abs(f(-10000)) < 1000 else (
                 float('-inf'), (float('inf')) if f(-10000) > 0 else (float('-inf'), float('-inf'))))
-        print(s,l)
+        print(s, l)
         return list(s), list(l)
 
 
@@ -3235,10 +3278,10 @@ def funcString(p, c=0, b=math.e):
     if c == 0:
         return "y=" + polySrting(p)
     elif c == 1:
-        return "y=" + ("e" if b == math.e else str(b)) + "^(" + polySrting(p[:-1]) + ")" + (
+        return "y=" + ("e" if b == math.e else str(b)) + "^{" + polySrting(p[:-1]) + "}" + (
             ("+" if p[-1] > 0 else "") + str(p[-1]) if p[-1] else "")
     elif c == 2:
-        return "y=" + ("ln" if b == math.e else "log" + str(b)) + "(" + polySrting(p[:-1]) + ")" + (
+        return "y=" + ("ln" if b == math.e else "log_" + str(b)) + "(" + polySrting(p[:-1]) + ")" + (
             ("+" if p[-1] > 0 else "") + str(p[-1]) if p[-1] else "")
     elif c == 3:
         return "y=sin(" + polySrting(p[:-1]) + ")" + (("+" if p[-1] > 0 else "") + str(p[-1]) if p[-1] else "")
@@ -3252,8 +3295,12 @@ def funcString(p, c=0, b=math.e):
         l = int(len(p) / 2)
         return "y=(" + polySrting(p[:l]) + ") / (" + polySrting(p[l:]) + ")"
     elif c == 8:
-        return "y=(" + polySrting(p[:-1]) + ")^(" + str(1 / b) + ")" + (
-            ("+" if p[-1] > 0 else "") + str(p[-1]) if p[-1] else "")
+        if b == 2:
+            return "y=\\sqrt{" + polySrting(p[:-1]) + "}"
+        return f"y=\\sqrt[{b}]{{{polySrting(p[:-1])}}}"
+        # return "y=\\sqrt{" + polySrting(p[:-1]) + "}"
+        # return "y=(" + polySrting(p[:-1]) + ")^(" + str(1 / b) + ")" + (
+        #     ("+" if p[-1] > 0 else "") + str(p[-1]) if p[-1] else "")
 
 
 def polySrting(params):
@@ -3483,8 +3530,8 @@ def getStudentLessonQuestionsB(className, student, unitName):
 # [random.randint(params[2*i], params[2*i+1]) for i in range(int(len(params)/2))]
 
 
-p = [4, 10, -4, 6]
-c = 2
+p = [0, 0, -4, 0]
+c = 0
 
 b = 2
 a = makeFunc(p, c=c, b=b)
@@ -3502,7 +3549,7 @@ print("funcString: " + str(funcString(p, c=c, b=b)))
 print("deriveString: " + str(deriveString(p, c=c, b=b)))
 print("PosNeg: " + str(makePosNeg(p, c=c, b=b)))
 print("makeAsym: " + str(makeAsym(p, c, b)))
-print("integral from",r1,"to",r2,": ",definite_integral_question(b,c,a,(r1,r2),p)[2])
+print("integral from", r1, "to", r2, ": ", definite_integral_question(b, c, a, (r1, r2), p)[2])
 
 
 #
@@ -3511,8 +3558,6 @@ print("integral from",r1,"to",r2,": ",definite_integral_question(b,c,a,(r1,r2),p
 # print(openClass_buisness("aleks","c1"))
 # registerClass_buisness("aleks1","c1")
 # approveStudentToClass_buisness("aleks","aleks1","c1","True")
-
-
 
 
 # sym = getSymmetry(p, c)
