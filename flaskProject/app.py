@@ -3025,7 +3025,7 @@ def derive(params, c=0, b=math.e):
         def rootElement(x):
             if poly(x) > 0:
                 return der(x) * (1 / b) * math.pow(poly(x), 1 / b - 1)
-            print("ROOTNONE", funcString(p, 8, b), x)
+            print("ROOTNONE", funcString(params, 8, b), x)
             return None
 
         return rootElement

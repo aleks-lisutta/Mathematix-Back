@@ -55,92 +55,125 @@ class MyTestCase(unittest.TestCase):
         self.assertTrue(app.deriveString(p, c=c) == "y=-9x^2+14x-4")
         self.assertTrue(app.makePosNeg(p, c=c) == ([(float('-inf'), 1.65)], [(1.65, float('inf'))]))
         self.assertTrue(app.makeAsym(p, c=c) == ([], []))
+        self.assertTrue(app.make_extreme_question(b, c, p)[2] == [(0.38, 0.326), (1.18, 1.098)])
+        self.assertEqual("∪: [(-inf, 0.778)]\n∩: [(0.778, inf)]", str(app.make_convex_concave_question(b, c, p)[2]))
+        self.assertEqual("(0.778, 0.712)", str(app.make_inflection_question(b, c, p)[2]))
 
-    def testExp(self): #need good assert values
+
+
+    def testExp(self):
         p = [-3, 7, -4, 1]
         c = 1
         b = 2
         a = app.makeFunc(p, c=c, b=b)
         self.assertTrue(1.0000000000000568 == a(5))
         dom = app.makeDomain(p, c)
+        r1 = -6
+        r2 = 2
+        result = app.definite_integral_question(b, c, a, (r1, r2), p)[2] #y=2^(-3x^2+7x-4)+1 integral
+        assert np.isclose(result, 9.244126319885254, rtol=1e-6)
         self.assertTrue([(float('-inf'), float('inf'))] == dom)
         self.assertTrue(app.makeIntersections(a, c=c, r=dom) == [])
-        #self.assertTrue(app.makeExtremes(p, c=c, b=b) == [(1.167, 2.059)])
-        #self.assertTrue(
-        #    app.makeIncDec(p, c=c, b=b) == ([(float('-inf'), 1.167)], [ (1.167, float('inf'))]))
+        self.assertIn("(-2.0, 1.0), (-1.98, 1.0), (-1.96, 1.0), (-1.94, 1.0)" ,str(app.makeExtremes(p, c=c, b=b)))
+        self.assertIn("[(-inf, -2.0), (-1.44, 1.17)], [(1.17, inf)]", str(app.makeIncDec(p, c=c, b=b)))
         self.assertTrue(app.funcString(p, c=c, b=b) == "y=2^(-3x^2+7x-4)+1")
         self.assertTrue(app.deriveString(p, c=c, b=b) == "y=ln(2)(-6x+7) * 2^(-3x^2+7x-4)")
         self.assertTrue(app.makePosNeg(p, c=c, b=b) == ([(float('-inf'), float('inf'))], []))
         self.assertTrue(app.makeAsym(p, c=c, b=b) == ([], [(float('inf'), 1.0), (float('-inf'), 1.0)]))
+        self.assertIn("(-2.0, 1.0), (-1.98, 1.0), (-1.96, 1.0), (-1.94, 1.0)", str(app.make_extreme_question(b, c, p)[2]))
+        self.assertEqual("∪: [(1.657, inf), (-inf, 0.676)]\n∩: [(0.676, 1.657)]", str(app.make_convex_concave_question(b, c, p)[2]))
+        print(app.make_inflection_question(b, c, p)[2])
+        self.assertTrue(str(app.make_inflection_question(b, c, p)[2]) in ["(1.657, 1.643)", "(0.676, 1.642)"])
 
-    def testLog(self):  # need good assert values
+
+
+    def testLog(self):
         p = [-3, 7, -4, 1]
         c = 2
         b = 2
         a = app.makeFunc(p, c=c, b=b)
         self.assertTrue(None == a(5))
         dom = app.makeDomain(p, c)
+        r1 = -6
+        r2 = 2
+        result = app.definite_integral_question(b, c, a, (r1, r2), p)[2]  # y=log2(-3x^2+7x-4)+1 integral
+        self.assertEqual(result, 0)
         self.assertTrue([(1.0, 1.333)] == dom)
         self.assertTrue(app.makeIntersections(a, c=c, r=dom) == [])
         e = app.makeExtremes(p, c=c, b=b)
         self.assertTrue(e == [(1.17, -2.586)])
-        self.assertTrue(
-            app.makeIncDec(p, c=c, b=b) == ([(1.0, 1.17)], [(1.17, 1.333)]))
+        self.assertTrue(app.makeIncDec(p, c=c, b=b) == ([(1.0, 1.17)], [(1.17, 1.333)]))
         self.assertTrue(app.funcString(p, c=c, b=b) == "y=log2(-3x^2+7x-4)+1")
         self.assertTrue(app.deriveString(p, c=c, b=b) == "y=(-6x+7) / (-3x^2+7x-4)")
         self.assertTrue(app.makePosNeg(p, c=c, b=b) == ([], [(1.0, 1.333)]))
-        #self.assertTrue(app.makeAsym(p, c=c, b=b) == ([], ([(1.0, float('-inf')), (1.333, float('-inf'))], [])))
+        self.assertEqual([(1.17, -2.586)], app.make_extreme_question(b, c, p)[2])
+        self.assertEqual("∪: []\n∩: [(1.0, 1.333)]", str(app.make_convex_concave_question(b, c, p)[2]))
+        self.assertIn("[(1.0, -10.0), (1.333, -9.2)], []", str(app.makeAsym(p, c=c, b=b)))
+        self.assertEqual("אין נקודות פיתול", str(app.make_inflection_question(b, c, p)[2]))
 
-    def testSin(self): #need good assert values
+
+    def testSin(self):
         p = [-3, 7, -4, 1]
         c = 3
         b = 2
         a = app.makeFunc(p, c=c, b=b)
+        r1 = -6
+        r2 = 2
+        result = app.definite_integral_question(b, c, a, (r1, r2), p)[2]  # y=sin(-3x^2+7x-4)+1 integral
+        self.assertEqual(result, 7.270272731781006)
         self.assertTrue(0.9822980748945864 == a(5))
         dom = app.makeDomain(p, c)
         self.assertTrue([(float('-inf'), float('inf'))] == dom)
-        #self.assertTrue(app.makeIntersections(a, c=c, r=dom) == ???)
-        #self.assertTrue(app.makeExtremes(p, c=c, b=b) == ????)
-        #self.assertTrue(
-        #    app.makeIncDec(p, c=c, b=b) == ?????)
+        self.assertIn("(-0.46, 0.0)", str(app.makeIntersections(a, c=c, r=dom)))
+        self.assertIn("(-1.99, 1.999), (-1.82, 0.0), (-1.64, 2.0), (-1.45, 0.001)", str(app.makeExtremes(p, c=c, b=b)))
+        self.assertIn("(-inf, -1.99), (-1.82, -1.64), (-1.45, -1.24)", str(app.makeIncDec(p, c=c, b=b)))
         self.assertTrue(app.funcString(p, c=c, b=b) == "y=sin(-3x^2+7x-4)+1")
         self.assertTrue(app.deriveString(p, c=c, b=b) == "y=cos(-3x^2+7x-4)(-6x+7)")
         self.assertTrue(app.makePosNeg(p, c=c, b=b) == ([(float('-inf'), -0.46), (-0.46, float('inf'))], []))
         self.assertTrue(app.makeAsym(p, c=c, b=b) ==  ([], []))
+        self.assertIn("(-1.99, 1.999), (-1.82, 0.0), (-1.64, 2.0)", str(app.make_extreme_question(b, c, p)[2]))
 
-    def testCos(self): #need good assert values
+    def testCos(self):
         p = [-3, 7, -4, 1]
         c = 4
         b = 2
         a = app.makeFunc(p, c=c, b=b)
         self.assertTrue(1.9998433086476912 == a(5))
+        r1 = -6
+        r2 = 2
+        result = app.definite_integral_question(b, c, a, (r1, r2), p)[2]  # y=cos(-3x^2+7x-4)+1 integral
+        self.assertEqual(result, 8.960036277770996)
         dom = app.makeDomain(p, c)
         self.assertTrue([(float('-inf'), float('inf'))] == dom)
-        #self.assertTrue(app.makeIntersections(a, c=c, r=dom) == ????)
-        #self.assertTrue(app.makeExtremes(p, c=c, b=b) == ????)
-        #self.assertTrue(
-        #    app.makeIncDec(p, c=c, b=b) == ?????)
+        self.assertIn("[]", str(app.makeIntersections(a, c=c, r=dom)))
+        self.assertIn("(-1.91, 0.001), (-1.73, 1.999), (-1.55, 0.002)", str(app.makeExtremes(p, c=c, b=b)))
+        self.assertIn("(-1.91, -1.73), (-1.55, -1.35), (-1.13, -0.89)", str(app.makeIncDec(p, c=c, b=b)))
         self.assertTrue(app.funcString(p, c=c, b=b) == "y=cos(-3x^2+7x-4)+1")
         self.assertTrue(app.deriveString(p, c=c, b=b) == "y=-sin(-3x^2+7x-4)(-6x+7)")
         self.assertTrue(app.makePosNeg(p, c=c, b=b) == ([(float('-inf'), float('inf'))], []))
-        self.assertTrue(app.makeAsym(p, c=c, b=b) ==  ([], []))
+        self.assertTrue(app.makeAsym(p, c=c, b=b) == ([], []))
+        self.assertIn("(-1.91, 0.001), (-1.73, 1.999), (-1.55, 0.002), (-1.35, 1.998)", str(app.make_extreme_question(b, c, p)[2]))
 
-    def testTan(self): #need good assert values
+    def testTan(self):
         p = [-3, 7, -4, 1]
         c = 5
         b = 2
         a = app.makeFunc(p, c=c, b=b)
         self.assertTrue(0.9822953007213142 == a(5))
+        r1 = -6
+        r2 = 2
+        result = app.definite_integral_question(b, c, a, (r1, r2), p)[2]  # y=tan(-3x^2+7x-4)+1 integral
+        self.assertEqual(result, 1.7480018138885498)
         dom = app.makeDomain(p, c)
-        #self.assertTrue(???? == dom)
-        #self.assertTrue(app.makeIntersections(a, c=c, r=dom) == ????)
-        #self.assertTrue(app.makeExtremes(p, c=c, b=b) == ????)
-        #self.assertTrue(
-        #    app.makeIncDec(p, c=c, b=b) == ?????)
+        self.assertIn("(-2.9934459652364747, -2.865620503322687)", str(dom))
+        self.assertIn("(-2.96, 0.0), (-2.83, 0.0), (-2.7, 0.0)", str(app.makeIntersections(a, c=c, r=dom)))
+        self.assertIn("(-2.96, -2.865620503322687), (-2.83, -2.7336079492722396)", str(app.makePosNeg(p, c=c)))
+        self.assertIn("[(0.42411877993373426, 1.9092144399939124)], []", str(app.makeIncDec(p, c=c, b=b)))
         self.assertTrue(app.funcString(p, c=c, b=b) == "y=tan(-3x^2+7x-4)+1")
         self.assertTrue(app.deriveString(p, c=c, b=b) == "y=(1/cos^2(-3x^2+7x-4)")
-        #self.assertTrue(app.makePosNeg(p, c=c, b=b) == ?????)
-        #self.assertTrue(app.makeAsym(p, c=c, b=b) == ????)
+        self.assertEqual("אין נקודות קיצון", str(app.make_extreme_question(b, c, p)[2]))
+        self.assertIn("[(-0.09768086093997672, -262.8), (1.9092144399939124, 449.4)", str(app.makeAsym(p, c=c, b=b)))
+
 
     def testCot(self): #need good assert values
         p = [-3, 7, -4, 1]
@@ -148,16 +181,21 @@ class MyTestCase(unittest.TestCase):
         b = 2
         a = app.makeFunc(p, c=c, b=b)
         self.assertTrue(-55.48217935019511 == a(5))
+        r1 = -6
+        r2 = 2
+        result = app.definite_integral_question(b, c, a, (r1, r2), p)[2]  # y=cot(-3x^2+7x-4)+1 integral
+        self.assertEqual(result, -6.302616119384766)
         dom = app.makeDomain(p, c)
-        #self.assertTrue(???? == dom)
-        #self.assertTrue(app.makeIntersections(a, c=c, r=dom) == ????)
-        #self.assertTrue(app.makeExtremes(p, c=c, b=b) == ????)
-        #self.assertTrue(
-        #    app.makeIncDec(p, c=c, b=b) == ?????)
+        self.assertIn("(-2.930031977039845, -2.83), (-2.800163226766728, -2.7)", str(app.makePosNeg(p, c=c)))
+        dom = app.makeDomain(p, c)
+        self.assertIn("(-2.930031977039845, -2.800163226766728)", str(dom))
+        self.assertIn("(-2.83, 0.0), (-2.7, 0.0)", str(app.makeIntersections(a, c=c, r=dom)))
+        self.assertIn("[]", str(app.makeExtremes(p, c=c, b=b)))
+        self.assertIn("[], [(1.0000000000000029, 1.333333324050148)]", str(app.makeIncDec(p, c=c, b=b)))
         self.assertTrue(app.funcString(p, c=c, b=b) == "y=cot(-3x^2+7x-4)+1")
         self.assertTrue(app.deriveString(p, c=c, b=b) == "y=(-1/sin^2(-3x^2+7x-4)")
-        #self.assertTrue(app.makePosNeg(p, c=c, b=b) == ?????)
-        #self.assertTrue(app.makeAsym(p, c=c, b=b) == ????)
+        self.assertEqual("אין נקודות קיצון", str(app.make_extreme_question(b, c, p)[2]))
+        self.assertIn("(0.12985622674574937, 322.7), (-1.1276231218208512, 146.3)", str(app.makeAsym(p, c=c, b=b)))
 
     def testRational(self):
         p = [-3, 7, -4, 1]
@@ -165,6 +203,10 @@ class MyTestCase(unittest.TestCase):
         b = 2
         a = app.makeFunc(p, c=c, b=b)
         self.assertTrue(0.42105263157894735 == a(5))
+        r1 = -6
+        r2 = 2
+        result = app.definite_integral_question(b, c, a, (r1, r2), p)[2]  # y=(-3x+7) / (-4x+1) integral
+        self.assertEqual(result, 7.939740180969238)
         dom = app.makeDomain(p, c)
         self.assertTrue([(float('-inf'), 0.25), (0.25, float('inf'))] == dom)
         self.assertTrue(app.makeIntersections(a, c=c, r=dom) == [(2.33, 0.0)])
@@ -174,6 +216,11 @@ class MyTestCase(unittest.TestCase):
         self.assertTrue(app.deriveString(p, c=c) == "y=(((-3) * (-4x+1)) - ((-4) * (-3x+7))) / (-4x+1)^2")
         self.assertTrue(app.makePosNeg(p, c=c) == ([(float('-inf'), 0.25), (2.33, float('inf'))], [(0.25, 2.33)]))
         self.assertTrue(app.makeAsym(p, c=c) == ([(0.25, float('-inf'))], [(float('-inf'), 0.75), (float('inf'), 0.75)]))
+        self.assertEqual("אין נקודות קיצון", str(app.make_extreme_question(b, c, p)[2]))
+        self.assertEqual("∪: [(-inf, 0.25)]\n∩: [(0.25, inf)]", str(app.make_convex_concave_question(b, c, p)[2]))
+        self.assertEqual("אין נקודות פיתול", str(app.make_inflection_question(b, c, p)[2]))
+
+
 
     def testRoot(self):
         p = [-3, 7, -4, 1]
@@ -181,6 +228,10 @@ class MyTestCase(unittest.TestCase):
         b = 2
         a = app.makeFunc(p, c=c, b=b)
         self.assertTrue(None == a(5))
+        r1 = -6
+        r2 = 2
+        result = app.definite_integral_question(b, c, a, (r1, r2), p)[2]  # y=(-3x^2+7x-4)^(0.5)+1 integral
+        self.assertEqual(result, 0)
         dom = app.makeDomain(p, c)
         self.assertTrue([(1.0, 1.33)] == dom)
         self.assertTrue(app.makeIntersections(a, c=c, r=dom) == [])
@@ -190,6 +241,12 @@ class MyTestCase(unittest.TestCase):
         self.assertTrue(app.deriveString(p, c=c, b=b) == "y=(-6x+7) * 0.5 * (-3x^2+7x-4)^(-0.5)")
         self.assertTrue(app.makePosNeg(p, c=c, b=b) == ([(1.0, 1.33)], []))
         self.assertTrue(app.makeAsym(p, c=c, b=b) == ([(1.0, 1.0),(1.33, 1.1)], []))
+        self.assertEqual([(1.17, 1.289)], app.make_extreme_question(b, c, p)[2])
+        self.assertEqual("∪: []\n∩: [(1.0, 1.33)]", str(app.make_convex_concave_question(b, c, p)[2]))
+        self.assertEqual("אין נקודות פיתול", str(app.make_inflection_question(b, c, p)[2]))
+
+
+
 
     def test_get_answers_for_odd_even_poly(self):
         with app.app.app_context():
@@ -516,57 +573,8 @@ class MyTestCase(unittest.TestCase):
         # Assert that the result matches the expected string representation of the polynomial
         self.assertEqual(result, expected_result)
 
-    # def test_integrate_poly(self):
-    #     p = [1, 0, 0] # x^2
-    #     c = 0
-    #     b = 2
-    #     f = app.makeFunc(p, c=c, b=b)
-    #
-    #     # Test case 1: n = 1
-    #     result = app.integrate(f, 0.0, 1.0, 100)
-    #     assert np.isclose(result, 0.33333334, rtol=1e-6)
-    #
-    #
-    #     # Test case 2: n = 2
-    #     result = app.integrate(f, 0.0, 1.0, 2)
-    #
-    #     self.assertEqual(result, 0.5)
-    #
-    #     # Test case 3: n = 5 (odd value)
-    #     result = app.integrate(f, 0.0, 1.0, 5)
-    #     assert np.isclose(result, 0.3333333433, rtol=1e-6)
-    #
-    #     # Test case 4: n = 6 (even value)
-    #     result = app.integrate(f, 0.0, 1.0, 6)
-    #     assert np.isclose(result, 0.3333333433, rtol=1e-6)
 
-    # def test_integrate_sin(self):
-    #     # expr = app.make_sympy_function((1, 1, 0, 0), 3, 0)  # sin(x^2+x)
-    #     p = [1, 1, 0, 0] # sin(x^2+x)
-    #     c = 3
-    #     b = 0
-    #     f = app.makeFunc(p, c, b)
-    #
-    #     # Test case 1: n = 1
-    #     result = app.integrate(f, 0.0, 1.0, 1)
-    #     assert np.isclose(result, 0.6816388, rtol=1e-6)
-    #     # self.assertEqual(result, 0.6816388)
-    #     # assert np.isclose(result, 0.25)
-    #
-    #     # Test case 2: n = 2
-    #     result = app.integrate(f, 0.0, 1.0, 2)
-    #
-    #     self.assertEqual(result, 0.6816388)
-    #
-    #     # Test case 3: n = 5 (odd value)
-    #     result = app.integrate(f, 0.0, 1.0, 5)
-    #     print("***************")
-    #     print(result)
-    #     assert np.isclose(result, 0.3333333433, rtol=1e-6)
-    #
-    #     # Test case 4: n = 6 (even value)
-    #     result = app.integrate(f, 0.0, 1.0, 6)
-    #     assert np.isclose(result, 0.3333333433, rtol=1e-6)
+
 
 
 if __name__ == '__main__':
