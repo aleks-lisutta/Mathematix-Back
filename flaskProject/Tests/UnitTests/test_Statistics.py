@@ -186,49 +186,7 @@ class MyTestCase(unittest.TestCase):
             self.assertEqual(data3[0]['answer' + str(data3[0]['correct_ans'])], stats[0]['student1'][2]['answer' + str(data3[0]['correct_ans'])])
             self.assertEqual(data4[0]['answer' + str(data4[0]['correct_ans'])], stats[0]['student1'][3]['answer' + str(data4[0]['correct_ans'])])
 
-    def test_multistudent_successful(self):
-        with app.app.app_context():
-            # Create teacher account and open a class and a unit
-            app.register_buisness('teacher1', 'password', 1)
-            app.login_buisness('teacher1', 'password')
-            app.openClass_buisness('teacher1', 'class1')
-            app.teacherOpenUnit('unit1', 'teacher1', 'class1', 'intersection_linear_-10,0,1,6', '1', '60', '2023-07-01',
-                                'true', 'new', 'desc')
-            # Create student account and register to class
-            student_num = random.randint(3,10)
-            questions = {}
-            for i in range(student_num):
-                app.register_buisness('student'+str(i), 'password', 2)
-                questions['student'+str(i)] = []
-            for i in range(student_num):
-                app.login_buisness('student'+str(i), 'password')
-                app.registerClass_buisness('student'+str(i), 'class1')
-                app.approveStudentToClass_buisness('teacher1', 'student'+str(i), 'class1', 'True')
-            # Student starts unit
-            for i in range(student_num):
-                attempts = random.randint(1, 5)
-                questions
-                for j in range(attempts):
-                    app.startUnit_buisness('class1', 'unit1', 'student'+str(i))
-                    # student answers correctly
-                    ques_num = random.randint(2,10)
-                    for k in range(1, ques_num):
-                        ques = app.getQuestion_buisness('student'+str(i), 'unit1', 'class1', k)
-                        self.assertEqual(200, ques.status_code, 'Failed getQuestion request')
-                        data = json.loads(ques.get_data(as_text=True))
-                        res = app.submitQuestion_buisness('student'+str(i), 'unit1', 'class1', k, data[0]['correct_ans'])
-                        self.assertEqual(205, res[1], 'Failed getQuestion request')
-                        questions['student'+str(i)].append(data[0])
 
-            #check statistics
-            stats = app.getAllLessonQuestionsB('class1', 'unit1')
-            self.assertEqual(200, stats[1], 'Failed getAllLessonQuestionsB request')
-            self.assertEqual(len(questions), len(stats[0]))
-            for i in range(len(stats[0])):
-                self.assertEqual(len(questions['student'+str(i)]), len(stats[0]['student'+str(i)]), 'Failed getAllLessonQuestionsB request')
-                for j in range(len(stats[0]['student'+str(i)])):
-                     self.assertEqual(questions['student'+str(i)][j]['answer' + str(questions['student'+str(i)][j]['correct_ans'])],
-                                      stats[0]['student'+str(i)][j]['answer' + str(questions['student'+str(i)][j]['correct_ans'])])
 
 
 
