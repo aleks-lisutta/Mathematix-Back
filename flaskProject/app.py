@@ -1011,11 +1011,24 @@ def func_value_question(domain, f, fString):
 def find_real_domain(p, c):
     return [(round(x,2),round(y,2)) for x,y in makeDomain(p,c)]
 
+
+# Convert a list of coefficients 'p' into a symbolic polynomial expression.
+# Parameters:
+#         p (list): List of coefficients representing a polynomial.
+# Returns:
+#         tuple: A tuple containing the symbolic expression of the polynomial and the symbol 'x'.
 def make_sympy_poly(p):
     x = symbols('x')
     return Poly(p, x).as_expr(), x
 
 
+# Create a symbolic function based on the provided parameters
+#     Parameters:
+#         p (list): List of coefficients representing a polynomial.
+#         c (int): Code indicating the mathematical operation to perform.
+#         b (int): Base value for certain operations.
+#  Returns:
+#         tuple: A tuple containing the symbolic expression of the function and the symbol 'x'.
 def make_sympy_function(p, c, b):
     if c == 0:
         return make_sympy_poly(p)
@@ -1046,6 +1059,15 @@ def make_sympy_function(p, c, b):
         return root(expr, b) + p[-1], x
 
 
+# The input of the function:
+# expr: The main expression for which correct answers are filtered and generated.
+# sym_expr: Another expression related to symmetry used for filtering.
+# ans: A list of answers to be filtered and processed.
+# x: The variable used in the expressions.
+# c: Another variable used in the expressions.
+# domains: A list of domain ranges for checking if values are in range.
+# sym: A string representing the type of symmetry ('symmetry' or 'asymmetry').
+# The function does not have any explicit output specified in its signature. However, it returns a set of all possible correct values (all_possible_cs_in_range) that satisfy the conditions specified by the logic inside the function. These values are filtered and generated based on the given input parameters and the conditions defined in the loops and conditional statements within the function.
 def filter_and_generate_correct_answers_for_sym(expr, sym_expr, ans, x, c, domains, sym):
     MAX_CS_TO_ADD = 100
 
@@ -1063,10 +1085,6 @@ def filter_and_generate_correct_answers_for_sym(expr, sym_expr, ans, x, c, domai
                                lambda elem: x in elem and elem[x] != 0 and not elem[x].has(I) and not elem[x].has(x),
                                ans))))
     possible_cs_in_range = list(filter(lambda elem: check_in_range(elem), possible_cs))
-    -6
-    x ^ 3 - 4
-    x ^ 2 + 9
-    x + 8
     epsilon = 0.0001
     all_possible_cs_in_range = set(possible_cs_in_range)
     for possible_c in possible_cs_in_range:
@@ -1103,6 +1121,11 @@ def filter_and_generate_correct_answers_for_sym(expr, sym_expr, ans, x, c, domai
     return all_possible_cs_in_range
 
 
+# This function checks for special cases of symmetry in an expression and returns information about the symmetry if found.
+# It takes an expression expr and a variable x as input.
+# The purpose of this function is to identify specific patterns in the expression that indicate symmetry properties.
+# It examines various conditions and performs calculations to determine if the expression exhibits
+# symmetry and what type of symmetry it represents.
 def check_special_cases_symmetry(expr, x):
     def filter_complex(arr):
         return list(filter(lambda x: not x.has(I), arr))
@@ -1208,7 +1231,13 @@ def check_special_cases_symmetry(expr, x):
 
     return None
 
-
+# inputs:
+# frequency: Represents the frequency or step size for generating multiples.
+# point: The starting point from which the multiples are generated.
+# jumps: A function that determines whether a particular multiple should be considered or skipped based on some conditions.
+# check_in_range: A function that checks whether a generated point is within a specified range.
+# output: it returns a list of answers which is generated based on the given input parameters and the logic inside the function.
+# The list ans contains the generated points that satisfy the conditions specified by the jumps and check_in_range functions.
 def generate_answers_symmetry_special_cases(frequency, point, jumps, check_in_range):
     MAX_TO_ADD = 100
     ans = []
@@ -1231,6 +1260,13 @@ def generate_answers_symmetry_special_cases(frequency, point, jumps, check_in_ra
     return ans
 
 
+# inputs:
+# expr: The main expression for which answers are generated and filtered.
+# x: The variable used in the expressions.
+# c: Another variable used in the expressions.
+# domains: A list of domain ranges for checking if values are in range.
+# output: The first element is a list of answers that satisfy the conditions specified by the logic inside the function.
+# The second element is a string indicating the type of symmetry or the absence of symmetry.
 def get_answers_for_symmetry_asymmetry(expr, x, c, domains):
     if len(domains) == 0:
         return [], 'אין סימטריה'
@@ -1246,7 +1282,7 @@ def get_answers_for_symmetry_asymmetry(expr, x, c, domains):
 
     special_case = check_special_cases_symmetry(expr, x)
     if special_case is not None:
-        if len(special_case) == 3:
+        if len(special_case) == 3: #trigonometric
             MAX_TO_ADD = 100
             ans = []
             if special_case[2] == 'tan' or special_case[2] == 'cot':
@@ -1292,8 +1328,12 @@ def get_answers_for_symmetry_asymmetry(expr, x, c, domains):
             return list(map(lambda x: round(float(N(x)), 3), asymmetries)), 'אסימטריה'
 
     return [], 'אין סימטריה'
-
-
+# input:
+# ans: A list of answers to be filtered and processed.
+# expr_tagtag: The expression for which inflection answers are generated.
+# x: The variable used in the expressions.
+# domains: A list of domain ranges for checking if values are in range.
+# output: list of filtered and processed answers.
 def filter_and_generate_answers_for_inflection(ans, expr_tagtag, x, domains):
     def check_in_range(val):
         for dom in domains:
@@ -1355,6 +1395,11 @@ def filter_and_generate_answers_for_inflection(ans, expr_tagtag, x, domains):
     return list(filter(lambda elem: not sympify(elem).has(I) and check_in_range(elem), ans))
 
 
+
+# expr_tagtag: The expression for which possible inflection points are determined.
+# x: The variable used in the expressions.
+# domains: A list of domain ranges for checking if values are in range.
+# output: a list of possible inflection points
 def get_possible_inflection_points(expr_tagtag, x, domains):
     ans = []
     try:
@@ -1370,15 +1415,17 @@ def get_possible_inflection_points(expr_tagtag, x, domains):
         if domains[i][1] == domains[i + 1][0]:
             ans.append(domains[i][1])
 
-    # try:
-    #     asymptotes = continuous_domain(expr_tagtag, x, union).boundary
-    #     ans.extend(asymptotes)
-    # except:
-    #     pass
+
 
     return filter_and_generate_answers_for_inflection(ans, expr_tagtag, x, domains)
 
-
+#the main function
+# input: possible_inflection_points: A list of possible inflection points obtained from a previous step.
+# domains: A list of domain ranges.
+# expr_tagtag: The expression for which inflection points are determined.
+# x: The variable used in the expressions.
+# output:  a list of rounded floating-point values representing the inflection points of the expression
+# expr_tagtag within the specified domains.
 def get_answers_for_inflection_points(possible_inflection_points, domains, expr_tagtag, x):
     epsilon = 0.0001
 
@@ -1410,6 +1457,9 @@ def get_answers_for_inflection_points(possible_inflection_points, domains, expr_
 
 
 # POSSIBLY REDUNDANT
+# regions: A list of regions represented as tuples. Each tuple contains two values:
+# the starting point and the ending point of a region.
+# output: a merged list of regions where overlapping or adjacent regions are combined into a single region.
 def merge_regions(regions):
     if len(regions) == 0:
         return []
@@ -1424,6 +1474,12 @@ def merge_regions(regions):
     return list(map(lambda x: tuple(x), stack))
 
 
+
+# input: possible_inflection_points: A list of possible inflection points.
+# domains: A list of domains represented as tuples. Each tuple contains two values: the starting point and the ending point of a domain.
+# expr_tagtag: The expression representing the second derivative of a function with respect to x.
+# x: The variable x in the expression.
+# output: a dictionary containing the convex and concave regions of the function.
 def get_answers_for_concave_convex(possible_inflection_points, domains, expr_tagtag, x):
     if expr_tagtag == 0 or len(domains) == 0:
         return {'convex': [], 'concave': []}
@@ -1478,6 +1534,10 @@ def get_answers_for_concave_convex(possible_inflection_points, domains, expr_tag
             'concave': list(map(lambda x: tuple(x), concave_regions))}
 
 
+# input: expr: An expression representing a mathematical function.
+# x: The variable x in the expression.
+# output: The output of the function is a string indicating whether the function is odd, even, or neither,
+# based on the special cases identified in the input expression
 def odd_even_special_cases(expr, x):
     if expr.has(sin) or expr.has(tan) or expr.has(cot) or expr.has(cos):
         if expr.is_Mul:
@@ -1510,7 +1570,9 @@ def odd_even_special_cases(expr, x):
             elif trig_func.coeff(x ** 2) != 0 and trig_func.coeff(x) == 0:  # cos(x^2...)
                 return 'זוגית'
     if expr.is_Pow:
-        if degree(expr.args[1]) == 2:  # Pow(x^2...)
+        if expr.base == x:
+            return None
+        if degree(expr.args[1]) == 2:  # Pow(_^x^2...)
             if expr.args[1].coeff(x) == 0:
                 return 'זוגית'
             else:
@@ -1528,6 +1590,8 @@ def odd_even_special_cases(expr, x):
                 else:
                     return 'אי זוגית'
     if len(expr.args) > 1 and expr.args[1].is_Pow:
+        if expr.args[1].base == x:
+            return None
         if degree(expr.args[1].args[1]) == 2:  # Pow(x^2...) + d
             if expr.args[1].args[1].coeff(x) == 0:
                 return 'זוגית'
@@ -1564,7 +1628,13 @@ def odd_even_special_cases(expr, x):
 
     return None
 
-
+#main function
+# input:
+# expr: An expression representing a mathematical function.
+# x: The variable x in the expression.
+# domains: A list of domain intervals.
+# output: The output of the function is a string representing the nature of the function:
+# even, odd, both even and odd, or neither even nor odd.
 def get_answers_for_odd_even(expr, x, domains):
     if len(domains) == 0:
         return 'לא זוגית ולא אי זוגית'
@@ -1588,6 +1658,17 @@ def get_answers_for_odd_even(expr, x, domains):
         return 'לא זוגית ולא אי זוגית'
 
 
+# input:  a mathematical expression as input and recursively evaluates and formats the expression.
+# The function handles different types of expressions, including multiplication (Mul), exponentiation (Pow),
+# addition (Add), rational numbers (Rational), and other types.
+# output: The function recursively processes the expression and builds a formatted string representation
+# of the expression.
+# Example 1:
+# Input: rec_calc_evaluation(x + y + z)
+# Output: '((x+y)+z)'
+# Example 2:
+# Input: rec_calc_evaluation(Rational(3, 4))
+# Output: '3/4'
 def rec_calc_evaluation(to_calc):
     if type(to_calc) == Mul:
         ret = '('
@@ -1611,6 +1692,14 @@ def rec_calc_evaluation(to_calc):
         return f'({to_calc})'
 
 
+# Input:
+# options: A list of answer options.
+# expr: The expression.
+# x: The variable.
+# Output:
+# The function returns a tuple (fake_ans, symmetry), where:
+# fake_ans is a randomly generated fake answer. It is a number obtained by adding a random value between -3 and 3 to one of the options from the list. The fake answer is rounded to three decimal places.
+# symmetry is a randomly chosen string indicating whether the answer corresponds to "סימטריה" (symmetry) or "אסימטריה" (asymmetry).
 def generate_random_answer_symmetry(options, expr, x):
     fake_ans = random.choice(options)
     too_long_trigger = 5
@@ -1623,6 +1712,20 @@ def generate_random_answer_symmetry(options, expr, x):
     return round(fake_ans, 3), random.choice(['סימטריה', 'אסימטריה'])
 
 
+
+# Input:
+# real_options: A tuple containing the real answer options and their description.
+# The options are provided as a list, and the description is a string.
+# expr: The expression.
+# x: The variable.
+# Output:
+# The function returns a tuple (real_ans, answer_1, answer_2, answer_3), where:
+# real_ans is a tuple (real_value, desc) representing the real answer.
+# real_value is a rounded value randomly chosen from the real options (if any options are available),
+# or None if there are no real options. desc is the description provided in real_options.
+# answer_1, answer_2, and answer_3 are tuples (fake_value, symmetry) representing the fake answers.
+# They are generated using the generate_random_answer_symmetry function. The fake_value is a rounded fake answer,
+# and symmetry is a randomly chosen string indicating symmetry or asymmetry.
 def generate_fake_answers_symmetry(real_options, expr, x):
     options, desc = real_options
     real_ans = round(random.choice(options), 3) if len(options) > 0 else None, desc
@@ -1638,7 +1741,19 @@ def generate_fake_answers_symmetry(real_options, expr, x):
         answer_3 = generate_random_answer_symmetry(options, expr, x)
         return real_ans, answer_1, answer_2, answer_3
 
-
+# Input:
+# real_points: A list of real inflection points.
+# expr: The expression.
+# x: The variable.
+# domains: A list of domains for x. Each domain is represented as a tuple (start, end).
+# Output:
+# The function returns a tuple (fake_x, fake_y), where:
+# fake_x is the fake x-coordinate of the inflection point.
+# It is a rounded value that is not present in the real_points list and falls within one of the domains
+# specified in domains.
+# fake_y is the fake y-coordinate of the inflection point.
+# It is calculated by evaluating the expression expr at the fake x-coordinate.
+# It is rounded to three decimal places.
 def generate_random_answer_inflection(real_points, expr, x, domains):
     def check_in_range(val):
         for dom in domains:
@@ -1660,7 +1775,9 @@ def generate_random_answer_inflection(real_points, expr, x, domains):
     except:
         return round(fake_ans, 3), round(random.uniform(-2, 2) * fake_ans, 3)
 
-
+# the function generates fake inflection points based on the presence or absence of real inflection points.
+# If real inflection points exist, the function selects one as the real answer and generates fake answers.
+# If no real inflection points exist, the function generates fake answers using a list of randomly generated options.
 def generate_fake_answers_inflection(real_points, expr, x, domains):
     real_ans = random.choice(real_points) if len(real_points) > 0 else None
     if real_ans is not None:
@@ -1679,7 +1796,17 @@ def generate_fake_answers_inflection(real_points, expr, x, domains):
         answer_3 = generate_random_answer_inflection(options, expr, x, domains)
         return real_ans, answer_1, answer_2, answer_3
 
-
+# Input:
+# min_val: The minimum value of the domain.
+# max_val: The maximum value of the domain.
+# fake_min: A fake minimum value to replace -inf in the calculation.
+# fake_max: A fake maximum value to replace inf in the calculation.
+# Output:
+# A formatted string representing the fake convex and concave regions.
+# The string contains the symbols '\u222A' (union) and '\u2229' (intersection) to represent
+# the convex and concave regions, respectively. The output string includes the intervals of the fake
+# convex regions and the intervals of the fake concave regions.
+# Note: The intervals in the output are represented as tuples (start, end) where start and end are the boundaries of each interval.
 def generate_random_answer_convex_concave(min_val, max_val, fake_min, fake_max):
     temp_max_val = max_val
     temp_min_val = min_val
@@ -1701,7 +1828,17 @@ def generate_random_answer_convex_concave(min_val, max_val, fake_min, fake_max):
             fake_concave.append((all_splits[i], all_splits[i + 1]))
     return '\u222A: {convex}\n\u2229: {concave}'.format(convex=fake_convex, concave=fake_concave)
 
-
+# Input:
+# domains: A list of tuples representing domains, where each tuple contains two values representing
+# the lower and upper bounds of a domain.
+# bottom_val: The value to be replaced in the lower bounds of the domains.
+# top_val: The value to be replaced in the upper bounds of the domains.
+# real_bottom: The value that replaces bottom_val in the modified domains.
+# real_top: The value that replaces top_val in the modified domains.
+# Output:
+# new_domains: A new list of tuples representing the modified domains,
+# where the specified values (bottom_val and top_val) in the original domains are replaced with
+# real_bottom and real_top, respectively.
 def return_domain_to_inf(domains, bottom_val, top_val, real_bottom, real_top):
     new_domains = []
     for dom in domains:
@@ -1713,7 +1850,10 @@ def return_domain_to_inf(domains, bottom_val, top_val, real_bottom, real_top):
         new_domains.append(tuple(new_dom))
     return new_domains
 
-
+# calculates the minimum and maximum values from the given domains.
+# It then updates the convex and concave regions based on the new domain limits.
+# Depending on the number of domains, it generates three fake answers within a specific range
+# and returns a formatted string that includes the updated regions and the fake answers.
 def generate_fake_answers_convex_concave(real_regions, domains):
     min_val = inf
     max_val = -inf
@@ -1742,7 +1882,8 @@ def generate_fake_answers_convex_concave(real_regions, domains):
                answer_2, \
                answer_3
 
-
+#selects three unique fake answers randomly from a set of possible options, excluding the correct answer
+# and any previously generated fake answers. These fake answers are returned as a list.
 def generate_fake_answers_odd_even(ans):
     all_options = {'גם זוגית וגם אי זוגית', 'זוגית', 'אי זוגית', 'לא זוגית ולא אי זוגית'}
     fake_ans = []
@@ -1831,6 +1972,8 @@ def get_questions(unit):
 
     return change_order(questions)
 
+
+# generates a tuple that represents a question and its answer choices off odd and even
 def make_odd_even_question(b, c, p):
     domain = makeDomain(p, c)
     domain_to_use = []
@@ -1851,7 +1994,7 @@ def make_odd_even_question(b, c, p):
     answer_3 = fake_ans[2] + ' ' + funcString(p, c, b) + 'הפונקציה '
     preamble = 'בחר את בטענה הנכונה בהקשר לזוגיות ואי זוגיות הפונקציה'
 
-    print(expr)
+
 
     q = (preamble,
          funcString(p, c, b),
@@ -1863,6 +2006,7 @@ def make_odd_even_question(b, c, p):
     return q
 
 
+# generates a tuple that represents a question and its answer choices related to the convexity and concavity of a function
 def make_convex_concave_question(b, c, p):
     expr, x = make_sympy_function(p, c, b)
     if c == 3 or c == 4:
@@ -1880,7 +2024,6 @@ def make_convex_concave_question(b, c, p):
     diff_1 = diff(expr, x)
     diff_2 = diff(diff_1, x)
 
-    print(expr)
 
     points = get_possible_inflection_points(diff_2, x, domain_to_use)
     ans = get_answers_for_concave_convex(points, domain_to_use, diff_2, x)
@@ -1906,7 +2049,6 @@ def make_inflection_question(b, c, p):
     diff_1 = diff(expr, x)
     diff_2 = diff(diff_1, x)
 
-    print(expr)
 
     points = get_possible_inflection_points(diff_2, x, domain)
     ans = get_answers_for_inflection_points(points, domain, diff_2, x)
@@ -2164,45 +2306,6 @@ def addQuestions_buisness(className, unitName, username):
         print(e)
         return str(e), 400
 
-
-def addQuestions_for_tests(className, unitName, username):
-    try:
-        with db_session:
-            unit = Unit[unitName, Cls[className]]
-            user = User[username]
-
-            maxAttempt = get_max_unit(unit, user)
-            if maxAttempt == 0:
-                ActiveUnit(inProgress=True, unit=unit, student=user, attempt=maxAttempt + 1, currentQuestion=0,
-                           consecQues=0, quesAmount=0, totalCorrect=0, grade=0)
-                maxAttempt += 1
-            active = ActiveUnit[unit, user, maxAttempt]
-
-            if active.currentQuestion < active.quesAmount:
-                return str(unit.maxTime)
-
-            id = active.quesAmount + 1
-            active.quesAmount += 10
-            for single_question in get_questions(unit):
-                if single_question[7] == 0:
-                    Question(id=id, question_preamble=single_question[0], question=single_question[1],
-                             correct_ans=single_question[6], answer1=str(single_question[2])[1:-1],
-                             answer2=str(single_question[3])[1:-1], answer3=str(single_question[4])[1:-1],
-                             answer4=str(single_question[5])[1:-1],
-                             active_unit=ActiveUnit[unit, user, maxAttempt])
-                else:
-                    Question(id=id, question_preamble=single_question[0], question=single_question[1],
-                             correct_ans=single_question[6], answer1=str(single_question[2]),
-                             answer2=str(single_question[3]), answer3=str(single_question[4]),
-                             answer4=str(single_question[5]),
-                             active_unit=ActiveUnit[unit, user, maxAttempt])
-                id += 1
-
-            commit()
-            return str(unit.maxTime)
-    except Exception as e:
-        print(e)
-        return str(e), 400
 
 
 # now all this does is add 10 questions to the active unit
@@ -3483,40 +3586,6 @@ def getStudentLessonQuestionsB(className, student, unitName):
 # [random.randint(params[2*i], params[2*i+1]) for i in range(int(len(params)/2))]
 
 
-p = [4, 10, -4, 6]
-c = 2
-
-b = 2
-a = makeFunc(p, c=c, b=b)
-r1 = -6
-r2 = 2
-print()
-print("f: " + str(a))
-print("f(5): " + str(a(5)))
-dom = makeDomain(p, c)
-print("Domain: " + str(dom))
-print("Intersections: " + str(makeIntersections(a, c=c, r=dom)))
-print("Extremes: " + str(makeExtremes(p, c=c, b=b)))
-print("IncDec: " + str(makeIncDec(p, c=c)))
-print("funcString: " + str(funcString(p, c=c, b=b)))
-print("deriveString: " + str(deriveString(p, c=c, b=b)))
-print("PosNeg: " + str(makePosNeg(p, c=c, b=b)))
-print("makeAsym: " + str(makeAsym(p, c, b)))
-print("integral from",r1,"to",r2,": ",definite_integral_question(b,c,a,(r1,r2),p)[2])
-
-
-#
-# print(register_buisness("aleks","123",1))
-# print(register_buisness("aleks1","123",2))
-# print(openClass_buisness("aleks","c1"))
-# registerClass_buisness("aleks1","c1")
-# approveStudentToClass_buisness("aleks","aleks1","c1","True")
-
-
-
-
-# sym = getSymmetry(p, c)
-# print("symmetry: " + ("f(x)=" + str(sym[0]) + "*f(-x+" + str(2 * sym[1]) + ")") if sym else sym)
 
 
 def getLessonIndex(user, unit_name, class_name):
@@ -3534,7 +3603,6 @@ def getLessonIndex(user, unit_name, class_name):
                     unit_name_n += "n"
             except Exception as e:
                 a = 8
-                # print("does not exists " + str(e))
 
             try:
                 unit_name_n = unit_name
@@ -3547,7 +3615,6 @@ def getLessonIndex(user, unit_name, class_name):
 
             except Exception as e:
                 a = 8
-                # print("does not exists " + str(e))
 
             return (1 + unitsBelow, 1 + unitsAbove + unitsBelow)
 
@@ -3599,7 +3666,6 @@ def getLessonCorrectIncorrect(user, unit_name, class_name):
                     unit_name_n += "n"
             except Exception as e:
                 a = 8
-            # print("does not exists " + str(e))
 
             return (total_correct, total_solved - total_correct)
 
@@ -3642,7 +3708,6 @@ def getLessonCorrectIncorrectQuestions():
                     unit_name_n += "n"
             except Exception as e:
                 a = 8
-                # print("does not exists " + str(e))
             return jsonify(ret), 200
 
 

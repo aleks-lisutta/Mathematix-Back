@@ -423,7 +423,7 @@ class MyTestCase(unittest.TestCase):
             app.getQuestion_buisness('student2', 'unit1', 'class1', '1')
             app.submitQuestion_buisness('student2', 'unit1', 'class1', '1', '-1')
             # Check function
-            res = app.getAllActiveUnits_buisness('class1', 'unit1')
+            res = app.getAllActiveUnits2('class1', 'unit1')
             self.assertEqual(2, len(res.json), 'JSON returned with less then 2 values.')
             for dic in res.json:
                 if dic['name'] == 'student1':
