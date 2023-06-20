@@ -2959,15 +2959,17 @@ def deriveString(p, c=0, b=math.e):
         return "y'=" + polySrting(makeDer(p))
     elif c == 1:
         innerDerive = polySrting(makeDer(p[:-1]))
+        if innerDerive == "0":
+            return "y'=0"
         exponent = polySrting(p[:-1])
         if isParenthesisNeeded(innerDerive):
             innerDerive = "(" + innerDerive + ")"
 
         if b != math.e:
             if innerDerive.startswith("("):
-                innerDerive = "ln(" + str(b) + ")" + innerDerive + " * "
+                innerDerive = "ln(" + str(b) + ")" + innerDerive + " \cdot "
             else:
-                innerDerive = innerDerive + "ln(" + str(b) + ") * "
+                innerDerive = innerDerive + "ln(" + str(b) + ") \cdot "
             return "y'=" + innerDerive + str(b) + "^{" + exponent + "}"
         return "y'=" + innerDerive + ("e" if b == math.e else str(b)) + "^{" + exponent + "}"
 
@@ -2981,6 +2983,8 @@ def deriveString(p, c=0, b=math.e):
 
     elif c == 3:
         innerDerive = polySrting(makeDer(p[:-1]))
+        if innerDerive == "0":
+            return "y'=0"
         isCompoundDerive = isParenthesisNeeded(innerDerive)
         if isCompoundDerive:
             return "y'=cos(" + polySrting(p[:-1]) + ")" + "(" + innerDerive + ")"
@@ -2988,6 +2992,8 @@ def deriveString(p, c=0, b=math.e):
         return "y'=" + innerDerive + "cos(" + polySrting(p[:-1]) + ")"
     elif c == 4:
         innerDerive = polySrting(makeDer(p[:-1]))
+        if innerDerive == "0":
+            return "y'=0"
         isCompoundDerive = isParenthesisNeeded(innerDerive)
         if isCompoundDerive:
             return "y'=-sin(" + polySrting(p[:-1]) + ")" + "(" + innerDerive + ")"
@@ -2996,6 +3002,8 @@ def deriveString(p, c=0, b=math.e):
         return "y'=-" + innerDerive + "sin(" + polySrting(p[:-1]) + ")"
     elif c == 5:
         innerDerive = polySrting(makeDer(p[:-1]))
+        if innerDerive == "0":
+            return "y'=0"
         return f"y'=\\frac{{{innerDerive}}}{{{'cos^2(' + polySrting(p[:-1]) + ')'}}}"
     elif c == 6:
         innerDerive = polySrting(makeDer(p[:-1]))
@@ -3005,7 +3013,7 @@ def deriveString(p, c=0, b=math.e):
         # return "y=(-1/sin^2(" + polySrting(p[:-1]) + ")"
     elif c == 7:
         l = int(len(p) / 2)
-        return "y'=(((" + polySrting(makeDer(p[:l])) + ") * (" + polySrting(p[l:]) + ")) - ((" + polySrting(
+        return "y'=(((" + polySrting(makeDer(p[:l])) + ") \cdot (" + polySrting(p[l:]) + ")) - ((" + polySrting(
             makeDer(p[l:])) + ") * (" + polySrting(p[:l]) + "))) / (" + polySrting(p[l:]) + ")^2"
     elif c == 8:
         innerDerive = polySrting(makeDer(p[:-1]))
