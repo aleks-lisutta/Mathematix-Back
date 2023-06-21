@@ -1,11 +1,9 @@
 import unittest
-import os
-from pony.orm import db_session, Database, PrimaryKey, Required, Optional, Set, CacheIndexError, commit
+from pony.orm import db_session, Database
 from flaskProject import app
 from flaskProject.Tests.UnitTests import initiate_database
-from flaskProject.app import User, DB, teacherCont, studentCont, Cls, Unit
-from unittest import mock
-from unittest.mock import patch
+from flaskProject.app import DB, Unit
+
 
 
 
@@ -183,10 +181,7 @@ class MyTestCase(unittest.TestCase):
             self.assertEqual(unit.next, '')
 
 
-    @patch('flaskProject.app.db_session')
-    def test_teacherOpenUnit_fail_name_unique(self, mock_isLogin=None):
-        # Set up the mock
-        mock_isLogin.return_value = True
+    def test_teacherOpenUnit_fail_name_unique(self):
 
         unitName = "Unit 2"
         teacherName = "John Doe"
@@ -271,37 +266,33 @@ class MyTestCase(unittest.TestCase):
 
     def test_getClassUnits_success(self):
         with db_session:
-            teacher = User(name="John Doe", password="password", type=1)
-            cls = Cls(name="English Class", teacher=teacher)
-            unit1 = Unit(name="Unit 1", cls=cls, desc="Unit 1 description", template="Template A",
-                         Qnum="10", maxTime="60", subDate="2023-05-20", order=1)
-            unit2 = Unit(name="Unit 2", cls=cls, desc="Unit 2 description", template="Template B",
-                         Qnum="5", maxTime="30", subDate="2023-06-01", order=2)
+            # Create teacher account and open a class and a unit
+            app.register_buisness('teacher1', 'password', 1)
+            app.login_buisness('teacher1', 'password')
+            app.openClass_buisness('teacher1', 'class1')
+            app.teacherOpenUnit('Unit', 'teacher1', 'class1', 'intersection_linear_-10,0,1,6', '1', '60', '2023-07-01',
+                                'true', '', 'desc')
+            app.teacherOpenUnit('Unit2', 'teacher1', 'class1', 'intersection_poly_-10,0,1,6', '1', '60', '2023-07-01',
+                                'true', '', 'desc')
         # Call the getClassUnits function
-        result = app.getClassUnits_buisness("English Class", "John Doe")
+        result = app.getClassUnits_buisness("class1", "teacher1")
+        self.assertEqual(len(result), 2)
 
         # Verify the returned units
-        expected_units = [
-            {
-                "id": 1,
-                "primary": "Unit 1",
-                "secondary": "Unit 1 description",
-                "due": "2023-05-20"
-            }
-        ]
-        self.assertEqual(result, expected_units)
+        self.assertIn("'primary': 'Unit', 'secondary': 'desc', 'due': '2023-07-01'}", str(result))
+        self.assertIn("'primary': 'Unit2', 'secondary': 'desc', 'due': '2023-07-01'}", str(result))
+
 
     def test_getClassUnits_incorrect_class(self):
         with db_session:
-            teacher = User(name="John Doe", password="password", type=1)
-            cls = Cls(name="English Class", teacher=teacher)
-            unit1 = Unit(name="Unit 1", cls=cls, desc="Unit 1 description", template="Template A",
-                         Qnum="10", maxTime="60", subDate="2023-05-20", order=1)
-            unit2 = Unit(name="Unit 2", cls=cls, desc="Unit 2 description", template="Template B",
-                         Qnum="5", maxTime="30", subDate="2023-06-01", order=2)
+            with db_session:
+                # Create teacher account and open a class and a unit
+                app.register_buisness('teacher1', 'password', 1)
+                app.login_buisness('teacher1', 'password')
+                app.openClass_buisness('teacher1', 'class1')
 
         # Call the getClassUnits function
-        result = app.getClassUnits_buisness("English", "Jane Smith")
+        result = app.getClassUnits_buisness("English", "teacher1")
         self.assertEqual(result, ("Cls['English']", 400))
 
     def test_getUnitDetails_existing_unit(self):

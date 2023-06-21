@@ -1,13 +1,9 @@
 import unittest
-
 import numpy as np
 from pony.orm import db_session, Database
-
-
 from flaskProject import app
 from flaskProject.Tests.UnitTests import initiate_database
 from flaskProject.app import DB
-
 from sympy import pi
 
 
