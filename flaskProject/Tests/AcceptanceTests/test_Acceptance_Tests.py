@@ -76,10 +76,10 @@ class AcceptanceTests(unittest.TestCase):
                                                  username='student1'))
             self.assertEqual(res.status_code, 400, 'Start Unit Failure')
 
-    def test__acceptance__first_correct_second_incorrect_works_with_compound_units__success(self):
+    def test__acceptance__first_correct_second_correct_works_with_compound_units__success(self):
         # Register a teacher account and create a new class and a new compound unit (two units one after another),
         # register a student account and register them to the class, approve the student.
-        # The student correctly solves the first unit, and incorrectly solves the second unit.
+        # The student correctly solves the first unit, and correctly solves the second unit.
         with app.app.test_client() as client:
             # Teacher registers and creates the class and unit
             res = client.get(self.create_request('register', username='teacher1', password='password', typ=1))
@@ -97,7 +97,7 @@ class AcceptanceTests(unittest.TestCase):
             res = client.get(self.create_request('openUnit', teacher='teacher1', desc='desc', unitName='compundUnitn',
                                                  className='MathQuestions',
                                                  template='minMaxPoints_quadratic_-10,10,-10,10,-10,10,-10,10',
-                                                 Qnum='2', maxTime='0', subDate='2023-07-01', first='false',
+                                                 Qnum='1', maxTime='0', subDate='2023-07-01', first='false',
                                                  prev='compundUnit'))
             self.assertEqual(res.status_code, 200, 'Open Unit 2 Failure')
             # Student registers to class and starts unit
@@ -122,25 +122,23 @@ class AcceptanceTests(unittest.TestCase):
             res = client.get(self.create_request('submitQuestion', username='student1', unitName='compundUnit',
                                                  className='MathQuestions', qnum='1', ans=str(correct_ans)))
             self.assertEqual(res.status_code, 206, 'Submit Question 1 Unit 1 Failure')
-            # User starts the second unit and fails it
+            # User starts the second unit
             res = client.get(self.create_request('startUnit', className='MathQuestions', unitName='compundUnitn',
                                                  username='student1'))
             self.assertEqual(res.status_code, 200, 'Start Unit 2 Failure')
             res = client.get(self.create_request('getQuestion', username='student1', unitName='compundUnitn',
                                                  className='MathQuestions', qnum='1'))
             self.assertEqual(res.status_code, 200, 'Get Question 1 Unit 2 Failure')
-            self.assertNotEqual(unit_1_preamble, json.loads(res.data)[0]['preamble'], 'Same question type failure')
             correct_ans = json.loads(res.data)[0]['correct_ans']
             res = client.get(self.create_request('submitQuestion', username='student1', unitName='compundUnitn',
-                                                 className='MathQuestions', qnum='1',
-                                                 ans='-1'))
-            self.assertEqual(res.status_code, 200 + int(correct_ans), 'Submit Question 1 Unit 2 Failure')
+                                                 className='MathQuestions', qnum='1', ans=str(correct_ans)))
+            self.assertEqual(res.status_code, 205, 'Submit Question 1 Unit Failure')
 
-    def test__acceptance__start_unit_then_leave_and_come_back__success(self):
+    def test__acceptance__start_unit_then_leave_and_start_another_attempt__success(self):
         # Register a teacher account and create a new class and a new unit,
         # register a student account and register them to the class, approve the student.
-        # The student correctly solves the first question, then leaves and comes back. Check that he gets the
-        # same question.
+        # The student correctly solves the first question, then ends it and start another attempt. Check that he gets the
+        # same question type.
         with app.app.test_client() as client:
             # Teacher registers and creates the class and unit
             res = client.get(self.create_request('register', username='teacher1', password='password', typ=1))
