@@ -1,12 +1,8 @@
 import unittest
-import os
-from pony.orm import db_session, Database, PrimaryKey, Required, Optional, Set, CacheIndexError, commit
-
-import flaskProject
+from pony.orm import db_session, Database
 from flaskProject import app
 from flaskProject.Tests.UnitTests import initiate_database
-from flaskProject.app import User, DB, teacherCont, studentCont, Cls, Unit
-from unittest import mock
+from flaskProject.app import User, DB, studentCont
 from unittest.mock import patch, MagicMock
 
 

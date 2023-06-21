@@ -1,11 +1,9 @@
 import unittest
-import os
-from pony.orm import db_session, Database, PrimaryKey, Required, Optional, Set, CacheIndexError, commit
+from pony.orm import db_session, Database
 from flaskProject import app
 from flaskProject.Tests.UnitTests import initiate_database
-from flaskProject.app import User, DB, teacherCont, studentCont, Cls, Unit, QUESTIONS_TO_GENERATE
-from unittest import mock
-from unittest.mock import patch, MagicMock
+from flaskProject.app import User, DB, Cls, Unit, QUESTIONS_TO_GENERATE
+
 
 
 class TestGetMaxUnit(unittest.TestCase):
