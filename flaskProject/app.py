@@ -1996,10 +1996,10 @@ def make_odd_even_question(b, c, p):
     expr, x = make_sympy_function(p, c, b)
     ans = get_answers_for_odd_even(expr, x, domain_to_use)
     fake_ans = generate_fake_answers_odd_even(ans)
-    real = ans + ' ' + funcString(p, c, b) + 'הפונקציה '
-    answer_1 = fake_ans[0] + ' ' + funcString(p, c, b) + 'הפונקציה '
-    answer_2 = fake_ans[1] + ' ' + funcString(p, c, b) + 'הפונקציה '
-    answer_3 = fake_ans[2] + ' ' + funcString(p, c, b) + 'הפונקציה '
+    real = ' הפונקציה ' + ans
+    answer_1 = ' הפונקציה ' + fake_ans[0]
+    answer_2 = ' הפונקציה ' + fake_ans[1]
+    answer_3 = ' הפונקציה ' + fake_ans[2]
     preamble = 'בחר את בטענה הנכונה בהקשר לזוגיות ואי זוגיות הפונקציה'
 
 
@@ -2009,8 +2009,7 @@ def make_odd_even_question(b, c, p):
          real,
          answer_1,
          answer_2,
-         answer_3,
-         0)
+         answer_3, 0)
     return q
 
 
